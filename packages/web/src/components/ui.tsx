@@ -9,7 +9,7 @@ const VARIANTS: Record<Variant, string> = {
   primary: 'bg-gradient-to-b from-gold-400 to-gold-600 text-ink-950 shadow-[0_6px_18px_rgba(201,162,90,.25)] hover:from-gold-300 hover:to-gold-500 disabled:from-ink-600 disabled:to-ink-600 disabled:text-ivory-300/50 disabled:shadow-none',
   secondary: 'border border-gold-500/60 text-gold-300 hover:bg-gold-500/10 disabled:border-ink-500 disabled:text-ivory-300/40',
   ghost: 'text-ivory-200 hover:bg-ivory-100/10 disabled:text-ivory-300/40',
-  danger: 'border border-ruby-500/70 text-red-300 hover:bg-ruby-500/15 disabled:opacity-50',
+  danger: 'border border-ruby-500/70 text-ruby-300 hover:bg-ruby-500/15 disabled:opacity-50',
 };
 
 export function Button({ variant = 'primary', className = '', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
@@ -49,7 +49,7 @@ export function Field({ label, hint, error, children, htmlFor }: { label: string
       {children}
       {hint && !error && <p className="text-xs text-ivory-300/70">{hint}</p>}
       {error && (
-        <p role="alert" className="text-xs text-red-300">
+        <p role="alert" className="text-xs text-ruby-300">
           {error}
         </p>
       )}
@@ -139,8 +139,8 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
   const t = {
     neutral: 'bg-ivory-100/10 text-ivory-200',
     gold: 'bg-gold-500/20 text-gold-300',
-    green: 'bg-emerald-500/15 text-emerald-300',
-    red: 'bg-ruby-500/25 text-red-200',
+    green: 'bg-jade-500/15 text-jade-300',
+    red: 'bg-ruby-500/25 text-ruby-200',
     amber: 'bg-amber-500/20 text-amber-200',
   }[tone];
   return <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${t}`}>{children}</span>;
@@ -162,7 +162,7 @@ export function CountdownRing({ secondsLeft, total = 30, size = 56, label }: { s
   const r = 22;
   const circ = 2 * Math.PI * r;
   const frac = Math.max(0, Math.min(1, secondsLeft / total));
-  const color = secondsLeft <= 5 ? '#ef6a73' : secondsLeft <= 10 ? '#f0b25c' : '#c9a25a';
+  const color = secondsLeft <= 5 ? '#ef6a73' /* ruby-300 */ : secondsLeft <= 10 ? '#f0b25c' /* amber-400 */ : '#c9a25a' /* gold-500 */;
   return (
     <div className={`relative inline-flex items-center justify-center ${secondsLeft <= 5 ? 'animate-pulseRing' : ''}`} style={{ width: size, height: size }} role="timer" aria-label={`${label ?? 'Temps restant'} : ${Math.ceil(secondsLeft)} secondes`}>
       <svg viewBox="0 0 52 52" width={size} height={size} className="-rotate-90">
@@ -206,9 +206,9 @@ export function Modal({ title, onClose, children, wide = false }: { title: strin
 
 const TOAST_TONE: Record<Tone, string> = {
   info: 'border-ivory-100/20 bg-ink-700 text-ivory-50',
-  success: 'border-emerald-400/40 bg-emerald-950 text-emerald-100',
+  success: 'border-jade-400/40 bg-jade-950 text-jade-100',
   warning: 'border-amber-400/50 bg-amber-950 text-amber-100',
-  error: 'border-ruby-500/60 bg-red-950 text-red-100',
+  error: 'border-ruby-500/60 bg-ruby-950 text-ruby-100',
 };
 
 export function ToastHost({ toasts, onDismiss }: { toasts: { id: number; tone: Tone; text: string }[]; onDismiss: (id: number) => void }) {

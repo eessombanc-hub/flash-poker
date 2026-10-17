@@ -1,6 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import { ApiError, createRoom, joinRoom, type CreateRoomInput, type JoinRoomInput } from './api';
+import { ApiError, createRoom, joinRoom, listRooms, type CreateRoomInput, type JoinRoomInput, type RoomSummary } from './api';
 import { describeEvent, type Tone } from './events';
 import type { Session, SessionStore } from './session';
 import type { ClientCommand, RoomView, RoundEvent, UpdateMessage } from './types';
@@ -114,6 +114,11 @@ export class GameClient {
   async joinRoom(code: string, input: JoinRoomInput): Promise<void> {
     const res = await joinRoom(this.baseUrl, code, input, this.opts.fetchFn);
     this.begin({ code: code.trim().toUpperCase(), token: res.token, playerId: res.playerId, nickname: input.nickname });
+  }
+
+  /** Liste publique des parties ouvertes (accueil) : aucun effet sur la session en cours. */
+  listRooms(): Promise<RoomSummary[]> {
+    return listRooms(this.baseUrl, this.opts.fetchFn);
   }
 
   private begin(session: Session): void {

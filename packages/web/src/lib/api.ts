@@ -28,6 +28,16 @@ export interface RoomAccess {
   playerId: string;
   token: string;
 }
+export interface RoomSummary {
+  code: string;
+  name: string;
+  status: 'WAITING' | 'RUNNING';
+  maxPlayers: number;
+  seatsLeft: number;
+  targetPoints: number;
+  stakeCents: number;
+  assistance: boolean;
+}
 
 async function post<T>(baseUrl: string, path: string, body: unknown, fetchFn: typeof fetch): Promise<T> {
   let res: Response;
@@ -54,3 +64,15 @@ export const createRoom = (baseUrl: string, input: CreateRoomInput, fetchFn: typ
 
 export const joinRoom = (baseUrl: string, code: string, input: JoinRoomInput, fetchFn: typeof fetch = fetch): Promise<Omit<RoomAccess, 'code'>> =>
   post(baseUrl, `/rooms/${encodeURIComponent(code.trim().toUpperCase())}/join`, input, fetchFn);
+
+export async function listRooms(baseUrl: string, fetchFn: typeof fetch = fetch): Promise<RoomSummary[]> {
+  let res: Response;
+  try {
+    res = await fetchFn(`${baseUrl}/rooms`);
+  } catch {
+    throw new ApiError('NETWORK', 'Impossible de joindre le serveur. Vérifiez votre connexion.');
+  }
+  if (!res.ok) throw new ApiError('HTTP', `Erreur serveur (${res.status})`);
+  const data = (await res.json()) as { rooms: RoomSummary[] };
+  return data.rooms;
+}

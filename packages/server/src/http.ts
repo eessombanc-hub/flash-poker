@@ -165,6 +165,10 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   };
 
   app.get('/health', async () => ({ ok: true }));
+  app.get('/rooms', async (req, reply) => {
+    guard('list', req.ip); // limite le polling de la liste, distinct de la création/arrivée
+    return reply.send({ rooms: opts.manager.listOpen() });
+  });
   app.post('/rooms', async (req, reply) => {
     guard('create', req.ip);
     return reply.status(201).send(opts.manager.createRoom(req.body));

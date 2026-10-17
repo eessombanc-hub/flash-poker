@@ -77,7 +77,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
             <AvatarPicker value={avatar} onChange={setAvatar} />
           </Field>
           {error && (
-            <p role="alert" className="rounded-lg border border-ruby-500/50 bg-red-950/60 px-3 py-2 text-sm text-red-100">
+            <p role="alert" className="rounded-lg border border-ruby-500/50 bg-ruby-950/60 px-3 py-2 text-sm text-ruby-100">
               {error}
             </p>
           )}
@@ -134,7 +134,7 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
             <AvatarPicker value={avatar} onChange={setAvatar} />
           </Field>
           {error && (
-            <p role="alert" className="rounded-lg border border-ruby-500/50 bg-red-950/60 px-3 py-2 text-sm text-red-100">
+            <p role="alert" className="rounded-lg border border-ruby-500/50 bg-ruby-950/60 px-3 py-2 text-sm text-ruby-100">
               {error}
             </p>
           )}

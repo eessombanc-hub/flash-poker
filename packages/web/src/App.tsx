@@ -55,6 +55,7 @@ export function App() {
   const closed = useGame((s) => s.closed);
   const toasts = useGame((s) => s.toasts);
   const [screen, setScreen] = useState<Screen>(() => (initialCode() ? 'join' : 'home'));
+  const [joinCode, setJoinCode] = useState<string>(initialCode);
 
   useEffect(() => {
     client.resume(); // reprise automatique après un rechargement (jeton conservé)
@@ -78,12 +79,15 @@ export function App() {
     } else if (view.status === 'WAITING' || view.status === 'CANCELLED') content = <Lobby />;
     else content = <Table />;
   } else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
-  else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={initialCode()} />;
+  else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={joinCode} />;
   else
     content = (
       <Home
         onCreate={() => setScreen('create')}
-        onJoin={() => setScreen('join')}
+        onJoin={(code) => {
+          setJoinCode(code ?? '');
+          setScreen('join');
+        }}
         notice={closed === 'KICKED' ? 'Vous avez été retiré de la partie par l’hôte.' : closed === 'INVALID_SESSION' ? 'Votre session n’est plus valide (partie expirée ou supprimée).' : null}
       />
     );

@@ -18,6 +18,7 @@ import {
   type PlayerPublic,
   type PlayerState,
   type RoomStatus,
+  type RoomSummary,
   type RoomView,
 } from './protocol';
 import type { Scheduler, Timer } from './scheduler';
@@ -274,6 +275,26 @@ export class RoomManager {
     const room = this.room(codeRaw);
     this.player(room, playerId);
     return this.viewFor(room, playerId);
+  }
+
+  /**
+   * Liste publique des parties encore accessibles (`GET /rooms`) : en attente ou en cours, avec au moins un
+   * siège libre — jamais de pseudo ni de jeton (voir `RoomSummary`). Les plus récentes d'abord.
+   */
+  listOpen(): RoomSummary[] {
+    return [...this.rooms.values()]
+      .filter((r) => (r.status === 'WAITING' || r.status === 'RUNNING') && r.players.length < r.config.maxPlayers)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((r) => ({
+        code: r.code,
+        name: r.config.name,
+        status: r.status as 'WAITING' | 'RUNNING',
+        maxPlayers: r.config.maxPlayers,
+        seatsLeft: r.config.maxPlayers - r.players.length,
+        targetPoints: r.config.targetPoints,
+        stakeCents: r.config.stakeCents,
+        assistance: r.config.assistance,
+      }));
   }
 
   private toGameCommand(player: string, c: ClientCommand): GameCommand {

@@ -117,8 +117,8 @@ export function Lobby() {
                   {p.assistanceApproved === true ? 'Assistance : oui' : p.assistanceApproved === false ? 'Assistance : non' : 'Assistance : en attente'}
                 </Badge>
               )}
-              <span className={`inline-flex items-center gap-1.5 text-xs ${p.connected ? 'text-emerald-300' : 'text-ivory-300/60'}`}>
-                <span className={`h-2 w-2 rounded-full ${p.connected ? 'bg-emerald-400' : 'bg-ivory-300/40'}`} />
+              <span className={`inline-flex items-center gap-1.5 text-xs ${p.connected ? 'text-jade-300' : 'text-ivory-300/60'}`}>
+                <span className={`h-2 w-2 rounded-full ${p.connected ? 'bg-jade-400' : 'bg-ivory-300/40'}`} />
                 {p.connected ? 'en ligne' : 'hors ligne'}
               </span>
               {isHost && !p.isHost && (

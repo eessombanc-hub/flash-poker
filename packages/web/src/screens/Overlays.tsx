@@ -222,7 +222,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
                 <td className="py-1.5 text-ivory-50">{nick(view, p.player)}</td>
                 <td className="py-1.5 text-right tabular-nums text-ivory-200/80">{formatEuros(game.stakeCents)}</td>
                 <td className="py-1.5 text-right tabular-nums text-ivory-50">{formatEuros(payout)}</td>
-                <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-emerald-300' : net < 0 ? 'text-red-300' : 'text-ivory-200'}`}>{formatSignedEuros(net)}</td>
+                <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}>{formatSignedEuros(net)}</td>
               </tr>
             );
           })}

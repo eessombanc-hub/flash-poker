@@ -64,6 +64,22 @@ export interface PlayerPublic {
   assistanceApproved: boolean | null;
 }
 
+/**
+ * Une entrée de la liste publique des parties ouvertes (`GET /rooms`) : aucune information privée (pas de
+ * pseudo, pas de jeton) — juste de quoi choisir une table à rejoindre. N'inclut que les parties encore
+ * accessibles (ni terminées, ni annulées, ni complètes).
+ */
+export interface RoomSummary {
+  code: string;
+  name: string;
+  status: 'WAITING' | 'RUNNING';
+  maxPlayers: number;
+  seatsLeft: number;
+  targetPoints: number;
+  stakeCents: number;
+  assistance: boolean;
+}
+
 /** Vue d'une room pour UN joueur : jamais de jeton, jamais de carte cachée d'autrui. */
 export interface RoomView {
   code: string;

@@ -48,7 +48,7 @@ function Announcer() {
     const t = setTimeout(() => setCurrent(null), 4200);
     return () => clearTimeout(t);
   }, [current]);
-  const tone = current?.tone === 'warning' ? 'border-amber-400/50 text-amber-100' : current?.tone === 'success' ? 'border-emerald-400/40 text-emerald-100' : 'border-gold-500/40 text-ivory-50';
+  const tone = current?.tone === 'warning' ? 'border-amber-400/50 text-amber-100' : current?.tone === 'success' ? 'border-jade-400/40 text-jade-100' : 'border-gold-500/40 text-ivory-50';
   return (
     <div className={`pointer-events-none ${current ? 'h-9' : 'h-0'} shrink-0 overflow-visible transition-[height]`} aria-live="polite" role="status">
       <AnimatePresence mode="wait">
@@ -241,7 +241,7 @@ function ActionDock() {
 }
 
 function Banner({ children, tone = 'gold' }: { children: ReactNode; tone?: 'gold' | 'red' }) {
-  return <p className={`rounded-xl border px-4 py-2.5 text-sm ${tone === 'red' ? 'border-ruby-500/50 bg-red-950/60 text-red-100' : 'border-gold-500/40 bg-gold-500/10 text-ivory-100'}`}>{children}</p>;
+  return <p className={`rounded-xl border px-4 py-2.5 text-sm ${tone === 'red' ? 'border-ruby-500/50 bg-ruby-950/60 text-ruby-100' : 'border-gold-500/40 bg-gold-500/10 text-ivory-100'}`}>{children}</p>;
 }
 
 // ---------- Écran de jeu ----------
