@@ -17,11 +17,11 @@ body {
 }
 .felt {
   background: radial-gradient(ellipse at 50% 38%, #1a6b51 0%, #0e4130 52%, #06261c 100%);
-  box-shadow: inset 0 0 0 6px #0b0d0f, inset 0 0 0 8px rgba(201, 162, 90, 0.55), inset 0 0 90px rgba(0, 0, 0, 0.55), 0 24px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 0 6px #081a3d, inset 0 0 0 8px rgba(201, 162, 90, 0.55), inset 0 0 90px rgba(0, 0, 0, 0.55), 0 24px 60px rgba(0, 0, 0, 0.5);
 }
 .scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: #3a424b transparent;
+  scrollbar-color: #4779c9 transparent;
 }
 @media (prefers-reduced-motion: reduce) {
   *,
