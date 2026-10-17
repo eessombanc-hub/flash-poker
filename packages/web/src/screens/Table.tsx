@@ -1,0 +1,331 @@
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Board } from '../components/Board';
+import { Seat } from '../components/Seat';
+import { Badge, Button, Modal, Panel } from '../components/ui';
+import { useClient, useGame } from '../lib/context';
+import { useGameAlerts } from '../lib/alerts';
+import { describeEvent, type Announcement } from '../lib/events';
+import { formatEuros } from '../lib/format';
+import { variantName } from '../lib/labels';
+import { useMediaQuery } from '../lib/media';
+import { closedInfo, discardInfo, line63Info, reveal61Info } from '../lib/roundInfo';
+import { nick, opponentCards, seatedPlayers } from '../lib/selectors';
+import { useSettings } from '../lib/settings';
+import { Sound } from '../lib/sound';
+import { useTable } from '../lib/table';
+import type { PlayerPublic, RoomView, RoundRecord } from '../lib/types';
+import { ClosedPanel } from '../panels/ClosedPanel';
+import { DiscardPanel } from '../panels/DiscardPanel';
+import { MorpionPanel } from '../panels/MorpionPanel';
+import { Reveal10Panel } from '../panels/Reveal10Panel';
+import { InsurancePanel } from '../panels/InsurancePanel';
+import { Line63Panel } from '../panels/Line63Panel';
+import { Reveal61Panel } from '../panels/Reveal61Panel';
+import { morpionInfo, reveal10Info } from '../lib/roundInfo';
+import { VariantPicker } from '../panels/VariantPicker';
+import { RulesModal } from './Home';
+import { collectRoundEvents, GameOverModal, RoundResultModal, ScoreModal } from './Overlays';
+
+// ---------- Annonces (« Variante choisie : … », « Nouvel ordre : … ») ----------
+function Announcer() {
+  const feed = useGame((s) => s.feed);
+  const view = useGame((s) => s.view)!;
+  const [current, setCurrent] = useState<(Announcement & { id: number }) | null>(null);
+  const seen = useRef(feed.at(-1)?.id ?? 0);
+  useEffect(() => {
+    const fresh = feed.filter((f) => f.id > seen.current);
+    if (fresh.length === 0) return;
+    seen.current = fresh.at(-1)!.id;
+    for (const f of [...fresh].reverse()) {
+      if (f.event.visibility === 'PLAYER') continue; // les rappels privés passent par les notifications
+      const a = describeEvent(f.event, view);
+      if (a) return setCurrent({ ...a, id: f.id });
+    }
+  }, [feed, view]);
+  useEffect(() => {
+    if (!current) return;
+    const t = setTimeout(() => setCurrent(null), 4200);
+    return () => clearTimeout(t);
+  }, [current]);
+  const tone = current?.tone === 'warning' ? 'border-amber-400/50 text-amber-100' : current?.tone === 'success' ? 'border-emerald-400/40 text-emerald-100' : 'border-gold-500/40 text-ivory-50';
+  return (
+    <div className={`pointer-events-none ${current ? 'h-9' : 'h-0'} shrink-0 overflow-visible transition-[height]`} aria-live="polite" role="status">
+      <AnimatePresence mode="wait">
+        {current && (
+          <motion.p key={current.id} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`mx-auto w-fit max-w-full rounded-full border bg-ink-800/95 px-4 py-1.5 text-center text-xs font-medium shadow-panel sm:text-sm ${tone}`}>
+            {current.text}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ---------- Barre d'état ----------
+function TopBar({ onScores, onRules, onOptions }: { onScores: () => void; onRules: () => void; onOptions: () => void }) {
+  const { view, game, round } = useTable();
+  return (
+    <header className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ivory-100/10 bg-ink-800/90 px-4 py-2.5">
+      <div className="min-w-0">
+        <p className="truncate font-display text-lg text-ivory-50">{view.name}</p>
+        <p className="font-mono text-xs tracking-widest text-gold-400">{view.code}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge tone="neutral">Manche {game.roundNo}</Badge>
+        {round && <Badge tone="gold">{variantName(round.variant)}</Badge>}
+        <Badge tone="neutral">Objectif {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''}</Badge>
+        <Badge tone="green">Cagnotte {formatEuros(game.potCents)}</Badge>
+      </div>
+      <nav className="flex gap-1" aria-label="Menu de la table">
+        <Button variant="ghost" className="min-h-[40px] px-3" onClick={onScores}>
+          Scores
+        </Button>
+        <Button variant="ghost" className="min-h-[40px] px-3" onClick={onRules}>
+          Règles
+        </Button>
+        <Button variant="ghost" className="min-h-[40px] px-3" onClick={onOptions}>
+          Options
+        </Button>
+      </nav>
+    </header>
+  );
+}
+
+// ---------- Tapis : sièges et plateau ----------
+function useSeatProps() {
+  const { view, game, round } = useTable();
+  return (p: PlayerPublic) => {
+    let validated = false;
+    let folded = false;
+    let active = false;
+    if (round) {
+      active = round.awaiting.includes(p.id);
+      if (round.variant === 'CLOSED_1' || round.variant === 'CLOSED_2') validated = closedInfo(round).validated.includes(p.id);
+      if (round.variant === 'AVIATION' || round.variant === 'AVIA_6') {
+        const i = discardInfo(round);
+        validated = i.validated.includes(p.id);
+        folded = i.status[p.id] === 'FOLDED';
+      }
+      if (round.variant === 'V6_3') validated = line63Info(round).validated.includes(p.id);
+      if (round.variant === 'V6_1') active = reveal61Info(round).next === p.id;
+      if (round.variant === 'MORPION') validated = morpionInfo(round).validated.includes(p.id);
+      if (round.variant === 'LE10') active = reveal10Info(round).next === p.id;
+    } else if (game.phase === 'VARIANT_SELECTION') {
+      active = game.awaiting.includes(p.id);
+    }
+    const shown = round && p.id !== view.you.playerId ? opponentCards(round, p.id) : { shown: [], hiddenCount: 0 };
+    return {
+      player: p,
+      isMe: p.id === view.you.playerId,
+      target: game.targetPoints,
+      shown: shown.shown,
+      hiddenCount: shown.hiddenCount,
+      active,
+      validated,
+      folded,
+      insured: game.insurance.accepted.some((i) => i.players.includes(p.id)),
+      isChooser: game.phase === 'VARIANT_SELECTION' && game.chooser === p.id,
+      score: game.players.find((x) => x.player === p.id)?.score ?? 0,
+    };
+  };
+}
+
+function TableCenter() {
+  const { game, round } = useTable();
+  return (
+    <div className="flex flex-col items-center gap-1.5 text-center">
+      {round ? (
+        <>
+          <Board round={round} size="sm" />
+          <p className="rounded-full bg-ink-950/50 px-3 py-0.5 text-[10px] uppercase tracking-[0.2em] text-gold-300 sm:text-xs">
+            {variantName(round.variant)} · {phaseLabel(round.variant, round.phase)}
+          </p>
+        </>
+      ) : (
+        <p className="font-display text-base text-ivory-50 sm:text-2xl">{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo} — choix de la variante`}</p>
+      )}
+      <p className="text-xs text-ivory-100/85 sm:text-sm">
+        Cagnotte <strong className="text-gold-300">{formatEuros(game.potCents)}</strong>
+      </p>
+    </div>
+  );
+}
+
+function phaseLabel(variant: string, phase: string): string {
+  const n = phase.split('_')[1];
+  if (phase === 'DONE') return 'terminée';
+  if (variant === 'V6_3') return `ligne ${n} / 3`;
+  if (variant === 'V6_1' || variant === 'LE10') return 'révélations';
+  if (variant === 'MORPION') return 'désignation';
+  if (variant.startsWith('CLOSED')) return `change ${n}`;
+  return `défausse ${n} / 2`;
+}
+
+/** Position d'un siège sur l'ovale : moi en bas, les autres dans l'ordre des positions, dans le sens horaire. */
+export function ovalPosition(k: number, n: number): { left: string; top: string } {
+  const theta = ((90 + (k * 360) / n) * Math.PI) / 180;
+  return { left: `${50 + 40 * Math.cos(theta)}%`, top: `${50 + 36 * Math.sin(theta)}%` };
+}
+
+function TableFelt() {
+  const { view, me } = useTable();
+  const seatProps = useSeatProps();
+  const desktop = useMediaQuery('(min-width: 768px)');
+  const players = seatedPlayers(view);
+  const myIdx = players.findIndex((p) => p.id === me);
+  const ordered = myIdx > 0 ? [...players.slice(myIdx), ...players.slice(0, myIdx)] : players;
+
+  if (desktop) {
+    return (
+      <div className="felt relative mx-auto mt-1 aspect-[2.5/1] max-h-[42vh] min-h-[210px] w-full max-w-5xl shrink-0 rounded-[999px]" role="group" aria-label="Table de jeu">
+        <div className="absolute left-1/2 top-[55%] w-[52%] -translate-x-1/2 -translate-y-1/2">
+          <TableCenter />
+        </div>
+        {ordered.map((p, k) => (
+          <div key={p.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={ovalPosition(k, ordered.length)}>
+            <Seat {...seatProps(p)} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="felt shrink-0 rounded-3xl p-2" role="group" aria-label="Table de jeu">
+      <div className="py-2">
+        <TableCenter />
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {ordered.map((p) => (
+          <Seat key={p.id} {...seatProps(p)} compact />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Panneaux d'action ----------
+function ActionDock() {
+  const { view, game, round, excluded, timerKey } = useTable();
+  const ref = useRef<HTMLDivElement>(null);
+  // Nouvelle phase à jouer : si le bas du panneau (main, bouton de validation) dépasse de l'écran, on l'y ramène.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof el.scrollIntoView !== 'function' || !timerKey) return;
+    if (el.getBoundingClientRect().bottom > window.innerHeight) el.scrollIntoView({ block: 'end', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }, [timerKey]);
+  const notes: ReactNode[] = [];
+  if (view.you.role === 'QUEUED') notes.push(<Banner key="q">Vous rejoindrez la table entre deux manches, à la dernière position, avec 0 point et la même mise.</Banner>);
+  if (excluded) notes.push(<Banner key="x" tone="red">Vous avez été exclu de la partie par l’hôte. Votre siège reste occupé ; vous ne pouvez plus agir.</Banner>);
+
+  let body: ReactNode = null;
+  if (game.phase === 'VARIANT_SELECTION') {
+    body = (
+      <>
+        <InsurancePanel />
+        <VariantPicker />
+      </>
+    );
+  } else if (game.phase === 'ROUND' && round) {
+    body =
+      round.variant === 'V6_3' ? <Line63Panel /> : round.variant === 'V6_1' ? <Reveal61Panel /> : round.variant === 'LE10' ? <Reveal10Panel /> : round.variant === 'MORPION' ? <MorpionPanel /> : round.variant === 'AVIATION' || round.variant === 'AVIA_6' ? <DiscardPanel /> : <ClosedPanel />;
+  } else if (game.phase === 'GAME_OVER') {
+    body = <Panel className="p-5 text-center text-ivory-200/85">La partie est terminée. Consultez les scores ou retournez à l’accueil.</Panel>;
+  }
+  return (
+    <div ref={ref} className="space-y-3">
+      {notes}
+      {body}
+    </div>
+  );
+}
+
+function Banner({ children, tone = 'gold' }: { children: ReactNode; tone?: 'gold' | 'red' }) {
+  return <p className={`rounded-xl border px-4 py-2.5 text-sm ${tone === 'red' ? 'border-ruby-500/50 bg-red-950/60 text-red-100' : 'border-gold-500/40 bg-gold-500/10 text-ivory-100'}`}>{children}</p>;
+}
+
+// ---------- Écran de jeu ----------
+export function Table() {
+  const client = useClient();
+  const { view, game, me } = useTable();
+  const feed = useGame((s) => s.feed);
+  const { fourColor, setFourColor, sound, setSound } = useSettings();
+  const [modal, setModal] = useState<null | 'scores' | 'rules' | 'options'>(null);
+  const [result, setResult] = useState<RoundRecord | null>(null);
+  const [finalOpen, setFinalOpen] = useState(game.phase === 'GAME_OVER');
+  const seen = useRef(game.history.length);
+  // Dernier plateau connu : la manche disparaît de la vue dès qu'elle est notée, le récapitulatif en a besoin.
+  const lastBoard = useRef<(string | null)[]>([]);
+  if (game.round) lastBoard.current = game.round.cards.board;
+  const [resultBoard, setResultBoard] = useState<(string | null)[]>([]);
+
+  // Une manche vient de se terminer : résultat (showdown, lignes, départage) ; ne rien montrer au chargement d'une partie en cours.
+  useEffect(() => {
+    if (game.history.length > seen.current) {
+      const record = game.history.at(-1)!;
+      setResult(record);
+      setResultBoard(lastBoard.current);
+      if (game.phase === 'GAME_OVER') setFinalOpen(false);
+      if (sound) {
+        const iWon = (record.award.kind === 'POINTS' || record.award.kind === 'INSTANT_VICTORY') && record.award.winner === me;
+        Sound[iWon ? 'win' : 'flip']();
+      }
+    }
+    seen.current = game.history.length;
+  }, [game.history, game.phase, me, sound]);
+  useEffect(() => {
+    if (game.phase === 'GAME_OVER' && !result) setFinalOpen(true);
+  }, [game.phase, result]);
+  useGameAlerts(sound);
+
+  const events = useMemo(() => (result ? collectRoundEvents(feed, result.roundNo) : []), [feed, result]);
+  const over = game.phase === 'GAME_OVER';
+
+  return (
+    <main className="mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-3 py-2">
+      <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} />
+      <Announcer />
+      <TableFelt />
+      <div className="min-h-0 flex-1 overflow-y-auto scroll-thin">
+        <ActionDock />
+      </div>
+
+      {result && <RoundResultModal record={result} events={events} board={resultBoard} view={view} final={over} onClose={() => { setResult(null); if (over) setFinalOpen(true); }} />}
+      {!result && over && finalOpen && game.outcome && <GameOverModal view={view} onClose={() => setFinalOpen(false)} onLeave={() => client.leave()} />}
+      {modal === 'scores' && <ScoreModal view={view} onClose={() => setModal(null)} />}
+      {modal === 'rules' && <RulesModal onClose={() => setModal(null)} />}
+      {modal === 'options' && (
+        <Modal title="Options" onClose={() => setModal(null)}>
+          <h2 className="font-display text-2xl text-ivory-50">Options</h2>
+          <label className="mt-5 flex cursor-pointer items-start gap-3">
+            <input type="checkbox" className="mt-1 h-5 w-5 accent-yellow-600" checked={fourColor} onChange={(e) => setFourColor(e.target.checked)} />
+            <span>
+              <span className="block font-medium text-ivory-50">Cartes en quatre couleurs</span>
+              <span className="text-sm text-ivory-200/80">Trèfle vert, carreau bleu : lecture plus rapide des couleurs.</span>
+            </span>
+          </label>
+          <label className="mt-4 flex cursor-pointer items-start gap-3">
+            <input type="checkbox" className="mt-1 h-5 w-5 accent-yellow-600" checked={sound} onChange={(e) => setSound(e.target.checked)} />
+            <span>
+              <span className="block font-medium text-ivory-50">Sons et vibrations</span>
+              <span className="text-sm text-ivory-200/80">Sélection, retournement, votre tour — et vibration mobile en fin de minuteur.</span>
+            </span>
+          </label>
+          <div className="mt-6 flex justify-end">
+            <Button onClick={() => setModal(null)}>Fermer</Button>
+          </div>
+        </Modal>
+      )}
+      {over && !finalOpen && !result && (
+        <div className="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
+          <Button onClick={() => setFinalOpen(true)}>Voir le résultat final</Button>
+        </div>
+      )}
+      <span className="sr-only" aria-live="polite">
+        {game.phase === 'VARIANT_SELECTION' ? `${nick(view, game.chooser)} choisit la variante` : ''}
+      </span>
+    </main>
+  );
+}
+
+export type { RoomView };

@@ -1,0 +1,99 @@
+import { z } from 'zod';
+import type { GameView, RoundEvent } from '@poker/engine';
+
+// ---------- Entrées client (validées côté serveur) ----------
+
+const nickname = z
+  .string()
+  .transform((s) => s.trim())
+  .pipe(z.string().min(1).max(20).regex(/^[\p{L}\p{N} _.'-]+$/u, 'Pseudo : lettres, chiffres, espace, _ . \' -'));
+/** Avatar facultatif : identifiant de préréglage (jamais une URL). */
+const avatar = z.string().regex(/^[a-z0-9_-]{1,32}$/).optional();
+
+export const createRoomSchema = z.object({
+  name: z.string().transform((s) => s.trim()).pipe(z.string().min(1).max(40)),
+  maxPlayers: z.number().int().min(2).max(6),
+  targetPoints: z.number().int().min(1).max(5),
+  stakeCents: z.number().int().min(0).max(1_000_000),
+  /** Partie « avec assistance », proposée par l'hôte : doit être approuvée par tous les joueurs de la salle
+   * avant le départ, sinon la partie démarre sans assistance (voir `lobby:approveAssistance`). Faux par défaut. */
+  assistance: z.boolean().optional(),
+  nickname,
+  avatar,
+});
+export type CreateRoomInput = z.infer<typeof createRoomSchema>;
+
+export const joinRoomSchema = z.object({ nickname, avatar });
+export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
+
+const cardCode = z.string().regex(/^[2-9TJQKA][cdhs]$/);
+export const clientCommandSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('CHOOSE_VARIANT'), variant: z.enum(['V6_3', 'V6_1', 'CLOSED_1', 'CLOSED_2', 'AVIATION', 'AVIA_6', 'MORPION', 'LE10']) }),
+  z.object({ type: z.literal('SELECT'), cards: z.array(cardCode).max(3), line: z.number().int().min(0).max(7).nullable().optional() }),
+  z.object({ type: z.literal('VALIDATE') }),
+  z.object({ type: z.literal('REVEAL') }),
+  z.object({ type: z.literal('PROPOSE_INSURANCE'), partner: z.string().min(1).max(64), insuranceType: z.enum(['LOSER_NOT_PAYING', 'SPLIT_50_50']) }),
+  z.object({ type: z.literal('RESPOND_INSURANCE'), accept: z.boolean() }),
+]);
+/** Les commandes d'échéance (TIMEOUT…), d'arrivée et d'exclusion ne peuvent JAMAIS venir d'un client. */
+export type ClientCommand = z.infer<typeof clientCommandSchema>;
+
+export const excludeSchema = z.object({ playerId: z.string().min(1).max(64) });
+export const approveAssistanceSchema = z.object({ approve: z.boolean() });
+
+export const authSchema = z.object({ code: z.string().min(1).max(16), token: z.string().min(16).max(128) });
+
+// ---------- Sorties serveur ----------
+
+export type RoomStatus = 'WAITING' | 'RUNNING' | 'FINISHED' | 'CANCELLED';
+export type PlayerState = 'LOBBY' | 'SEATED' | 'QUEUED';
+
+export interface PlayerPublic {
+  id: string;
+  nickname: string;
+  avatar: string | null;
+  connected: boolean;
+  state: PlayerState;
+  isHost: boolean;
+  /** Position à la table (UTG…) une fois assis. */
+  position: string | null;
+  score: number | null;
+  excluded: boolean;
+  /** Vote sur l'assistance proposée : true = approuve, false = refuse, null = pas encore répondu (compte comme
+   * un refus au départ) ; toujours true si `config.assistance` est faux. */
+  assistanceApproved: boolean | null;
+}
+
+/** Vue d'une room pour UN joueur : jamais de jeton, jamais de carte cachée d'autrui. */
+export interface RoomView {
+  code: string;
+  name: string;
+  status: RoomStatus;
+  config: { maxPlayers: number; targetPoints: number; stakeCents: number; potCents: number; assistance: boolean };
+  seatsLeft: number;
+  hostId: string;
+  you: { playerId: string; role: 'HOST' | 'PLAYER' | 'QUEUED' };
+  players: PlayerPublic[];
+  version: number;
+  serverTime: number;
+  /** Échéance du minuteur en cours (horloge serveur, ms) : `at` reste exact après une reconnexion. */
+  deadline: { at: number; kind: 'VARIANT' | 'INSURANCE' | 'ROUND'; key: string } | null;
+  game: GameView | null;
+}
+
+export interface UpdateMessage {
+  type: 'update';
+  roomCode: string;
+  version: number;
+  view: RoomView;
+  /** Événements de cette transition destinés à ce joueur (publics + privés qui le concernent). */
+  events: RoundEvent[];
+}
+export interface KickedMessage {
+  type: 'kicked';
+  roomCode: string;
+}
+export interface Outgoing {
+  playerId: string;
+  message: UpdateMessage | KickedMessage;
+}

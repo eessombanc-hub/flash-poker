@@ -1,0 +1,20 @@
+{
+  "name": "flash-poker",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:calme": "node scripts/dev.mjs --calme",
+    "start": "node scripts/dev.mjs",
+    "test": "npm test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:server": "npm -w @poker/server run start",
+    "dev:web": "npm -w @poker/web run dev",
+    "build:web": "npm -w @poker/web run build"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  }
+}

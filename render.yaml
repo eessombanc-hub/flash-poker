@@ -1,0 +1,31 @@
+## Espace de test Render.com — Flash Poker
+#
+# Un seul service web (plan gratuit) sert à la fois l'API, le WebSocket (Socket.IO) et l'interface
+# compilée : même origine, aucune configuration CORS à faire. Voir les limites du plan gratuit dans
+# README.md ("Décisions techniques" / déploiement), notamment :
+#   - le service s'endort après 15 minutes d'inactivité (reprise en 30 à 60 s au réveil) ;
+#   - le disque est ÉPHÉMÈRE : la base SQLite (dossier `data/`) est effacée à chaque redéploiement,
+#     redémarrage ou mise en veille. Convient à un essai, pas à une mise en production (prévue sur le
+#     VPS OVH, avec un disque persistant).
+#
+# Déploiement : créer un compte Render, "New +" → "Blueprint", connecter ce dépôt Git. Render lit ce
+# fichier automatiquement et propose le service ci-dessous.
+
+services:
+  - type: web
+    name: flash-poker
+    runtime: node
+    plan: free
+    region: frankfurt # le plus proche d'un usage en France ; changer si les joueurs sont ailleurs
+    buildCommand: npm install && npm run build:web
+    startCommand: npm -w @poker/server run start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.0 # node:sqlite (sauvegarde des parties) : disponible sans option à partir de cette version
+      - key: WEB_DIST
+        value: ../web/dist # construit par buildCommand ; servi par ce même service (même origine)
+      - key: DB_PATH
+        value: ./data/flashpoker.db # perdu à chaque redémarrage sur le plan gratuit (disque éphémère)
+    # PORT et HOST : Render les fournit déjà (PORT=10000, écoute sur 0.0.0.0) ; main.ts les lit tels quels.
+    healthCheckPath: /health
+    autoDeployTrigger: commit # redéploie automatiquement à chaque push sur la branche connectée

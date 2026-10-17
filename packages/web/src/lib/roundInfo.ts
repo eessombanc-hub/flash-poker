@@ -1,0 +1,99 @@
+import type { LineResult, NextReason, NextReason10, RevealStep, RevealStep10, RoundView } from './types';
+
+/** `RoundView.info` est un objet libre côté moteur : on le lit ici avec des valeurs par défaut sûres. */
+const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+const num = (v: unknown, d: number): number => (typeof v === 'number' ? v : d);
+
+export interface ClosedInfo {
+  change: number;
+  totalChanges: number;
+  validated: string[];
+  yourDraft: string[];
+}
+export function closedInfo(round: RoundView): ClosedInfo {
+  const i = round.info;
+  return { change: num(i.change, 1), totalChanges: num(i.totalChanges, 1), validated: arr(i.validated), yourDraft: arr(i.yourDraft) };
+}
+
+export interface DiscardInfo {
+  step: number;
+  discardCount: number;
+  status: Record<string, 'ACTIVE' | 'FOLDED'>;
+  validated: string[];
+  yourDraft: string[];
+}
+export function discardInfo(round: RoundView): DiscardInfo {
+  const i = round.info;
+  return {
+    step: num(i.step, 1),
+    discardCount: num(i.discardCount, 1),
+    status: (i.status ?? {}) as DiscardInfo['status'],
+    validated: arr(i.validated),
+    yourDraft: arr(i.yourDraft),
+  };
+}
+
+export interface Line63Info {
+  line: number;
+  validated: string[];
+  yourDraft: string[];
+  lines: LineResult[];
+  unitsScale: number;
+}
+export function line63Info(round: RoundView): Line63Info {
+  const i = round.info;
+  return { line: num(i.line, 1), validated: arr(i.validated), yourDraft: arr(i.yourDraft), lines: arr(i.lines), unitsScale: num(i.unitsScale, 60) };
+}
+
+export interface Reveal61Info {
+  next: string | null;
+  reason: NextReason | null;
+  reveals: number;
+  history: RevealStep[];
+}
+export function reveal61Info(round: RoundView): Reveal61Info {
+  const i = round.info;
+  return {
+    next: typeof i.next === 'string' ? i.next : null,
+    reason: (i.reason as NextReason | null) ?? null,
+    reveals: num(i.reveals, 0),
+    history: arr(i.history),
+  };
+}
+
+export interface MorpionDraft {
+  cards: string[];
+  line: number | null;
+}
+export interface MorpionInfo {
+  validated: string[];
+  yourDraft: MorpionDraft;
+}
+export function morpionInfo(round: RoundView): MorpionInfo {
+  const i = round.info;
+  const d = (i.yourDraft ?? {}) as Partial<MorpionDraft>;
+  return { validated: arr(i.validated), yourDraft: { cards: arr(d.cards), line: typeof d.line === 'number' ? d.line : null } };
+}
+
+export interface Reveal10Info {
+  next: string | null;
+  reason: NextReason10 | null;
+  reveals: number;
+  history: RevealStep10[];
+}
+export function reveal10Info(round: RoundView): Reveal10Info {
+  const i = round.info;
+  return {
+    next: typeof i.next === 'string' ? i.next : null,
+    reason: (i.reason as NextReason10 | null) ?? null,
+    reveals: num(i.reveals, 0),
+    history: arr(i.history),
+  };
+}
+
+/** Assistance : catégorie de la combinaison actuelle du joueur (0 = carte haute … 8 = quinte flush), ou null
+ * quand l'assistance est inactive ou que la sélection est encore trop incomplète pour être évaluée. */
+export function assistCategory(round: RoundView): number | null {
+  const v = round.info.assistCategory;
+  return typeof v === 'number' ? v : null;
+}
