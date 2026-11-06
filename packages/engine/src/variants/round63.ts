@@ -49,6 +49,11 @@ export class Round63 extends RoundBase {
   readonly variant: VariantId = 'V6_3';
   private s!: State63;
 
+  /** Résultats des lignes déjà résolues (lecture seule, pour le résumé de la manche). */
+  lineResults(): readonly LineResult[] {
+    return this.s.lines;
+  }
+
   constructor(ctx: RoundContext, snapshot?: RoundSnapshot) {
     super(ctx, snapshot);
     if (snapshot) {

@@ -14,11 +14,11 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    // Interface compilée servie par le serveur lui-même (même origine), base jetable, minuteurs de 15 s.
+    // Interface compilée servie par le serveur lui-même (même origine), base jetable, minuteurs de 30 s.
     command: 'npm run build:web && npm -w @poker/server run start',
     url: `http://localhost:${PORT}/health`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { PORT: String(PORT), WEB_DIST: '../web/dist', STORE: 'memory', PHASE_SECONDS: '15' },
+    env: { PORT: String(PORT), WEB_DIST: '../web/dist', STORE: 'memory', PHASE_SECONDS: '30', HTTP_RATE_LIMIT: '100000' },
   },
 });

@@ -18,6 +18,8 @@ export const createRoomSchema = z.object({
   /** Partie « avec assistance », proposée par l'hôte : doit être approuvée par tous les joueurs de la salle
    * avant le départ, sinon la partie démarre sans assistance (voir `lobby:approveAssistance`). Faux par défaut. */
   assistance: z.boolean().optional(),
+  /** Salle privée : non listée dans « Parties ouvertes », on n'y entre qu'avec le code (ou le lien d'invitation). */
+  private: z.boolean().optional(),
   nickname,
   avatar,
 });
@@ -85,7 +87,7 @@ export interface RoomView {
   code: string;
   name: string;
   status: RoomStatus;
-  config: { maxPlayers: number; targetPoints: number; stakeCents: number; potCents: number; assistance: boolean };
+  config: { maxPlayers: number; targetPoints: number; stakeCents: number; potCents: number; assistance: boolean; private: boolean };
   seatsLeft: number;
   hostId: string;
   you: { playerId: string; role: 'HOST' | 'PLAYER' | 'QUEUED' };

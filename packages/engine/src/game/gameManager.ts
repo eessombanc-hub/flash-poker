@@ -1,5 +1,9 @@
+import { parseCard } from '../core/card';
 import type { PlayerId } from '../core/cardEngine';
 import type { Rng } from '../core/rng';
+import { categoryOf } from '../evaluation/handEvaluator';
+import { evaluateHoldem } from '../evaluation/holdemEvaluator';
+import { Round63, type LineResult } from '../variants/round63';
 import {
   createRound,
   isVariantAvailable,
@@ -59,6 +63,23 @@ export interface RoundRecord {
   /** Points marqués à la partie pendant cette manche. */
   points: Record<PlayerId, number>;
   scoresAfter: Record<PlayerId, number>;
+  /** Ce qui a décidé la manche, conservé pour l'historique (absent des parties enregistrées avant son ajout). */
+  summary?: RoundSummary;
+}
+
+/**
+ * Résumé d'une manche pour l'affichage et l'historique : uniquement des faits déjà publics à la fin de la
+ * manche (mains abattues, lignes du 6-3, départage). Aucune incidence sur les règles ni sur le score.
+ */
+export interface RoundSummary {
+  /** Mains montrées à l'abattage, avec leur catégorie (toutes les variantes sauf le 6-3). */
+  hands?: Record<PlayerId, { cards: string[]; category: number }>;
+  /** 6-3 : résultat de chaque ligne. */
+  lines?: LineResult[];
+  /** Hold'em de départage : meilleure combinaison du vainqueur (catégorie et 5 cartes). */
+  tiebreak?: { category: number; cards: string[] };
+  /** Gagnée sans abattage, tous les autres joueurs étant couchés (Aviation, Avia 6). */
+  byFold?: boolean;
 }
 
 /**
@@ -531,6 +552,7 @@ export class GameManager {
       award,
       points,
       scoresAfter: { ...this.scores },
+      summary: summarizeRound(round, result, award, events),
     };
     this.history_.push(record);
     this.round = null;
@@ -647,4 +669,22 @@ export class GameManager {
       }),
     );
   }
+}
+
+/** Résumé public d'une manche terminée (voir `RoundSummary`). */
+function summarizeRound(round: Round, result: RoundResult, award: RoundAward, events: readonly RoundEvent[]): RoundSummary {
+  const summary: RoundSummary = {};
+  const showdown = [...events].reverse().find((e) => e.type === 'SHOWDOWN');
+  if (showdown) summary.hands = structuredClone(showdown.data.hands as RoundSummary['hands']);
+  if (round instanceof Round63) summary.lines = structuredClone([...round.lineResults()]);
+  if (result.kind === 'WINNER' && result.detail?.byFold) summary.byFold = true;
+  if (award.kind === 'POINTS' && award.tiebreak) {
+    const last = award.tiebreak.rounds.at(-1);
+    const hand = last?.hands[award.winner];
+    if (last && hand) {
+      const best = evaluateHoldem(hand.map(parseCard), last.board.map(parseCard));
+      summary.tiebreak = { category: categoryOf(best.rank), cards: best.cards.map((c) => c.code) };
+    }
+  }
+  return summary;
 }

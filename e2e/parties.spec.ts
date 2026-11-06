@@ -14,6 +14,8 @@ async function playClosedRound(players: Player[]): Promise<boolean> {
   let finished = false;
   for (const p of players) {
     await expect(p.page.getByRole('button', { name: /Continuer|Voir le résultat final/ })).toBeVisible({ timeout: 30_000 });
+    // Au poker fermé, la manche a toujours un vainqueur (au besoin par Hold'em de départage) : nom et combinaison affichés.
+    await expect(p.page.getByTestId('vainqueur-manche')).toContainText(/— (Carte haute|Paire|Double paire|Brelan|Quinte|Couleur|Full|Carré)/);
     finished = (await closeRecap(p)) || finished;
   }
   return finished;
@@ -31,6 +33,9 @@ test('partie complète à deux : ordinateur et téléphone, de la création à l
   for (let round = 1; round <= 12 && !finished; round++) finished = await playClosedRound([alice, bob]);
   expect(finished, 'la partie doit se terminer (objectif 1 point)').toBe(true);
   for (const p of [alice, bob]) await expect(p.page.getByText(/^Victoire /)).toBeVisible();
+  // Fin de partie : le détail de chaque manche se déplie.
+  await alice.page.getByRole('button', { name: /Voir le résultat de chaque manche/ }).click();
+  await expect(alice.page.getByRole('region', { name: 'Résultat de chaque manche' }).getByText(/^Manche 1/)).toBeVisible();
   expect(jsErrors(alice).concat(jsErrors(bob))).toEqual([]);
 });
 
@@ -62,8 +67,8 @@ test('sans action, la manche se termine seule à l’échéance du minuteur', as
   await joinRoom(b, code);
   await a.page.getByRole('button', { name: /Démarrer/ }).click();
   await chooseVariant([a, b], /Poker fermé — 1 change/);
-  // Minuteurs de 15 s en test (60 s en vrai) : personne ne joue, la manche doit se clore d'elle-même.
-  for (const p of [a, b]) await expect(p.page.getByRole('button', { name: /Continuer|Voir le résultat final/ })).toBeVisible({ timeout: 45_000 });
+  // Minuteurs de 30 s en test (60 s en vrai) : personne ne joue, la manche doit se clore d'elle-même.
+  for (const p of [a, b]) await expect(p.page.getByRole('button', { name: /Continuer|Voir le résultat final/ })).toBeVisible({ timeout: 60_000 });
 });
 
 test('code inconnu : message clair, pas de plantage', async ({ browser }) => {
@@ -85,4 +90,22 @@ test('l’hôte retire un joueur de la salle d’attente', async ({ browser }) =
   await a.page.getByRole('button', { name: 'Retirer Bob' }).click();
   await expect(a.page.getByRole('list', { name: 'Joueurs' }).getByText('Bob')).toHaveCount(0);
   expect(jsErrors(a).concat(jsErrors(b))).toEqual([]);
+});
+
+test('salle privée : absente des parties ouvertes, accessible par le code', async ({ browser }) => {
+  const host = await newPlayer(browser, 'Alice');
+  const guest = await newPlayer(browser, 'Bob', 'iPhone 13');
+  await host.page.goto('/');
+  await host.page.getByRole('button', { name: /Créer une partie/i }).first().click();
+  await host.page.fill('#name', 'Table secrète');
+  await host.page.getByRole('radiogroup', { name: 'Visibilité' }).getByRole('radio', { name: 'Privée' }).click();
+  await host.page.fill('#nick', 'Alice');
+  await host.page.getByRole('button', { name: /^Créer/i }).last().click();
+  await expect(host.page.getByText(/Salle privée/)).toBeVisible();
+  const code = (await host.page.locator('body').innerText()).match(/POKER-[A-Z0-9]{4}/)![0];
+  await guest.page.goto('/');
+  await expect(guest.page.getByText('Recherche de tables…')).toHaveCount(0);   // liste chargée
+  await expect(guest.page.getByText('Table secrète')).toHaveCount(0);
+  await joinRoom(guest, code);
+  await expect(host.page.getByText('Bob')).toBeVisible();
 });

@@ -78,7 +78,9 @@ export function Reveal61Panel() {
 
       {mine.length > 0 && (
         <div className="mt-5">
-          <p className="mb-2 text-center text-xs uppercase tracking-widest text-ivory-300/70">Votre main — cartes retournées dans l’ordre de distribution</p>
+          <p className="mb-1.5 text-center text-[10px] uppercase tracking-widest text-ivory-300/70 sm:mb-2 sm:text-xs">
+            Votre main<span className="hidden sm:inline"> — cartes retournées dans l’ordre de distribution</span>
+          </p>
           <StaticHand label="Votre main" size="md" cards={mine.map((c, i) => ({ code: c.code, visible: c.visible, next: i === firstHidden }))} />
         </div>
       )}

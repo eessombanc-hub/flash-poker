@@ -2,10 +2,11 @@ import { useReducedMotion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { PlayingCard } from '../components/Card';
 import { Confetti } from '../components/Confetti';
+import { TrophyIcon } from '../components/Icons3D';
 import { Avatar, Badge, Button, Eyebrow, Modal, ScorePips } from '../components/ui';
 import type { FeedItem } from '../lib/client';
 import { deNom, formatEuros, formatSignedEuros, pointsLabel } from '../lib/format';
-import { categoryLabel, INSURANCE_LABELS, variantName, VICTORY_LABELS } from '../lib/labels';
+import { categoryLabel, INSURANCE_LABELS, variantName, VICTORY_LABELS, winningCards, winningCombination } from '../lib/labels';
 import { nick } from '../lib/selectors';
 import { useSettings } from '../lib/settings';
 import type { LineResult, RoomView, RoundEvent, RoundRecord, TiebreakOutcome } from '../lib/types';
@@ -122,6 +123,7 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
       <h2 className="mt-1 font-display text-2xl text-ivory-50 sm:text-3xl" aria-live="polite">
         {awardText(record, view)}
       </h2>
+      <WinnerBanner record={record} view={view} />
 
       {record.award.kind === 'POINTS' && record.award.tiebreak && (
         <div className="mt-4">
@@ -181,9 +183,14 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
   return (
     <Modal title="Fin de partie" wide>
       <Confetti />
-      <Eyebrow>Fin de partie</Eyebrow>
-      <h2 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">Victoire {deNom(nick(view, o.winner))}</h2>
-      <p className="mt-1 text-gold-300">{VICTORY_LABELS[o.victoryType]}</p>
+      <div className="flex items-center gap-4">
+        <TrophyIcon size={84} className="animate-[pulse_3s_ease-in-out_infinite] motion-reduce:animate-none" />
+        <div className="min-w-0">
+          <Eyebrow>Fin de partie</Eyebrow>
+          <h2 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">Victoire {deNom(nick(view, o.winner))}</h2>
+          <p className="mt-1 text-gold-300">{VICTORY_LABELS[o.victoryType]}</p>
+        </div>
+      </div>
 
       <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Classement</h3>
       <ol className="space-y-2">
@@ -236,6 +243,8 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
           </tr>
         </tfoot>
       </table>
+      <RoundsRecap history={game.history} view={view} />
+
       <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button variant="secondary" onClick={onClose}>
           Revoir la table
@@ -311,5 +320,78 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
         <Button onClick={onClose}>Fermer</Button>
       </div>
     </Modal>
+  );
+}
+
+// ---------- Vainqueur de la manche et combinaison gagnante ----------
+/** Bandeau de fin de manche : qui gagne, avec quelle combinaison (et ses cartes quand elles sont connues). */
+export function WinnerBanner({ record, view }: { record: RoundRecord; view: RoomView }) {
+  const { fourColor } = useSettings();
+  const a = record.award;
+  const winner = a.kind === 'POINTS' || a.kind === 'INSTANT_VICTORY' ? a.winner : null;
+  const combo = winningCombination(record);
+  if (!winner || !combo) return null;
+  const cards = winningCards(record);
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/50 bg-gradient-to-r from-gold-500/20 to-transparent px-3 py-2.5" data-testid="vainqueur-manche">
+      <TrophyIcon size={40} />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs uppercase tracking-widest text-gold-300">Vainqueur de la manche</p>
+        <p className="font-display text-xl text-ivory-50">
+          {nick(view, winner)} <span className="text-gold-300">— {combo}</span>
+        </p>
+      </div>
+      {cards.length > 0 && (
+        <span className="flex -space-x-2" role="group" aria-label="Cartes de la combinaison gagnante">
+          {cards.map((c) => (
+            <PlayingCard key={c} code={c} size="xs" fourColor={fourColor} />
+          ))}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------- Résultat de chaque manche (fin de partie) ----------
+/** Liste repliable des manches de la partie : variante, vainqueur, combinaison, points. */
+export function RoundsRecap({ history, view }: { history: readonly RoundRecord[]; view: RoomView }) {
+  const [open, setOpen] = useState(false);
+  if (history.length === 0) return null;
+  return (
+    <section className="mt-6" aria-label="Résultat de chaque manche">
+      <Button variant="secondary" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full justify-between">
+        <span>{open ? 'Masquer' : 'Voir'} le résultat de chaque manche ({history.length})</span>
+        <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+      </Button>
+      {open && (
+        <ol className="mt-3 space-y-2">
+          {history.map((r) => {
+            const winner = r.award.kind === 'POINTS' || r.award.kind === 'INSTANT_VICTORY' ? r.award.winner : null;
+            const combo = winningCombination(r);
+            const pts = r.award.kind === 'POINTS' ? r.award.points : null;
+            return (
+              <li key={r.roundNo} className="rounded-xl bg-ink-900/60 px-3 py-2.5 text-sm">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                  <span className="font-semibold text-ivory-50">
+                    Manche {r.roundNo} · <span className="text-gold-300">{variantName(r.variant)}</span>
+                  </span>
+                  {pts !== null && <Badge tone="gold">+{pointsLabel(pts)}</Badge>}
+                </div>
+                <p className="mt-0.5 text-ivory-200/90">
+                  {winner ? (
+                    <>
+                      <strong className="text-ivory-50">{nick(view, winner)}</strong>
+                      {combo ? ` — ${combo}` : ''}
+                    </>
+                  ) : (
+                    awardText(r, view)
+                  )}
+                </p>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
   );
 }

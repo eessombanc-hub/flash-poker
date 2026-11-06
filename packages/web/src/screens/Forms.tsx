@@ -21,6 +21,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   const [nickname, setNick] = useState('');
   const [avatar, setAvatar] = useState('or');
   const [assistance, setAssistance] = useState(false);
+  const [privateRoom, setPrivate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -39,7 +40,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await client.createRoom({ name: name.trim(), maxPlayers, targetPoints: target, stakeCents, assistance, nickname: nickname.trim(), avatar });
+      await client.createRoom({ name: name.trim(), maxPlayers, targetPoints: target, stakeCents, assistance, private: privateRoom, nickname: nickname.trim(), avatar });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Création impossible.');
       setBusy(false);
@@ -69,6 +70,9 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
           </Field>
           <Field label="Niveau de la partie" hint={assistance ? 'Chaque joueur devra approuver l’assistance dans la salle d’attente ; sans l’accord de tous, la partie se jouera sans assistance.' : 'Aucune indication : chacun juge seul la force de sa main.'}>
             <Segmented label="Niveau de la partie" value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? 'Avec assistance' : 'Sans assistance')} />
+          </Field>
+          <Field label="Visibilité" hint={privateRoom ? 'Salle privée : absente des « Parties ouvertes ». Seules les personnes à qui vous donnez le code ou le lien d’invitation peuvent entrer.' : 'Salle publique : visible de tous dans « Parties ouvertes ».'}>
+            <Segmented label="Visibilité" value={privateRoom ? 'privee' : 'publique'} options={['publique', 'privee'] as const} onChange={(v) => setPrivate(v === 'privee')} format={(v) => (v === 'privee' ? 'Privée' : 'Publique')} />
           </Field>
           <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' ? '' : errors.nickname}>
             <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />

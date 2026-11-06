@@ -1,4 +1,4 @@
-import type { InsuranceType, NextReason, NextReason10, VariantId } from './types';
+import type { InsuranceType, NextReason, NextReason10, RoundRecord, VariantId } from './types';
 
 export interface VariantInfo {
   id: VariantId;
@@ -104,3 +104,37 @@ export const VICTORY_LABELS = {
   SCORE: 'Objectif atteint',
   STRAIGHT_FLUSH_63: 'Quinte flush au 6-3 — victoire immédiate',
 } as const;
+
+/**
+ * Ce qui a fait gagner la manche, en clair : « Brelan », « Quinte flush à la ligne 2 », « Ligne 1 : Couleur ·
+ * Ligne 3 : Full »… Uniquement des faits publics de fin de manche (résumé enregistré par le serveur).
+ * null quand la manche n'a pas de vainqueur ou qu'elle date d'avant l'enregistrement du résumé.
+ */
+export function winningCombination(record: RoundRecord): string | null {
+  const a = record.award;
+  if (a.kind === 'INSTANT_VICTORY') return `Quinte flush à la ligne ${a.line}`;
+  if (a.kind !== 'POINTS') return null;
+  const s = record.summary;
+  if (!s) return null;
+  if (s.tiebreak) return `${categoryLabel(s.tiebreak.category)} au Hold’em de départage`;
+  if (s.byFold) return 'Tous les autres joueurs se sont couchés';
+  const hand = s.hands?.[a.winner];
+  if (hand) return categoryLabel(hand.category);
+  if (s.lines) {
+    const won = s.lines.filter((l) => l.winners.includes(a.winner));
+    if (won.length === 0) return null;
+    return won.map((l) => {
+      const d = l.designations[a.winner];
+      return `Ligne ${l.line} : ${d ? categoryLabel(d.category) : '—'}`;
+    }).join(' · ');
+  }
+  return null;
+}
+
+/** Cartes de la combinaison gagnante quand elles sont connues (abattage ou départage), sinon []. */
+export function winningCards(record: RoundRecord): string[] {
+  const a = record.award;
+  if (a.kind !== 'POINTS' || !record.summary) return [];
+  if (record.summary.tiebreak) return record.summary.tiebreak.cards;
+  return record.summary.hands?.[a.winner]?.cards ?? [];
+}

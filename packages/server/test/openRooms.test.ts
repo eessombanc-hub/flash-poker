@@ -29,6 +29,16 @@ describe('RoomManager.listOpen', () => {
     });
   });
 
+  it('une salle privée n’apparaît jamais dans la liste, mais reste accessible par son code', () => {
+    const { m } = makeManager();
+    const r = m.createRoom({ ...CFG, private: true });
+    m.createRoom({ ...CFG, name: 'Publique' });
+    expect(m.listOpen().map((x) => x.name)).toEqual(['Publique']);
+    const j = m.joinRoom(r.code, { nickname: 'Ami' });
+    expect(j.playerId).toBeTruthy();
+    expect(m.view(r.code, r.playerId).config.private).toBe(true);
+  });
+
   it('une room complète (sièges = 0) disparaît de la liste', () => {
     const { m } = makeManager();
     const r = m.createRoom({ ...CFG, maxPlayers: 2 });

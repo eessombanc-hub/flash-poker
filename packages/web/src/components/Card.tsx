@@ -2,8 +2,11 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useId } from 'react';
 import { parseCode, type Suit } from '../lib/cards';
 
-export type CardSize = 'xs' | 'sm' | 'md' | 'lg';
-const WIDTH: Record<CardSize, string> = { xs: 'w-9', sm: 'w-12', md: 'w-[3.7rem] sm:w-16', lg: 'w-[4.6rem] sm:w-20' };
+export type CardSize = 'xs' | 'board' | 'sm' | 'md' | 'wide6' | 'lg';
+// `board` : cartes communes sur le tapis, un peu plus petites sur téléphone pour que la table et votre main
+// tiennent ensemble dans l'écran.
+// `wide6` : main de 6 cartes ou plus, un peu plus étroite sur téléphone pour tenir sur une seule ligne.
+const WIDTH: Record<CardSize, string> = { xs: 'w-9', board: 'w-10 sm:w-12', wide6: 'w-12 sm:w-16', sm: 'w-12', md: 'w-[3.7rem] sm:w-16', lg: 'w-[4.6rem] sm:w-20' };
 
 // Silhouettes des couleurs, dessinées dans une boîte de 100 × 100.
 const SUIT_PATH: Record<Suit, string> = {

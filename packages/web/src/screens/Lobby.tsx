@@ -1,3 +1,4 @@
+import { LockIcon } from '../components/Icons3D';
 import { useState } from 'react';
 import { useClient, useGame } from '../lib/context';
 import { formatEuros } from '../lib/format';
@@ -42,6 +43,12 @@ export function Lobby() {
       <Panel className="p-6 sm:p-8">
         <Eyebrow>Salle d’attente</Eyebrow>
         <Title className="mt-1 text-3xl">{view.name}</Title>
+        {view.config.private && (
+          <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-sm text-gold-200">
+            <LockIcon size={22} />
+            Salle privée : invisible dans « Parties ouvertes », entrée par code ou lien d’invitation uniquement
+          </p>
+        )}
 
         <div className="mt-6 rounded-xl border border-gold-500/40 bg-ink-900/70 p-4 text-center">
           <p className="text-xs uppercase tracking-[0.25em] text-ivory-300/70">Code de la partie</p>

@@ -147,11 +147,11 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
 }
 
 /** Points d'un joueur : n pastilles sur l'objectif. */
-export function ScorePips({ score, target }: { score: number; target: number }) {
+export function ScorePips({ score, target, small = false }: { score: number; target: number; small?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1" role="img" aria-label={`${score} point${score > 1 ? 's' : ''} sur ${target}`}>
+    <span className={`inline-flex items-center ${small ? 'gap-0.5' : 'gap-1'}`} role="img" aria-label={`${score} point${score > 1 ? 's' : ''} sur ${target}`}>
       {Array.from({ length: target }, (_, i) => (
-        <span key={i} className={`h-2.5 w-2.5 rounded-full border ${i < score ? 'border-gold-400 bg-gold-400' : 'border-ivory-100/30'}`} />
+        <span key={i} className={`${small ? 'h-2 w-2' : 'h-2.5 w-2.5'} rounded-full border ${i < score ? 'border-gold-400 bg-gold-400' : 'border-ivory-100/30'}`} />
       ))}
     </span>
   );

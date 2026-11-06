@@ -5,44 +5,105 @@ import { formatEuros } from '../lib/format';
 import { ApiError, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { PlayingCard } from '../components/Card';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
+import { CardsIcon, ChipsIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onCreate, onJoin, notice }: { onCreate: () => void; onJoin: (code?: string) => void; notice?: string | null }) {
+export function Home({ onCreate, onJoin, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; notice?: string | null; account?: ReactNode }) {
   const [rules, setRules] = useState(false);
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center px-5 py-10 text-center">
-      <div className="mb-8 flex items-end justify-center" aria-hidden="true">
-        {['As', 'Ks', 'Qh', 'Jd', 'Tc'].map((c, i) => (
-          <div key={c} className="-mx-3 origin-bottom" style={{ transform: `rotate(${(i - 2) * 9}deg) translateY(${Math.abs(i - 2) * 6}px)` }}>
-            <PlayingCard code={c} size="lg" />
-          </div>
-        ))}
-      </div>
-      <Eyebrow>Table en direct</Eyebrow>
-      <h1 className="mt-3 font-display text-4xl leading-tight tracking-wide text-ivory-50 sm:text-6xl">Flash Poker</h1>
-      <p className="mt-4 max-w-xl text-base text-ivory-200/85 sm:text-lg">Huit variantes, une seule table. Jusqu’à six joueurs, en temps réel.</p>
-      {notice && (
-        <p role="alert" className="mt-6 rounded-lg border border-amber-400/40 bg-amber-950/60 px-4 py-2.5 text-sm text-amber-100">
-          {notice}
+    <div className="min-h-screen">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+        <p className="flex items-center gap-2 font-display text-xl tracking-wide text-ivory-50">
+          <CardsIcon size={34} />
+          Flash Poker
         </p>
-      )}
-      <div className="mt-9 flex w-full max-w-sm flex-col gap-3">
-        <Button onClick={onCreate} className="w-full py-3.5 text-base">
-          Créer une partie
-        </Button>
-        <Button variant="secondary" onClick={() => onJoin()} className="w-full py-3.5 text-base">
-          Rejoindre avec un code
-        </Button>
-        <Button variant="ghost" onClick={() => setRules(true)} className="w-full">
-          Mémo des règles
-        </Button>
-      </div>
-      <OpenRooms onSelect={onJoin} />
-      <p className="mt-10 text-xs text-ivory-300/60">Cagnotte virtuelle — aucun paiement réel.</p>
+        {account}
+      </header>
+
+      <main className="mx-auto max-w-6xl px-5 pb-12">
+        {/* Accroche */}
+        <section className="grid items-center gap-8 py-6 md:grid-cols-[1.1fr_1fr] md:py-10">
+          <div className="text-center md:text-left">
+            <Eyebrow>Table en direct</Eyebrow>
+            <h1 className="mt-3 font-display text-4xl leading-[1.05] tracking-wide text-ivory-50 sm:text-6xl">
+              Le poker entre amis,
+              <span className="block bg-gradient-to-r from-gold-300 via-gold-400 to-gold-600 bg-clip-text text-transparent">en un éclair.</span>
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-base text-ivory-200/85 sm:text-lg md:mx-0">
+              Huit variantes, une seule table. De deux à six joueurs, en temps réel, sur ordinateur comme sur téléphone.
+            </p>
+            {notice && (
+              <p role="alert" className="mt-6 rounded-lg border border-amber-400/40 bg-amber-950/60 px-4 py-2.5 text-sm text-amber-100">
+                {notice}
+              </p>
+            )}
+          </div>
+          <div className="relative mx-auto h-48 w-full max-w-md sm:h-56" aria-hidden="true">
+            <div className="absolute inset-x-0 bottom-4 flex items-end justify-center">
+              {['As', 'Ks', 'Qh', 'Jd', 'Tc'].map((c, i) => (
+                <div key={c} className="-mx-3 origin-bottom drop-shadow-[0_12px_18px_rgba(0,0,0,0.5)]" style={{ transform: `rotate(${(i - 2) * 9}deg) translateY(${Math.abs(i - 2) * 6}px)` }}>
+                  <PlayingCard code={c} size="lg" />
+                </div>
+              ))}
+            </div>
+            <ChipsIcon size={74} className="absolute bottom-0 left-2 -rotate-12 sm:left-6" />
+            <TrophyIcon size={64} className="absolute right-2 top-0 rotate-6 sm:right-8" />
+          </div>
+        </section>
+
+        {/* Actions principales */}
+        <section aria-label="Commencer" className="grid gap-3 sm:grid-cols-3">
+          <ActionTile icon={<CardsIcon size={58} />} title="Créer une partie" text="Choisissez la mise, l’objectif et la visibilité, puis invitez vos amis." onClick={onCreate} primary />
+          <ActionTile icon={<JoinIcon size={58} />} title="Rejoindre avec un code" text="Entrez le code POKER-XXXX reçu de l’hôte, ou ouvrez son lien d’invitation." onClick={() => onJoin()} />
+          <ActionTile icon={<RulesIcon size={58} />} title="Mémo des règles" text="Les huit variantes et les règles communes, en un coup d’œil." onClick={() => setRules(true)} />
+        </section>
+
+        {/* Atouts */}
+        <ul className="mt-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4" aria-label="En bref">
+          {[
+            ['8', 'variantes, du 6-3 au Morpion'],
+            ['2 à 6', 'joueurs par table'],
+            ['60 s', 'par décision, en temps réel'],
+            ['Privée', 'ou publique, au choix de l’hôte'],
+          ].map(([big, small]) => (
+            <li key={big} className="rounded-2xl border border-ivory-100/10 bg-ink-800/60 px-4 py-3 text-center">
+              <span className="block font-display text-2xl text-gold-300">{big}</span>
+              <span className="text-xs text-ivory-200/75">{small}</span>
+            </li>
+          ))}
+        </ul>
+
+        <OpenRooms onSelect={onJoin} />
+        <p className="mt-10 text-center text-xs text-ivory-300/60">Cagnotte virtuelle — aucun paiement réel.</p>
+      </main>
       {rules && <RulesModal onClose={() => setRules(false)} />}
-    </main>
+    </div>
+  );
+}
+
+/** Grande tuile d'action de l'accueil : icône 3D, titre, une phrase d'explication. */
+function ActionTile({ icon, title, text, onClick, primary = false }: { icon: ReactNode; title: string; text: string; onClick: () => void; primary?: boolean }) {
+  const id = useId();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-labelledby={`${id}-t`}
+      aria-describedby={`${id}-d`}
+      className={`group flex items-center gap-4 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400 motion-reduce:transform-none sm:flex-col sm:items-start sm:p-5 ${
+        primary
+          ? 'border-gold-400/70 bg-gradient-to-br from-gold-500/25 via-ink-800/90 to-ink-900 shadow-gold'
+          : 'border-ivory-100/12 bg-gradient-to-br from-ink-700/80 to-ink-900/90 hover:border-ivory-100/30'
+      }`}
+    >
+      <span className="transition group-hover:scale-105 motion-reduce:transform-none">{icon}</span>
+      <span className="min-w-0">
+        <span id={`${id}-t`} className="block font-display text-xl text-ivory-50">{title}</span>
+        <span id={`${id}-d`} className="mt-1 block text-sm text-ivory-200/80">{text}</span>
+      </span>
+    </button>
   );
 }
 
@@ -74,8 +135,11 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
   }, [client]);
 
   return (
-    <section className="mt-10 w-full max-w-xl text-left">
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-widest text-gold-400">Parties ouvertes</h2>
+    <section className="mx-auto mt-10 w-full max-w-3xl text-left">
+      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-gold-400">
+        <ChipsIcon size={28} />
+        Parties ouvertes
+      </h2>
       <Panel className="divide-y divide-ivory-100/10 p-2">
         {rooms === null && !error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Recherche de tables…</p>}
         {error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Liste indisponible pour l’instant.</p>}

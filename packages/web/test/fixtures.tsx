@@ -79,7 +79,7 @@ export function roomView(over: Partial<RoomView> = {}, g: GameView | null = game
     code: 'POKER-ABCD',
     name: 'Table test',
     status: g ? 'RUNNING' : 'WAITING',
-    config: { maxPlayers: 6, targetPoints: 3, stakeCents: 2000, potCents: 2000 * n, assistance: false },
+    config: { maxPlayers: 6, targetPoints: 3, stakeCents: 2000, potCents: 2000 * n, assistance: false, private: false },
     seatsLeft: Math.max(0, 6 - n),
     hostId: 'p1',
     you: { playerId: ME, role: 'HOST' },

@@ -50,7 +50,8 @@ function Announcer() {
   }, [current]);
   const tone = current?.tone === 'warning' ? 'border-amber-400/50 text-amber-100' : current?.tone === 'success' ? 'border-jade-400/40 text-jade-100' : 'border-gold-500/40 text-ivory-50';
   return (
-    <div className={`pointer-events-none ${current ? 'h-9' : 'h-0'} shrink-0 overflow-visible transition-[height]`} aria-live="polite" role="status">
+    // En surimpression sur la barre du haut, quelques secondes : une annonce ne décale ni ne cache jamais les cartes.
+    <div className="pointer-events-none absolute inset-x-3 top-1.5 z-30 sm:top-2" aria-live="polite" role="status">
       <AnimatePresence mode="wait">
         {current && (
           <motion.p key={current.id} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`mx-auto w-fit max-w-full rounded-full border bg-ink-800/95 px-4 py-1.5 text-center text-xs font-medium shadow-panel sm:text-sm ${tone}`}>
@@ -66,25 +67,31 @@ function Announcer() {
 function TopBar({ onScores, onRules, onOptions }: { onScores: () => void; onRules: () => void; onOptions: () => void }) {
   const { view, game, round } = useTable();
   return (
-    <header className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ivory-100/10 bg-ink-800/90 px-4 py-2.5">
+    <header className="flex shrink-0 items-center justify-between gap-2 rounded-2xl border border-ivory-100/10 bg-ink-800/90 px-3 py-1.5 sm:flex-wrap sm:px-4 sm:py-2">
       <div className="min-w-0">
-        <p className="truncate font-display text-lg text-ivory-50">{view.name}</p>
-        <p className="font-mono text-xs tracking-widest text-gold-400">{view.code}</p>
+        <p className="truncate font-display text-base text-ivory-50 sm:text-lg">{view.name}</p>
+        <p className="truncate font-mono text-[11px] tracking-widest text-gold-400 sm:text-xs">
+          {view.code}
+          {/* Téléphone : l'essentiel des pastilles en une ligne, sous le code. */}
+          <span className="font-sans tracking-normal text-ivory-200/80 sm:hidden">
+            {' '}· M{game.roundNo} · {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''} · {formatEuros(game.potCents)}
+          </span>
+        </p>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="hidden flex-wrap items-center gap-1.5 sm:flex">
         <Badge tone="neutral">Manche {game.roundNo}</Badge>
         {round && <Badge tone="gold">{variantName(round.variant)}</Badge>}
         <Badge tone="neutral">Objectif {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''}</Badge>
         <Badge tone="green">Cagnotte {formatEuros(game.potCents)}</Badge>
       </div>
-      <nav className="flex gap-1" aria-label="Menu de la table">
-        <Button variant="ghost" className="min-h-[40px] px-3" onClick={onScores}>
+      <nav className="flex shrink-0 gap-0 sm:gap-1" aria-label="Menu de la table">
+        <Button variant="ghost" className="min-h-[40px] px-1.5 text-xs sm:px-3 sm:text-sm" onClick={onScores}>
           Scores
         </Button>
-        <Button variant="ghost" className="min-h-[40px] px-3" onClick={onRules}>
+        <Button variant="ghost" className="min-h-[40px] px-1.5 text-xs sm:px-3 sm:text-sm" onClick={onRules}>
           Règles
         </Button>
-        <Button variant="ghost" className="min-h-[40px] px-3" onClick={onOptions}>
+        <Button variant="ghost" className="min-h-[40px] px-1.5 text-xs sm:px-3 sm:text-sm" onClick={onOptions}>
           Options
         </Button>
       </nav>
@@ -134,10 +141,10 @@ function useSeatProps() {
 function TableCenter() {
   const { game, round } = useTable();
   return (
-    <div className="flex flex-col items-center gap-1.5 text-center">
+    <div className="flex flex-col items-center gap-1 text-center sm:gap-1.5">
       {round ? (
         <>
-          <Board round={round} size="sm" />
+          <Board round={round} size="board" />
           <p className="rounded-full bg-ink-950/50 px-3 py-0.5 text-[10px] uppercase tracking-[0.2em] text-gold-300 sm:text-xs">
             {variantName(round.variant)} · {phaseLabel(round.variant, round.phase)}
           </p>
@@ -145,7 +152,7 @@ function TableCenter() {
       ) : (
         <p className="font-display text-base text-ivory-50 sm:text-2xl">{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo} — choix de la variante`}</p>
       )}
-      <p className="text-xs text-ivory-100/85 sm:text-sm">
+      <p className="hidden text-xs text-ivory-100/85 sm:block sm:text-sm">
         Cagnotte <strong className="text-gold-300">{formatEuros(game.potCents)}</strong>
       </p>
     </div>
@@ -199,11 +206,11 @@ function TableFelt() {
     );
   }
   return (
-    <div className="felt shrink-0 rounded-3xl p-2" role="group" aria-label="Table de jeu">
-      <div className="py-2">
+    <div className="felt shrink-0 rounded-3xl p-1.5" role="group" aria-label="Table de jeu">
+      <div className="py-1">
         <TableCenter />
       </div>
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className={`grid gap-1.5 ${ordered.length > 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
         {ordered.map((p) => (
           <Seat key={p.id} {...seatProps(p)} compact />
         ))}
@@ -290,13 +297,19 @@ export function Table() {
   const over = game.phase === 'GAME_OVER';
 
   return (
-    <main className="mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-3 py-2">
+    <main className="relative mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-2 py-1.5 sm:px-3 sm:py-2 lg:max-w-[100rem]">
       <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} />
       <Announcer />
-      <TableFelt />
-      {/* Zone qui défile : atteignable au clavier (flèches) même quand elle ne contient aucun bouton. */}
-      <div className="min-h-0 flex-1 overflow-y-auto scroll-thin focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400" tabIndex={0} role="region" aria-label="Actions de jeu">
-        <ActionDock />
+      {/* Téléphone et tablette : table au-dessus, actions en dessous. Écran large : côte à côte, pour que la table,
+          votre main et les boutons tiennent ensemble dans la hauteur de l'écran, sans défiler. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 lg:flex-row lg:gap-4">
+        <div className="shrink-0 lg:flex lg:w-[50%] lg:flex-col lg:justify-center lg:overflow-y-auto">
+          <TableFelt />
+        </div>
+        {/* Zone qui défile : atteignable au clavier (flèches) même quand elle ne contient aucun bouton. */}
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-thin focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 lg:flex lg:flex-col lg:justify-center" tabIndex={0} role="region" aria-label="Actions de jeu">
+          <ActionDock />
+        </div>
       </div>
 
       {result && <RoundResultModal record={result} events={events} board={resultBoard} view={view} final={over} onClose={() => { setResult(null); if (over) setFinalOpen(true); }} />}

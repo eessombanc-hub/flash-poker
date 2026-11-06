@@ -57,14 +57,14 @@ interface HandProps {
 export function SelectableHand({ cards, selected, max, onToggle, disabled = false, size = 'md', dimmed = false, label }: HandProps) {
   const { fourColor } = useSettings();
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap items-end justify-center gap-1.5 pt-4 sm:gap-2.5">
+    <div role="group" aria-label={label} className="flex flex-wrap items-end justify-center gap-1.5 pt-3.5 sm:gap-2.5">
       {cards.map((code, i) => {
         const isSel = selected.includes(code);
         return (
           <PlayingCard
             key={code}
             code={code}
-            size={size}
+            size={fitted(size, cards.length)}
             fourColor={fourColor}
             selected={isSel}
             dimmed={dimmed}
@@ -78,6 +78,11 @@ export function SelectableHand({ cards, selected, max, onToggle, disabled = fals
   );
 }
 
+/** Main de 6 cartes ou plus en taille normale : cartes plus étroites sur téléphone, sur une seule ligne. */
+function fitted(size: CardSize, count: number): CardSize {
+  return size === 'md' && count >= 6 ? 'wide6' : size;
+}
+
 /** Ma main affichée sans interaction (cartes visibles ou non, dans l'ordre de distribution). `code: null` = carte
  * pas encore retournée : ni les adversaires ni le propriétaire n'en connaissent l'identité (6-1, Le 10). */
 export function StaticHand({ cards, size = 'md', label, dimmed }: { cards: { code: string | null; visible?: boolean; next?: boolean }[]; size?: CardSize; label: string; dimmed?: boolean }) {
@@ -86,7 +91,7 @@ export function StaticHand({ cards, size = 'md', label, dimmed }: { cards: { cod
     <div role="group" aria-label={label} className="flex flex-wrap items-end justify-center gap-1.5 sm:gap-2.5">
       {cards.map((c, i) => (
         <div key={c.code ?? `hidden-${i}`} className="flex flex-col items-center gap-1">
-          <PlayingCard code={c.code} size={size} fourColor={fourColor} highlight={c.next} dimmed={dimmed} dealIndex={i} hint={c.code === null ? 'pas encore retournée' : c.visible ? 'visible de tous' : undefined} />
+          <PlayingCard code={c.code} size={fitted(size, cards.length)} fourColor={fourColor} highlight={c.next} dimmed={dimmed} dealIndex={i} hint={c.code === null ? 'pas encore retournée' : c.visible ? 'visible de tous' : undefined} />
           <span className="text-[10px] text-ivory-300/60">{c.next ? 'prochaine' : i + 1}</span>
         </div>
       ))}

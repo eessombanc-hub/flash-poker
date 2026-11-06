@@ -18,6 +18,9 @@ export interface RoomConfig {
   stakeCents: number;
   /** Assistance proposée par l'hôte à la création (voir `RoomManager.approveAssistance`). */
   assistance: boolean;
+  /** Salle privée : absente de la liste publique, accessible seulement par son code ou le lien d'invitation.
+   * Absent des parties enregistrées avant son ajout : publique. */
+  private?: boolean;
 }
 
 export interface PlayerSnapshot {

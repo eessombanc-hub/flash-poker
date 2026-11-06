@@ -1,11 +1,24 @@
-import { expect, type Browser, type Page, devices } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type BrowserContextOptions, type Page, devices } from '@playwright/test';
+
+// Chaque contexte ouvert (un joueur = un appareil) est refermé après le test : sans cela, les navigateurs
+// s'accumulent au fil de la série et la ralentissent jusqu'aux dépassements de délai.
+const opened: BrowserContext[] = [];
+test.afterEach(async () => {
+  await Promise.all(opened.splice(0).map((c) => c.close().catch(() => undefined)));
+});
+
+/** Nouveau contexte de navigateur suivi (refermé automatiquement après le test). */
+export async function newPage(browser: Browser, options?: BrowserContextOptions): Promise<Page> {
+  const context = await browser.newContext(options);
+  opened.push(context);
+  return context.newPage();
+}
 
 export type Player = { name: string; page: Page };
 
 /** Un joueur = un contexte de navigateur séparé (comme un appareil distinct). */
 export async function newPlayer(browser: Browser, name: string, device?: keyof typeof devices): Promise<Player> {
-  const context = await browser.newContext(device ? { ...devices[device] } : { viewport: { width: 1280, height: 800 } });
-  const page = await context.newPage();
+  const page = await newPage(browser, device ? { ...devices[device] } : { viewport: { width: 1280, height: 800 } });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   (page as Page & { jsErrors: string[] }).jsErrors = errors;

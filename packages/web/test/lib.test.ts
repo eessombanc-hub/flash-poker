@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { isCardCode, parseCode, sortHand } from '../src/lib/cards';
 import { dealDelay } from '../src/components/Card';
 const cardName = (c: string) => parseCode(c).name;
-import { CATEGORY_LABELS, INSURANCE_LABELS, NEXT_REASON_TEXT, VARIANTS } from '../src/lib/labels';
+import { CATEGORY_LABELS, INSURANCE_LABELS, NEXT_REASON_TEXT, VARIANTS, winningCards, winningCombination } from '../src/lib/labels';
 import { clockText, deNom, formatEuros, formatLinePoints, formatSignedEuros, initials } from '../src/lib/format';
 import { describeInsurance } from '../src/lib/insurance';
 import { describeEvent } from '../src/lib/events';
@@ -15,7 +15,7 @@ import { normalizeCode } from '../src/screens/Forms';
 import { orderFromMe } from '../src/screens/Table';
 import { game, roomView, round } from './fixtures';
 import type { FeedItem } from '../src/lib/client';
-import type { RoundEvent, UpdateMessage } from '../src/lib/types';
+import type { RoundEvent, RoundRecord, UpdateMessage } from '../src/lib/types';
 
 const flat = (s: string) => s.replace(/[\u202f\u00a0]/g, ' ');
 
@@ -259,5 +259,28 @@ describe('saisie et géométrie', () => {
       });
     }
     expect(orderFromMe(ps.slice(0, 3), 'z')).toEqual(ps.slice(0, 3));   // spectateur
+  });
+});
+
+describe('combinaison gagnante d’une manche', () => {
+  const base = { roundNo: 1, chooser: 'p1', variant: 'CLOSED_1', result: { kind: 'WINNER', winner: 'p1', points: 1 }, points: { p1: 1 }, scoresAfter: { p1: 1 } } as const;
+  const rec = (over: Partial<RoundRecord>): RoundRecord => ({ ...base, award: { kind: 'POINTS', winner: 'p1', points: 1 }, ...over }) as unknown as RoundRecord;
+  it('abattage : catégorie de la main du vainqueur et ses cartes', () => {
+    const r = rec({ summary: { hands: { p1: { cards: ['As', 'Ad', 'Ks', 'Kd', '2c'], category: 2 }, p2: { cards: ['Qs', 'Jd', '8c', '5h', '3s'], category: 0 } } } });
+    expect(winningCombination(r)).toBe('Double paire');
+    expect(winningCards(r)).toEqual(['As', 'Ad', 'Ks', 'Kd', '2c']);
+  });
+  it('départage, abandon, 6-3, quinte flush immédiate, manche sans vainqueur', () => {
+    expect(winningCombination(rec({ summary: { tiebreak: { category: 5, cards: ['2h', '5h', '8h', 'Jh', 'Ah'] } } }))).toBe('Couleur au Hold’em de départage');
+    expect(winningCombination(rec({ summary: { byFold: true } }))).toBe('Tous les autres joueurs se sont couchés');
+    const lines = [
+      { line: 1, designations: { p1: { pair: ['As', 'Ad'], rank: 0, category: 3 } }, winners: ['p1'], unitsEach: 1 },
+      { line: 2, designations: { p1: null }, winners: ['p2'], unitsEach: 1 },
+      { line: 3, designations: { p1: { pair: ['Ks', 'Kd'], rank: 0, category: 6 } }, winners: ['p1'], unitsEach: 1 },
+    ];
+    expect(winningCombination(rec({ variant: 'V6_3', summary: { lines } } as never))).toBe('Ligne 1 : Brelan · Ligne 3 : Full');
+    expect(winningCombination(rec({ award: { kind: 'INSTANT_VICTORY', winner: 'p1', line: 2 } } as never))).toBe('Quinte flush à la ligne 2');
+    expect(winningCombination(rec({ award: { kind: 'NO_POINT', reason: 'ALL_FOLDED' } } as never))).toBeNull();
+    expect(winningCombination(rec({}))).toBeNull();        // manche enregistrée avant le résumé
   });
 });

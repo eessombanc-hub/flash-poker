@@ -34,7 +34,15 @@ await manager.restoreFromStore();
 
 // WEB_DIST (ex. ../web/dist, défini sur Render) : ce même serveur sert aussi l'interface, même origine.
 // Absent en développement local : l'interface tourne séparément via Vite (`npm run dev`).
-const server = await buildServer({ manager, corsOrigin: process.env.CORS_ORIGIN, webDist: process.env.WEB_DIST });
+// HTTP_RATE_LIMIT : nombre de créations / arrivées par minute et par adresse (30 par défaut). Réglage réservé aux
+// tests automatisés, où tous les joueurs simulés partagent la même adresse.
+const httpMax = Number(process.env.HTTP_RATE_LIMIT ?? 30);
+const server = await buildServer({
+  manager,
+  corsOrigin: process.env.CORS_ORIGIN,
+  webDist: process.env.WEB_DIST,
+  ...(Number.isInteger(httpMax) && httpMax > 0 && httpMax !== 30 ? { httpRateLimit: { max: httpMax, windowMs: 60_000 } } : {}),
+});
 setInterval(() => manager.sweep(), 60_000).unref();
 
 const port = Number(process.env.PORT ?? 3000);

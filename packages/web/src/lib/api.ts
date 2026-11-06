@@ -16,6 +16,8 @@ export interface CreateRoomInput {
   stakeCents: number;
   /** Partie « avec assistance », proposée aux joueurs (ils doivent tous l'approuver en salle d'attente). */
   assistance?: boolean;
+  /** Salle privée : absente de la liste publique, entrée par code ou lien d'invitation uniquement. */
+  private?: boolean;
   nickname: string;
   avatar?: string;
 }

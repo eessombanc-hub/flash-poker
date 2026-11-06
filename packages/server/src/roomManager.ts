@@ -121,7 +121,7 @@ export class RoomManager {
     const host = this.newPlayer(cfg.nickname, cfg.avatar ?? null, 'LOBBY', true); // propose l'assistance : l'approuve de fait
     const room: Room = {
       code: this.newCode(),
-      config: { name: cfg.name, maxPlayers: cfg.maxPlayers, targetPoints: cfg.targetPoints, stakeCents: cfg.stakeCents, assistance: cfg.assistance ?? false },
+      config: { name: cfg.name, maxPlayers: cfg.maxPlayers, targetPoints: cfg.targetPoints, stakeCents: cfg.stakeCents, assistance: cfg.assistance ?? false, private: cfg.private ?? false },
       status: 'WAITING',
       hostId: host.rec.id,
       players: [host.rec],
@@ -283,7 +283,7 @@ export class RoomManager {
    */
   listOpen(): RoomSummary[] {
     return [...this.rooms.values()]
-      .filter((r) => (r.status === 'WAITING' || r.status === 'RUNNING') && r.players.length < r.config.maxPlayers)
+      .filter((r) => !r.config.private && (r.status === 'WAITING' || r.status === 'RUNNING') && r.players.length < r.config.maxPlayers)
       .sort((a, b) => b.createdAt - a.createdAt)
       .map((r) => ({
         code: r.code,
@@ -531,6 +531,7 @@ export class RoomManager {
         stakeCents: room.config.stakeCents,
         potCents: gv ? gv.potCents : room.config.stakeCents * room.players.length,
         assistance: room.config.assistance,
+        private: room.config.private ?? false,
       },
       seatsLeft: room.config.maxPlayers - room.players.length,
       hostId: room.hostId,

@@ -25,6 +25,7 @@ export interface SeatProps {
 export function Seat({ player, isMe, target, shown, hiddenCount, active, validated, folded, insured, isChooser, score, compact }: SeatProps) {
   const { fourColor } = useSettings();
   const out = player.excluded;
+  if (compact) return <CompactSeat {...{ player, isMe, target, shown, active, validated, folded, insured, isChooser, score, out, fourColor }} />;
   return (
     <div
       className={`flex ${compact ? 'min-w-0 gap-1 px-2 py-1.5' : 'min-w-[9.5rem] gap-1.5 px-3 py-2.5'} flex-col items-center rounded-2xl border text-center transition ${active ? 'border-gold-400 bg-ink-800/95 shadow-gold' : 'border-ivory-100/15 bg-ink-900/80'} ${out || folded ? 'opacity-60' : ''}`}
@@ -40,9 +41,10 @@ export function Seat({ player, isMe, target, shown, hiddenCount, active, validat
           </p>
           <p className="text-[10px] tracking-wide text-gold-400">{player.position ?? '—'}</p>
         </div>
+        {compact && <ScorePips score={score} target={target} />}
       </div>
-      <ScorePips score={score} target={target} />
-      <div className="flex min-h-[1.25rem] flex-wrap justify-center gap-1">
+      {!compact && <ScorePips score={score} target={target} />}
+      <div className={`flex ${compact ? 'min-h-[1.1rem]' : 'min-h-[1.25rem]'} flex-wrap justify-center gap-1`}>
         {out && <Badge tone="red">Exclu</Badge>}
         {!out && !player.connected && <Badge tone="neutral">Hors ligne</Badge>}
         {folded && <Badge tone="amber">Couché</Badge>}
@@ -58,6 +60,60 @@ export function Seat({ player, isMe, target, shown, hiddenCount, active, validat
           ))}
           {Array.from({ length: hiddenCount }, (_, i) => (
             <PlayingCard key={`h${i}`} code={null} size="xs" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Siège compact (téléphone, rangée de sièges sur écran large) : tient sur une seule ligne dans le cas courant.
+ * Le statut habituel (à jouer, réfléchit, a validé) devient un pictogramme, son texte restant lu par les lecteurs
+ * d'écran ; les statuts plus rares (exclu, hors ligne, couché, choisit, assuré) gardent leur pastille en dessous.
+ */
+function CompactSeat({ player, isMe, target, shown, active, validated, folded, insured, isChooser, score, out, fourColor }: Omit<SeatProps, 'hiddenCount' | 'compact'> & { out: boolean; fourColor: boolean }) {
+  const status = folded || out ? null : validated ? 'A validé' : active ? (isMe ? 'À jouer' : 'réfléchit…') : null;
+  const rare = out || !player.connected || folded || isChooser || insured;
+  return (
+    <div
+      className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1 transition ${active ? 'border-gold-400 bg-ink-800/95 shadow-gold' : 'border-ivory-100/15 bg-ink-900/80'} ${out || folded ? 'opacity-60' : ''}`}
+      data-testid={`seat-${player.id}`}
+      aria-label={`${player.nickname}${isMe ? ' (vous)' : ''}, ${player.position ?? 'sans position'}, ${pointsLabel(score)}`}
+    >
+      <div className="flex min-w-0 items-center gap-1">
+        <Avatar nickname={player.nickname} avatar={player.avatar} size={22} dim={!player.connected || out} />
+        <div className="min-w-0 flex-1 text-left leading-tight">
+          <p className={`truncate text-xs font-semibold ${isMe ? 'text-gold-300' : 'text-ivory-50'}`}>{player.nickname}</p>
+          <p className="whitespace-nowrap text-[10px] tracking-wide text-gold-400">{player.position ?? '—'}</p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <ScorePips score={score} target={target} small />
+          {status && (
+            <span className={`text-[10px] font-semibold leading-none ${status === 'A validé' ? 'text-jade-300' : 'text-gold-300'}`}>
+              {status === 'A validé' ? (
+                <span aria-hidden="true">✓</span>
+              ) : (
+                <span className="inline-block h-1.5 w-1.5 animate-pulseRing rounded-full bg-gold-400" aria-hidden="true" />
+              )}
+              <span className="sr-only">{status}</span>
+            </span>
+          )}
+        </div>
+      </div>
+      {rare && (
+        <div className="flex flex-wrap justify-center gap-1">
+          {out && <Badge tone="red">Exclu</Badge>}
+          {!out && !player.connected && <Badge tone="neutral">Hors ligne</Badge>}
+          {folded && <Badge tone="amber">Couché</Badge>}
+          {isChooser && <Badge tone="gold">Choisit</Badge>}
+          {insured && <Badge tone="gold">Assuré</Badge>}
+        </div>
+      )}
+      {shown.length > 0 && !folded && (
+        <div className="flex justify-center -space-x-4 pt-0.5" aria-label={`${shown.length} carte${shown.length > 1 ? 's' : ''} visible${shown.length > 1 ? 's' : ''}`}>
+          {shown.map((c) => (
+            <PlayingCard key={c} code={c} size="xs" fourColor={fourColor} />
           ))}
         </div>
       )}

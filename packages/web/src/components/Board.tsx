@@ -33,18 +33,19 @@ const LINE_CARD_LABELS = ['Flop', 'Flop', 'Flop', 'Turn', 'River'];
  * (gérés par CardSlot) tant qu'elles n'ont pas été révélées par le moteur. */
 function Board63({ board, line, size, fourColor }: { board: (string | null)[]; line: number; size: CardSize; fourColor: boolean }) {
   return (
-    <div role="group" aria-label="Plateaux du 6-3" className="flex flex-col items-center gap-2.5">
+    <div role="group" aria-label="Plateaux du 6-3" className="flex flex-col items-center gap-1 sm:gap-2.5">
       {[1, 2, 3].map((n) => {
         const cards = board.slice((n - 1) * 5, n * 5);
         const current = n === line;
         return (
-          <div key={n} className={`flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 ${current ? 'bg-gold-500/10 ring-1 ring-gold-400/50' : 'opacity-80'}`} aria-label={`Ligne ${n}`}>
+          <div key={n} className={`flex items-center gap-2 rounded-xl px-2 py-1 sm:gap-2.5 sm:px-2.5 sm:py-1.5 ${current ? 'bg-gold-500/10 ring-1 ring-gold-400/50' : 'opacity-80'}`} aria-label={`Ligne ${n}`}>
             <span className={`w-12 shrink-0 text-[11px] font-semibold uppercase tracking-widest ${current ? 'text-gold-300' : 'text-ivory-200/60'}`}>Ligne {n}</span>
             <div className="flex items-end gap-1.5 sm:gap-2">
               {cards.map((code, i) => (
                 <div key={i} className="flex flex-col items-center gap-0.5">
                   <CardSlot code={code} size={size} fourColor={fourColor} flip={n > 1 && i === 4 && code !== null} dealIndex={i} label={i === 4 ? `River ${n}` : LINE_CARD_LABELS[i]} />
-                  <span className="text-[9px] uppercase tracking-widest text-ivory-200/50">{i === 4 ? `River ${n}` : i === 3 ? 'Turn' : ''}</span>
+                  {/* Sur téléphone, l'emplacement vide de la river porte déjà son nom : légendes masquées pour gagner de la hauteur. */}
+                  <span className="hidden text-[9px] uppercase tracking-widest text-ivory-200/50 sm:block">{i === 4 ? `River ${n}` : i === 3 ? 'Turn' : ''}</span>
                 </div>
               ))}
             </div>

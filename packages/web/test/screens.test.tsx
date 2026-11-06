@@ -13,7 +13,7 @@ import { game, players, renderWith, roomView, round } from './fixtures';
 const flat = (s: string | null) => (s ?? '').replace(/[\u202f\u00a0]/g, ' ');
 
 describe('salle d’attente', () => {
-  const lobby = (n: number, role: 'HOST' | 'PLAYER' = 'HOST', over = {}) => roomView({ status: 'WAITING', players: players(n).map((p) => ({ ...p, state: 'LOBBY' as const, position: null })), you: { playerId: role === 'HOST' ? 'p1' : 'p2', role }, seatsLeft: 6 - n, config: { maxPlayers: 6, targetPoints: 3, stakeCents: 2000, potCents: 2000 * n, assistance: false }, ...over }, null);
+  const lobby = (n: number, role: 'HOST' | 'PLAYER' = 'HOST', over = {}) => roomView({ status: 'WAITING', players: players(n).map((p) => ({ ...p, state: 'LOBBY' as const, position: null })), you: { playerId: role === 'HOST' ? 'p1' : 'p2', role }, seatsLeft: 6 - n, config: { maxPlayers: 6, targetPoints: 3, stakeCents: 2000, potCents: 2000 * n, assistance: false, private: false }, ...over }, null);
   it('affiche le code, les places et la cagnotte', () => {
     renderWith(<Lobby />, lobby(2));
     expect(screen.getByTestId('room-code')).toHaveTextContent('POKER-ABCD');
@@ -142,7 +142,7 @@ describe('formulaires', () => {
     await user.type(screen.getByLabelText(/Mise par joueur/), '12,50');
     expect(submit).toBeEnabled();
     await user.click(submit);
-    expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeCents: 1250, assistance: false, nickname: 'Emeric', avatar: 'or' });
+    expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeCents: 1250, assistance: false, private: false, nickname: 'Emeric', avatar: 'or' });
   });
   it('création : le niveau « avec assistance » est proposé et transmis au serveur', async () => {
     const user = userEvent.setup();
