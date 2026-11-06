@@ -12,7 +12,7 @@ import { initialState, reduceUpdate } from '../src/lib/client';
 import { assistCategory, closedInfo, discardInfo, line63Info, reveal61Info } from '../src/lib/roundInfo';
 import { collectRoundEvents, finalBoard } from '../src/screens/Overlays';
 import { normalizeCode } from '../src/screens/Forms';
-import { ovalPosition } from '../src/screens/Table';
+import { orderFromMe } from '../src/screens/Table';
 import { game, roomView, round } from './fixtures';
 import type { FeedItem } from '../src/lib/client';
 import type { RoundEvent, UpdateMessage } from '../src/lib/types';
@@ -247,21 +247,17 @@ describe('saisie et géométrie', () => {
     expect(normalizeCode('poker-7k2m')).toBe('POKER-7K2M');
     expect(normalizeCode('abc')).toBe('ABC');
   });
-  it('sièges : moi en bas au centre, tous distincts, dans le sens horaire', () => {
-    const pct = (s: string) => Number.parseFloat(s);
+  it('sièges : moi d’abord, puis les autres dans l’ordre des positions', () => {
+    const ps = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => ({ id }));
     for (let n = 2; n <= 6; n++) {
-      const pos = Array.from({ length: n }, (_, k) => ovalPosition(k, n));
-      expect(pct(pos[0]!.left)).toBeCloseTo(50, 5);
-      expect(pct(pos[0]!.top)).toBeGreaterThan(80);
-      expect(new Set(pos.map((p) => `${p.left}/${p.top}`)).size).toBe(n);
-      for (const p of pos) {
-        expect(pct(p.left)).toBeGreaterThan(5);
-        expect(pct(p.left)).toBeLessThan(95);
-        expect(pct(p.top)).toBeGreaterThan(5);
-        expect(pct(p.top)).toBeLessThan(95);
-      }
+      const players = ps.slice(0, n);
+      players.forEach((me, i) => {
+        const ordered = orderFromMe(players, me.id);
+        expect(ordered[0]).toBe(me);
+        expect(ordered).toHaveLength(n);
+        expect(ordered[1]).toBe(players[(i + 1) % n]);             // sens horaire
+      });
     }
-    // 2 joueurs : l'adversaire fait face
-    expect(pct(ovalPosition(1, 2).top)).toBeLessThan(20);
+    expect(orderFromMe(ps.slice(0, 3), 'z')).toEqual(ps.slice(0, 3));   // spectateur
   });
 });

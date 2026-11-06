@@ -17,7 +17,13 @@ npm run dev:calme               # idem, minuteurs de 3 min (PHASE_SECONDS=180) :
 npm run dev:server              # serveur seul (PORT, HOST, CORS_ORIGIN, PHASE_SECONDS)
 npm run dev:web                 # interface seule (relaie /rooms et /socket.io vers :3000)
 npm run build:web               # bundle de production (packages/web/dist, ~150 Ko compressés)
+npm run test:e2e                # parties de bout en bout dans de vrais navigateurs + audit d'accessibilité
+                                #   (la première fois : npx playwright install chromium)
+npm -w @poker/server run charge # test de charge (TABLES=250 JOUEURS=6 pour 1 500 connexions)
 ```
+
+Mise en ligne de l'espace de test : **[MISE_EN_LIGNE_RENDER.md](MISE_EN_LIGNE_RENDER.md)**.
+Bilan de la phase 8 (tests de bout en bout, charge, accessibilité) : **[LIVRAISON.md](LIVRAISON.md)**.
 
 ## Structure
 
@@ -153,7 +159,7 @@ turn entre les 3 lignes — voir « Reste à faire ».)*
 - **Secret** : les cartes cachées d'un adversaire ne sont rendues que sous forme de dos ; test d'intégration sur de vrais sockets (aucun code de carte adverse dans la vue).
 - **Reprise** : le jeton de session est conservé dans le navigateur ; après rechargement, siège, main, brouillon de sélection et minuteur sont restaurés.
 - **Minuteurs** : l'échéance vient du serveur ; le client corrige le décalage d'horloge (aucun compteur local autonome).
-- **Choix d'ergonomie (à valider)** : récapitulatif de manche fermé seul après 14 s, sauf si le joueur touche ou fait défiler la fenêtre (alors il reste ouvert) ; main triée par rang (sauf au 6-1, ordre de distribution) ; pas de bouton « quitter » en cours de partie ; défilement automatique vers le panneau d'action quand il dépasse de l'écran.
+- **Choix d'ergonomie (à valider)** : sur ordinateur, sièges en une rangée au-dessus du tapis (ils recouvraient la grille du Morpion et la ligne 1 du 6-3 quand ils étaient placés autour de l'ovale) ; récapitulatif de manche fermé seul après 14 s, sauf si le joueur touche ou fait défiler la fenêtre (alors il reste ouvert) ; main triée par rang (sauf au 6-1, ordre de distribution) ; pas de bouton « quitter » en cours de partie ; défilement automatique vers le panneau d'action quand il dépasse de l'écran.
 - **Assistance** : case « Niveau de la partie » à la création ; en salle d'attente, bloc de vote (mes deux boutons, statut « oui / non / en attente » de chaque joueur, mention « Accord de tous ») ; indicateur « Votre combinaison : … » dans les 4 panneaux concernés.
 - **Sensations de jeu** : sons courts synthétisés (sélection, validation, retournement, votre tour, victoire, erreur), vibration mobile au début de votre tour et aux 5 dernières secondes, titre d'onglet clignotant (« ▶ À vous ! ») quand l'onglet est en arrière-plan et que c'est votre tour — réglage « Sons et vibrations » dans Options, activé par défaut. Adversaires en réflexion : badge « réfléchit… » qui pulse. Confettis (désactivés si `prefers-reduced-motion`) à la fin de partie. Morpion : les 8 alignements s'affichent en mini-grilles visuelles (reconnaissance immédiate) plutôt qu'en texte. Distribution en cascade : chaque carte d'une main ou d'un plateau arrive avec un léger décalage (60 ms, plafonné à 12 cartes) plutôt que d'apparaître d'un bloc — désactivé si `prefers-reduced-motion` (fonction `dealDelay`, testée unitairement).
 - **6-3 : 3 plateaux indépendants** affichés en 3 rangées (Ligne 1/2/3), chacune ses 5 propres cartes ; les rivers non révélées des lignes 2 et 3 restent des emplacements vides tant que la ligne précédente n'est pas close. Vérifié par 4 tests dédiés au composant, une partie réelle en navigateur (comptage exact : 13 → 14 → 15 cartes visibles au fil des lignes), et 8 mutations volontaires sur le moteur, toutes détectées.
@@ -171,11 +177,12 @@ turn entre les 3 lignes — voir « Reste à faire ».)*
 ## Reste à faire
 
 1. **Interface** : validation de votre part des choix d'ergonomie ci-dessus ; test sur appareils tactiles réels.
-2. **Espace de test** : `render.yaml` prêt (Render.com, plan gratuit) — reste à créer le compte, connecter le dépôt,
-   et vérifier le déploiement réel ensemble.
+2. **Espace de test** : `render.yaml` prêt et vérifié sur une copie neuve (mêmes commandes que Render) — reste à
+   créer le compte et connecter le dépôt : [MISE_EN_LIGNE_RENDER.md](MISE_EN_LIGNE_RENDER.md).
 3. **Déploiement en production** : VPS OVH prévu, offre exacte (VPS / Public Cloud / mutualisé) à confirmer ensemble ;
    processus Node persistant (WebSocket), reverse proxy TLS, disque persistant pour la base SQLite, `CORS_ORIGIN` si
    le front est hébergé ailleurs que le serveur.
-4. **Phase 8** : tests de charge, parties de bout en bout multi-navigateurs, accessibilité (lecteurs d'écran) à auditer.
+4. **Phase 8** : faite (voir [LIVRAISON.md](LIVRAISON.md)) — parties de bout en bout, charge, accessibilité automatisée.
+   Reste : essai avec un vrai lecteur d'écran (NVDA, VoiceOver) et sur Safari / Firefox réels.
 5. **Plusieurs instances de serveur** : la persistance SQLite actuelle suppose un seul processus ; passer à PostgreSQL
    (même interface `RoomStore`) le jour où la charge exige de répartir les parties sur plusieurs serveurs.

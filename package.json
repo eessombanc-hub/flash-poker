@@ -12,9 +12,14 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "dev:server": "npm -w @poker/server run start",
     "dev:web": "npm -w @poker/web run dev",
-    "build:web": "npm -w @poker/web run build"
+    "build:web": "npm -w @poker/web run build",
+    "test:e2e": "playwright test"
   },
   "engines": {
     "node": ">=22.13.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.63.0"
   }
 }

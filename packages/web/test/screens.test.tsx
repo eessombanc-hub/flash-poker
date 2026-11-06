@@ -308,7 +308,7 @@ describe('table : résultat de manche et routage des panneaux', () => {
     expect(within(dialog).getByRole('list', { name: 'Mains dévoilées' })).toBeInTheDocument();
     expect(within(dialog).getByText('Brelan')).toBeInTheDocument();
     expect(within(dialog).getByRole('group', { name: 'Cartes communes' }).querySelectorAll('[role=img]')).toHaveLength(5);
-    expect(within(dialog).getByRole('img', { name: 'Dame de trèfle' })).toBeInTheDocument(); // river révélée à la clôture
+    expect(within(dialog).getByRole('img', { name: 'Dame de trèfle (Q)' })).toBeInTheDocument(); // river révélée à la clôture
   });
   it('rien à l’ouverture d’une partie déjà entamée (l’historique n’est pas rejoué)', () => {
     renderWith(<Table />, pick({ roundNo: 2, history: [record] }));

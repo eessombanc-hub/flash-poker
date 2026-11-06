@@ -115,15 +115,24 @@ interface CardProps {
   className?: string;
 }
 
+/** Nom lu par les lecteurs d'écran : « Roi de carreau (K) » pour une figure, « 9 de pique » sinon. */
+export function spokenName(code: string): string {
+  const c = parseCode(code);
+  return c.rank >= 11 && c.rank <= 13 ? `${c.name} (${c.label})` : c.name;
+}
+
 /** Une carte : face, ou dos si `code` est nul. Cliquable (sélection) ou purement décorative. */
 export function PlayingCard({ code, size = 'md', selected = false, disabled = false, dimmed = false, highlight = false, fourColor = false, flip = false, dealIndex, onClick, hint, className = '' }: CardProps) {
   const uid = useId();
   const reduce = useReducedMotion();
-  const label = code ? parseCode(code).name : 'Carte face cachée';
+  // Figures : la lettre dessinée (J, Q, K) figure aussi dans le nom, pour la commande vocale (« cliquer K »).
+  const label = code ? spokenName(code) : 'Carte face cachée';
   const interactive = !!onClick && !disabled;
   const ring = selected ? 'shadow-gold' : highlight ? 'ring-2 ring-gold-400' : 'shadow-card';
+  // Carte cliquable : c'est le bouton qui porte le nom ; le dessin est alors décoratif (sinon le nom serait
+  // lu deux fois, et le texte dessiné « K ♦ » ne correspondrait pas au nom « Roi de carreau »).
   const inner = (
-    <svg viewBox="0 0 100 140" className="block h-auto w-full" role="img" aria-label={hint ? `${label} — ${hint}` : label}>
+    <svg viewBox="0 0 100 140" className="block h-auto w-full" {...(onClick ? { 'aria-hidden': true, focusable: false } : { role: 'img', 'aria-label': hint ? `${label} — ${hint}` : label })}>
       {code ? <Face code={code} fourColor={fourColor} /> : <Back id={`back-${uid}`} />}
     </svg>
   );
@@ -142,9 +151,11 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
         onClick={onClick}
         disabled={disabled}
         aria-pressed={selected}
-        aria-label={hint ? `${label} — ${hint}` : label}
         className={`${common.className} ${interactive ? 'cursor-pointer hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400' : 'cursor-not-allowed'} touch-manipulation`}
       >
+        {/* Nom du bouton porté par un texte réservé aux lecteurs d'écran, le dessin étant décoratif : le
+            rang dessiné en double (coins, centre) n'entre pas en conflit avec le nom (WCAG 2.5.3). */}
+        <span className="sr-only">{hint ? `${label} — ${hint}` : label}</span>
         {inner}
       </motion.button>
     );

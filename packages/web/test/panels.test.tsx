@@ -14,7 +14,8 @@ import { Reveal61Panel } from '../src/panels/Reveal61Panel';
 import { VariantPicker } from '../src/panels/VariantPicker';
 import { game, players, renderWith, roomView, round } from './fixtures';
 
-const card = (name: string) => screen.getByRole('button', { name });
+// Nom exact, ou suivi de la lettre d'une figure : « Roi de carreau » trouve « Roi de carreau (K) ».
+const card = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}( \\([JQK]\\))?$`) });
 const flat = (s: string | null) => (s ?? '').replace(/[\u202f\u00a0]/g, ' ');
 
 describe('Poker fermé', () => {

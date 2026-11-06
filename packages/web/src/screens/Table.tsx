@@ -162,10 +162,13 @@ function phaseLabel(variant: string, phase: string): string {
   return `défausse ${n} / 2`;
 }
 
-/** Position d'un siège sur l'ovale : moi en bas, les autres dans l'ordre des positions, dans le sens horaire. */
-export function ovalPosition(k: number, n: number): { left: string; top: string } {
-  const theta = ((90 + (k * 360) / n) * Math.PI) / 180;
-  return { left: `${50 + 40 * Math.cos(theta)}%`, top: `${50 + 36 * Math.sin(theta)}%` };
+/**
+ * Ordre des sièges affichés : moi d'abord, puis les autres dans l'ordre des positions (sens horaire).
+ * Spectateur (pas assis) : l'ordre des positions tel quel.
+ */
+export function orderFromMe<T extends { id: string }>(players: T[], me: string): T[] {
+  const myIdx = players.findIndex((p) => p.id === me);
+  return myIdx > 0 ? [...players.slice(myIdx), ...players.slice(0, myIdx)] : players;
 }
 
 function TableFelt() {
@@ -173,20 +176,25 @@ function TableFelt() {
   const seatProps = useSeatProps();
   const desktop = useMediaQuery('(min-width: 768px)');
   const players = seatedPlayers(view);
-  const myIdx = players.findIndex((p) => p.id === me);
-  const ordered = myIdx > 0 ? [...players.slice(myIdx), ...players.slice(0, myIdx)] : players;
+  const ordered = orderFromMe(players, me);
 
   if (desktop) {
+    // Sièges en une rangée au-dessus du tapis : ils ne recouvrent jamais les cartes communes (grille du
+    // Morpion, trois lignes du 6-3) et la table reste assez basse pour laisser la place au panneau d'action.
     return (
-      <div className="felt relative mx-auto mt-1 aspect-[2.5/1] max-h-[42vh] min-h-[210px] w-full max-w-5xl shrink-0 rounded-[999px]" role="group" aria-label="Table de jeu">
-        <div className="absolute left-1/2 top-[55%] w-[52%] -translate-x-1/2 -translate-y-1/2">
-          <TableCenter />
+      <div className="mx-auto mt-1 w-full max-w-5xl shrink-0" role="group" aria-label="Table de jeu">
+        <div className="mb-1.5 flex flex-wrap justify-center gap-2">
+          {ordered.map((p) => (
+            <div key={p.id} className="w-40">
+              <Seat {...seatProps(p)} compact />
+            </div>
+          ))}
         </div>
-        {ordered.map((p, k) => (
-          <div key={p.id} className="absolute -translate-x-1/2 -translate-y-1/2" style={ovalPosition(k, ordered.length)}>
-            <Seat {...seatProps(p)} />
+        <div className="felt flex min-h-[150px] items-center justify-center rounded-[999px] px-[9%] py-3">
+          <div className="w-full max-w-2xl">
+            <TableCenter />
           </div>
-        ))}
+        </div>
       </div>
     );
   }
@@ -286,7 +294,8 @@ export function Table() {
       <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} />
       <Announcer />
       <TableFelt />
-      <div className="min-h-0 flex-1 overflow-y-auto scroll-thin">
+      {/* Zone qui défile : atteignable au clavier (flèches) même quand elle ne contient aucun bouton. */}
+      <div className="min-h-0 flex-1 overflow-y-auto scroll-thin focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400" tabIndex={0} role="region" aria-label="Actions de jeu">
         <ActionDock />
       </div>
 
