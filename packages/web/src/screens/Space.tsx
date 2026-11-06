@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
-import { BellIcon, ChipsIcon, ProfileIcon, StarIcon, StatsIcon, TrophyIcon } from '../components/Icons3D';
+import { BellIcon, ChipsIcon, JoinIcon, ProfileIcon, StarIcon, StatsIcon, TrophyIcon } from '../components/Icons3D';
 import { Avatar, AvatarPicker, Badge, Button, Eyebrow, Field, inputClass, Panel, Segmented } from '../components/ui';
 import { ApiError } from '../lib/api';
 import { useAccount, useAccountClient } from '../lib/context';
 import { formatEuros, formatSignedEuros } from '../lib/format';
 import { variantName } from '../lib/labels';
-import type { AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats } from '../lib/types';
+import type { AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats } from '../lib/types';
 import { RoundList } from './Overlays';
 
-export type SpaceTab = 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris';
+export type SpaceTab = 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter';
 const TABS: { id: SpaceTab; label: string; icon: (size: number) => ReactNode }[] = [
   { id: 'profil', label: 'Profil', icon: (s) => <ProfileIcon size={s} /> },
   { id: 'historique', label: 'Historique', icon: (s) => <TrophyIcon size={s} /> },
@@ -16,6 +16,7 @@ const TABS: { id: SpaceTab; label: string; icon: (size: number) => ReactNode }[]
   { id: 'manches', label: 'Manches favorites', icon: (s) => <StarIcon size={s} /> },
   { id: 'bankroll', label: 'Bankroll', icon: (s) => <ChipsIcon size={s} /> },
   { id: 'favoris', label: 'Joueurs favoris', icon: (s) => <BellIcon size={s} /> },
+  { id: 'inviter', label: 'Inviter des amis', icon: (s) => <JoinIcon size={s} /> },
 ];
 
 const DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -118,6 +119,7 @@ export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; i
             {tab === 'manches' && <FavoriteRoundsTab />}
             {tab === 'bankroll' && <BankrollTab />}
             {tab === 'favoris' && <FavoritesTab />}
+            {tab === 'inviter' && <InviteTab />}
           </Panel>
         </div>
       </main>
@@ -627,6 +629,128 @@ function FavoritesTab() {
           </State>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------- Inviter des amis ----------
+function InviteTab() {
+  const account = useAccountClient()!;
+  const me = useAccount((s) => s.account)!;
+  const { data, error, reload } = useLoad(account.invites);
+  const [overview, setOverview] = useState<InviteOverview | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const info = overview ?? data;
+  const link = info ? `${window.location.origin}/?invitation=${info.code}` : '';
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setCopied(false);
+    }
+  };
+  const share = () =>
+    void navigator.share({ title: 'Flash Poker', text: `${me.nickname} vous invite à jouer au poker sur Flash Poker. Créez votre compte :`, url: link }).catch(() => undefined);
+
+  async function send(e: FormEvent) {
+    e.preventDefault();
+    if (busy || !email.trim()) return;
+    setBusy(true);
+    setState(null);
+    try {
+      setOverview(await account.inviteByEmail(email.trim()));
+      setState({ tone: 'ok', text: `Invitation envoyée à ${email.trim()}.` });
+      setEmail('');
+    } catch (err) {
+      setState({ tone: 'error', text: message(err) });
+      reload();
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <H2>Inviter des amis</H2>
+        <p className="mt-1 text-sm text-ivory-300/80">Votre invité crée son compte en quelques secondes ; vous devenez alors joueurs favoris l’un de l’autre, et chacun est prévenu quand l’autre se connecte.</p>
+      </div>
+      {!info ? (
+        error ? <State error={error} /> : <Loading />
+      ) : (
+        <>
+          <section aria-label="Mon lien d’invitation" className="space-y-3">
+            <H3>Mon lien d’invitation</H3>
+            <p className="text-sm text-ivory-200/85">À envoyer par SMS, WhatsApp ou tout autre moyen. Il reste valable et peut servir à plusieurs personnes.</p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input readOnly value={link} aria-label="Lien d’invitation" className={`${inputClass} font-mono text-xs sm:text-sm`} onFocus={(e) => e.currentTarget.select()} />
+              <div className="flex gap-2">
+                <Button onClick={() => void copy()} className="flex-1 sm:flex-none">
+                  {copied ? 'Lien copié ✓' : 'Copier'}
+                </Button>
+                {canShare && (
+                  <Button variant="secondary" onClick={share} className="flex-1 sm:flex-none">
+                    Partager…
+                  </Button>
+                )}
+              </div>
+            </div>
+            <span role="status" className="sr-only">{copied ? 'Lien copié dans le presse-papiers' : ''}</span>
+          </section>
+
+          <section aria-label="Invitation par e-mail" className="space-y-3 border-t border-ivory-100/10 pt-6">
+            <H3>Par e-mail</H3>
+            {info.mailEnabled ? (
+              <form onSubmit={send} className="space-y-3" noValidate>
+                <Field label="Adresse e-mail de votre ami" htmlFor="inv-mail" hint={`Flash Poker lui envoie un message à votre nom, avec un lien pour créer son compte. Encore ${info.remainingToday} invitation${info.remainingToday > 1 ? 's' : ''} possible${info.remainingToday > 1 ? 's' : ''} aujourd’hui.`}>
+                  <input id="inv-mail" type="email" inputMode="email" className={inputClass} value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+                </Field>
+                {state && <Notice tone={state.tone}>{state.text}</Notice>}
+                <Button type="submit" disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || info.remainingToday === 0}>
+                  {busy ? 'Envoi…' : 'Envoyer l’invitation'}
+                </Button>
+              </form>
+            ) : (
+              <p className="rounded-xl border border-dashed border-ivory-100/15 px-4 py-3 text-sm text-ivory-300/80">L’envoi d’e-mails n’est pas encore activé sur ce serveur : utilisez votre lien d’invitation ci-dessus.</p>
+            )}
+            {info.sent.length > 0 && (
+              <ul className="space-y-1.5" aria-label="Invitations envoyées">
+                {info.sent.map((i) => (
+                  <li key={`${i.email}-${i.sentAt}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-ink-900/50 px-3 py-2 text-sm">
+                    <span className="min-w-0 truncate text-ivory-100">{i.email}</span>
+                    <span className="flex items-center gap-2 text-xs text-ivory-300/75">
+                      {DAY.format(i.sentAt)}
+                      {i.joinedAs ? <Badge tone="green">Inscrit : {i.joinedAs}</Badge> : <Badge>En attente</Badge>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section aria-label="Amis inscrits grâce à vous" className="space-y-3 border-t border-ivory-100/10 pt-6">
+            <H3>Amis inscrits grâce à vous ({info.joined.length})</H3>
+            {info.joined.length === 0 ? (
+              <p className="text-sm text-ivory-300/75">Personne pour l’instant.</p>
+            ) : (
+              <ul className="flex flex-wrap gap-2">
+                {info.joined.map((u) => (
+                  <li key={u.id} className="flex items-center gap-2 rounded-full border border-ivory-100/10 bg-ink-900/50 py-1 pl-1 pr-3 text-sm text-ivory-100">
+                    <Avatar nickname={u.nickname} avatar={u.avatar} size={26} />
+                    {u.nickname}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

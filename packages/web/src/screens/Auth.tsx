@@ -1,6 +1,7 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { ProfileIcon } from '../components/Icons3D';
-import { AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Title } from '../components/ui';
+import { Avatar, AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Title } from '../components/ui';
+import type { AccountPublic } from '../lib/types';
 import { ApiError } from '../lib/api';
 import { useAccount, useAccountClient } from '../lib/context';
 
@@ -39,7 +40,7 @@ function PasswordInput({ id, value, onChange, autoComplete }: { id: string; valu
  * Connexion, inscription, mot de passe oublié et nouveau mot de passe (lien reçu par e-mail).
  * `onDone` est appelé une fois connecté.
  */
-export function AuthScreen({ mode: initialMode, resetToken, onBack, onDone }: { mode: AuthMode; resetToken?: string; onBack: () => void; onDone: () => void }) {
+export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDone }: { mode: AuthMode; resetToken?: string; invite?: string; onBack: () => void; onDone: () => void }) {
   const account = useAccountClient();
   const recovery = useAccount((s) => s.passwordRecovery);
   const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -51,6 +52,16 @@ export function AuthScreen({ mode: initialMode, resetToken, onBack, onDone }: { 
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [inviter, setInviter] = useState<AccountPublic | null>(null);
+
+  useEffect(() => {
+    if (!account || !invite) return;
+    let alive = true;
+    account.inviteInfo(invite).then((who) => alive && setInviter(who), () => undefined); // lien périmé : inscription normale
+    return () => {
+      alive = false;
+    };
+  }, [account, invite]);
 
   const switchTo = (m: AuthMode) => {
     setMode(m);
@@ -73,7 +84,7 @@ export function AuthScreen({ mode: initialMode, resetToken, onBack, onDone }: { 
     setError(null);
     try {
       if (mode === 'login') await account.login(login.trim(), password);
-      else if (mode === 'register') await account.register({ nickname: nickname.trim(), email: email.trim(), password, avatar });
+      else if (mode === 'register') await account.register({ nickname: nickname.trim(), email: email.trim(), password, avatar, ...(invite ? { invite } : {}) });
       else if (mode === 'reset') await account.reset(resetToken ?? '', password);
       else {
         await account.forgot(email.trim());
@@ -109,6 +120,14 @@ export function AuthScreen({ mode: initialMode, resetToken, onBack, onDone }: { 
           </div>
         </div>
 
+        {inviter && mode === 'register' && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-gold-500/40 bg-gold-500/10 px-3 py-3" role="note">
+            <Avatar nickname={inviter.nickname} avatar={inviter.avatar} size={40} />
+            <p className="text-sm text-ivory-100">
+              <strong className="text-gold-200">{inviter.nickname}</strong> vous invite à rejoindre Flash Poker. Une fois inscrit, vous serez chacun dans les joueurs favoris de l’autre.
+            </p>
+          </div>
+        )}
         {mode === 'forgot' && sent ? (
           <div className="space-y-4" role="status">
             <p className="text-ivory-100">Si un compte existe avec l’adresse {email.trim()}, un e-mail vient de partir avec un lien valable une heure.</p>

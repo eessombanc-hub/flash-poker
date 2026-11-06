@@ -67,6 +67,20 @@ export class AccountDb {
         created_at INTEGER NOT NULL,
         PRIMARY KEY (user_id, fav_id)
       );
+      CREATE TABLE IF NOT EXISTS invites (
+        code TEXT PRIMARY KEY,
+        inviter_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        email TEXT COLLATE NOCASE,
+        created_at INTEGER NOT NULL,
+        accepted_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+        accepted_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS invites_by_inviter ON invites (inviter_id, created_at);
+      CREATE TABLE IF NOT EXISTS referrals (
+        invitee_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        inviter_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS notify_log (
         user_id TEXT NOT NULL,
         fav_id TEXT NOT NULL,

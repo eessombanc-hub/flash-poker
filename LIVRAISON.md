@@ -12,6 +12,10 @@
   - **Bankroll** : bilan gains − mises, partie après partie, assurances comprises, avec sa courbe.
   - **Joueurs favoris** : recherche par pseudo et statut en ligne.
 - **Favori connecté** : quand vous êtes sur Flash Poker, une notification s’affiche dans l’application. Sinon, un e-mail part, au plus un par jour et par favori, si les alertes sont activées.
+- **Inviter des amis** (onglet de Mon espace) :
+  - un lien personnel, à copier ou à partager (SMS, WhatsApp…), qui ouvre directement l’inscription avec le nom de l’invitant ;
+  - ou un e-mail envoyé par Flash Poker, au nom du joueur, sans texte libre ; au plus 10 par jour, et pas deux fois la même adresse en 7 jours.
+  - Le suivi indique pour chaque invitation « En attente » ou « Inscrit », ainsi que les amis inscrits. À l’inscription, l’invité et l’invitant deviennent joueurs favoris l’un de l’autre.
 - **Parties** : un joueur connecté crée une salle ou la rejoint sous le pseudo et l’avatar de son compte. Les parties terminées s’ajoutent à son historique ; les parties annulées n’y figurent pas.
 
 ## Sécurité

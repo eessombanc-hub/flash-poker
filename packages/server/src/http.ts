@@ -187,7 +187,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   });
   if (opts.accounts) registerAccountRoutes(app, opts.accounts, { now, authRateLimit: opts.authRateLimit });
 
-  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/users'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
+  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/users', '/invites'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
 
   if (opts.webDist && existsSync(opts.webDist)) {
     // Fichiers avec hash dans leur nom (assets Vite) : cache long ; `index.html` : jamais mis en cache (sert

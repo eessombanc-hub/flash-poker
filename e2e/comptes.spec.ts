@@ -53,6 +53,15 @@ test('comptes : inscription, espace joueur, favori connecté, sur ordinateur et 
   await expect(ana.page.getByRole('list', { name: 'Mes joueurs favoris' })).toContainText(`Bea${stamp}`);
   await audit(ana.page, 'espace favoris rempli (ordinateur)');
 
+  // Lien d'invitation, ouvert par un nouveau venu sur téléphone
+  await ana.page.getByRole('tab', { name: 'Inviter des amis' }).click();
+  const link = await ana.page.getByRole('textbox', { name: 'Lien d’invitation' }).inputValue();
+  await audit(ana.page, 'espace inviter (ordinateur)');
+  const zoe = await newPlayer(browser, 'Zoé', 'iPhone 13');
+  await zoe.page.goto(new URL(link).pathname + new URL(link).search);
+  await expect(zoe.page.getByText(new RegExp(`Ana${stamp}.*vous invite à rejoindre Flash Poker`))).toBeVisible();
+  await audit(zoe.page, 'inscription par invitation (téléphone)');
+
   // Bea ouvre son espace sur téléphone
   await bea.page.getByRole('button', { name: new RegExp(`Bea${stamp}`) }).click();
   await audit(bea.page, 'espace profil (téléphone)');
@@ -78,5 +87,5 @@ test('comptes : inscription, espace joueur, favori connecté, sur ordinateur et 
   await guest.page.getByRole('button', { name: 'Créer la table' }).click();
   await expect(guest.page.getByRole('alert')).toContainText('appartient à un joueur inscrit');
 
-  for (const p of [ana, bea, guest]) expect(jsErrors(p)).toEqual([]);
+  for (const p of [ana, bea, guest, zoe]) expect(jsErrors(p)).toEqual([]);
 });

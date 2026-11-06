@@ -5,7 +5,7 @@ import { ServerError } from '../errors';
 import type { AccountDb } from './db';
 import { mail, type Mailer } from './mailer';
 import { hashPassword, newToken, tokenHash, verifyPassword } from './password';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, VariantStats } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
 const nickname = z
@@ -16,7 +16,8 @@ const email = z.string().transform((s) => s.trim().toLowerCase()).pipe(z.string(
 const password = z.string().min(8, 'Mot de passe de 8 caractères au moins').max(128);
 const avatar = z.string().regex(/^[a-z0-9_-]{1,32}$/).nullable().optional();
 
-export const registerSchema = z.object({ nickname, email, password, avatar });
+export const registerSchema = z.object({ nickname, email, password, avatar, invite: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/).optional() });
+export const inviteEmailSchema = z.object({ email });
 export const loginSchema = z.object({ login: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) });
 export const profileSchema = z.object({ nickname: nickname.optional(), avatar, notifyEmail: z.boolean().optional() });
 export const emailChangeSchema = z.object({ email, password: z.string().min(1).max(128) });
@@ -30,9 +31,12 @@ function parse<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, input: unknown): 
   return r.data;
 }
 
-export type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, VariantStats } from './types';
+export type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, SentInvite, VariantStats } from './types';
 
 const SESSION_MS = 30 * 24 * 3_600_000;
+/** Invitations par e-mail : 10 par jour et par joueur, et pas deux fois la même adresse en 7 jours (anti-abus). */
+const INVITES_PER_DAY = 10;
+const REINVITE_MS = 7 * 24 * 3_600_000;
 const RESET_MS = 3_600_000;
 const day = (t: number) => new Date(t).toISOString().slice(0, 10);
 
@@ -72,6 +76,7 @@ export class AccountService {
     this.db
       .prepare('INSERT INTO users (id, nickname, email, pass_hash, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(id, data.nickname, data.email, await hashPassword(data.password), data.avatar ?? null, this.now());
+    if (data.invite) this.acceptInvite(data.invite, id, data.email);
     return { token: this.openSession(id), account: this.account(id)! };
   }
 
@@ -291,6 +296,82 @@ export class AccountService {
       const round = game.history.find((h) => h.roundNo === r.round_no);
       return round ? [{ gameId: r.game_id as string, gameName: game.name, endedAt: game.endedAt, you: r.player_id as string, players: game.players, round }] : [];
     });
+  }
+
+  // ---------- Invitations ----------
+
+  /** Code du lien personnel d'invitation (créé à la première demande, puis toujours le même). */
+  private personalCode(userId: string): string {
+    const row = this.db.prepare('SELECT code FROM invites WHERE inviter_id = ? AND email IS NULL').get(userId) as Row | undefined;
+    if (row) return row.code as string;
+    const code = randomBytes(9).toString('base64url');
+    this.db.prepare('INSERT INTO invites (code, inviter_id, email, created_at) VALUES (?, ?, NULL, ?)').run(code, userId, this.now());
+    return code;
+  }
+
+  invites(userId: string): InviteOverview {
+    const sent = (this.db
+      .prepare('SELECT i.email, i.created_at, u.nickname FROM invites i LEFT JOIN users u ON u.id = i.accepted_by WHERE i.inviter_id = ? AND i.email IS NOT NULL ORDER BY i.created_at DESC LIMIT 50')
+      .all(userId) as Row[]).map((r) => ({ email: r.email as string, sentAt: r.created_at as number, joinedAs: (r.nickname as string | null) ?? null }));
+    const joined = (this.db.prepare('SELECT u.id, u.nickname, u.avatar FROM referrals r JOIN users u ON u.id = r.invitee_id WHERE r.inviter_id = ? ORDER BY r.created_at DESC').all(userId) as Row[]).map(pubRow);
+    return { code: this.personalCode(userId), sent, joined, remainingToday: Math.max(0, INVITES_PER_DAY - this.invitesToday(userId)), mailEnabled: this.mailer.enabled };
+  }
+
+  private invitesToday(userId: string): number {
+    const r = this.db.prepare('SELECT COUNT(*) AS n FROM invites WHERE inviter_id = ? AND email IS NOT NULL AND created_at > ?').get(userId, this.now() - 86_400_000) as Row;
+    return Number(r.n);
+  }
+
+  /** Invitation par e-mail : un lien d'inscription au nom du joueur, sans texte libre (aucun détournement possible). */
+  async inviteByEmail(userId: string, input: unknown): Promise<InviteOverview> {
+    if (!this.mailer.enabled) throw new ServerError('UNAVAILABLE', 'L’envoi d’e-mails n’est pas encore configuré : partagez plutôt votre lien d’invitation');
+    const { email: address } = parse(inviteEmailSchema, input);
+    const me = this.account(userId)!;
+    if (address === me.email) throw new ServerError('BAD_REQUEST', 'C’est votre propre adresse');
+    if (this.findBy('email', address)) throw new ServerError('EMAIL_TAKEN', 'Cette personne a déjà un compte : ajoutez-la à vos joueurs favoris');
+    if (this.invitesToday(userId) >= INVITES_PER_DAY) throw new ServerError('RATE_LIMITED', `Limite de ${INVITES_PER_DAY} invitations par jour atteinte : réessayez demain`);
+    const recent = this.db.prepare('SELECT 1 FROM invites WHERE inviter_id = ? AND email = ? AND created_at > ?').get(userId, address, this.now() - REINVITE_MS);
+    if (recent) throw new ServerError('BAD_REQUEST', 'Vous avez déjà invité cette adresse il y a moins de 7 jours');
+    const code = randomBytes(12).toString('base64url');
+    this.db.prepare('INSERT INTO invites (code, inviter_id, email, created_at) VALUES (?, ?, ?, ?)').run(code, userId, address, this.now());
+    await this.safeSend(
+      mail(address, `${me.nickname} vous invite à jouer sur Flash Poker`, [
+        'Bonjour,',
+        `${me.nickname} vous invite à le rejoindre sur Flash Poker : le poker entre amis en temps réel, huit variantes, de 2 à 6 joueurs, sur ordinateur comme sur téléphone.`,
+        'Créez votre compte gratuit en un instant : vous retrouverez ensuite vos parties, vos statistiques et vos joueurs favoris.',
+        'Cagnotte virtuelle, aucun paiement réel. Si vous ne connaissez pas cette personne, ignorez simplement cet e-mail : vous n’en recevrez pas d’autre.',
+      ], { label: 'Créer mon compte', url: `${this.opts.appUrl ?? ''}/?invitation=${encodeURIComponent(code)}` }),
+    );
+    return this.invites(userId);
+  }
+
+  /** Page d'accueil d'un lien d'invitation : qui invite (pseudo et avatar uniquement). */
+  inviteInfo(code: string): { inviter: AccountPublic } {
+    const r = this.db.prepare('SELECT u.id, u.nickname, u.avatar FROM invites i JOIN users u ON u.id = i.inviter_id WHERE i.code = ?').get(code) as Row | undefined;
+    if (!r) throw new ServerError('NOT_FOUND', 'Invitation introuvable');
+    return { inviter: pubRow(r) };
+  }
+
+  /**
+   * Inscription par invitation : le parrainage est noté, l'invitation par e-mail est marquée acceptée, et
+   * l'invité et celui qui l'a invité deviennent joueurs favoris l'un de l'autre. Un code inconnu est ignoré :
+   * il n'empêche jamais l'inscription.
+   */
+  private acceptInvite(code: string, newUserId: string, email: string): void {
+    const inv = this.db.prepare('SELECT inviter_id, email, accepted_by FROM invites WHERE code = ?').get(code) as Row | undefined;
+    if (!inv) return;
+    const inviter = inv.inviter_id as string;
+    const now = this.now();
+    if (inv.email === null) {
+      // Lien personnel : si l'adresse avait aussi reçu une invitation par e-mail de ce joueur, elle est marquée acceptée.
+      this.db.prepare('UPDATE invites SET accepted_by = ?, accepted_at = ? WHERE inviter_id = ? AND email = ? AND accepted_by IS NULL').run(newUserId, now, inviter, email);
+    } else if (!inv.accepted_by) {
+      this.db.prepare('UPDATE invites SET accepted_by = ?, accepted_at = ? WHERE code = ?').run(newUserId, now, code);
+    }
+    this.db.prepare('INSERT OR IGNORE INTO referrals (invitee_id, inviter_id, created_at) VALUES (?, ?, ?)').run(newUserId, inviter, now);
+    const fav = this.db.prepare('INSERT OR IGNORE INTO fav_players (user_id, fav_id, created_at) VALUES (?, ?, ?)');
+    fav.run(inviter, newUserId, now);
+    fav.run(newUserId, inviter, now);
   }
 
   // ---------- Joueurs favoris et présence ----------

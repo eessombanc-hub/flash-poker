@@ -36,6 +36,21 @@ function takeResetToken(): string {
   }
 }
 
+/** Lien d'invitation (`?invitation=…`) : lu une fois, puis retiré de la barre d'adresse. */
+function takeInviteCode(): string {
+  try {
+    const url = new URL(window.location.href);
+    const c = url.searchParams.get('invitation') ?? '';
+    if (c) {
+      url.searchParams.delete('invitation');
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+    return /^[A-Za-z0-9_-]{6,40}$/.test(c) ? c : '';
+  } catch {
+    return '';
+  }
+}
+
 /** En-tête de l'accueil : accès au compte (connexion, inscription, ou « Mon espace »). */
 function AccountBar({ onAuth, onSpace }: { onAuth: (mode: AuthMode) => void; onSpace: () => void }) {
   const me = useAccount((s) => s.account);
@@ -101,7 +116,8 @@ export function App() {
   const account = useAccountClient();
   const me = useAccount((s) => s.account);
   const [resetToken] = useState(takeResetToken);
-  const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : initialCode() ? 'join' : 'home'));
+  const [invite] = useState(takeInviteCode);
+  const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : initialCode() ? 'join' : 'home'));
   const [joinCode, setJoinCode] = useState<string>(initialCode);
 
   useEffect(() => {
@@ -132,7 +148,7 @@ export function App() {
       );
     } else if (view.status === 'WAITING' || view.status === 'CANCELLED') content = <Lobby />;
     else content = <Table />;
-  } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
+  } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
   else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
   else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={joinCode} />;

@@ -35,5 +35,7 @@ export type {
   FinishedGame,
   GameDetail,
   GameSummary,
+  InviteOverview,
+  SentInvite,
   VariantStats,
 } from '@poker/server/src/accounts/types';

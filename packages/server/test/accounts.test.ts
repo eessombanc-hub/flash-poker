@@ -218,6 +218,54 @@ describe('comptes : joueurs favoris et présence', () => {
   });
 });
 
+describe('comptes : invitations', () => {
+  it('lien personnel : l’invité s’inscrit, les deux deviennent favoris l’un de l’autre', async () => {
+    const { accounts } = service();
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    const code = accounts.invites(ana.account.id).code;
+    expect(accounts.invites(ana.account.id).code).toBe(code); // toujours le même lien
+    expect(accounts.inviteInfo(code).inviter).toMatchObject({ nickname: 'Ana' });
+    const bea = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1', invite: code });
+    expect(accounts.invites(ana.account.id).joined.map((u) => u.nickname)).toEqual(['Bea']);
+    expect(accounts.favorites(ana.account.id).map((f) => f.nickname)).toEqual(['Bea']);
+    expect(accounts.favorites(bea.account.id).map((f) => f.nickname)).toEqual(['Ana']);
+    // Un code inconnu n'empêche pas l'inscription
+    await accounts.register({ nickname: 'Cid', email: 'cid@x.fr', password: 'motdepasse1', invite: 'inconnu123' });
+    await rejects(() => accounts.inviteInfo('inconnu123'), 'NOT_FOUND');
+  });
+
+  it('par e-mail : lien d’inscription, suivi « en attente » puis « inscrit », garde-fous', async () => {
+    let t = 1_000_000;
+    const { accounts, mailer } = service({ now: () => t });
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    const o = await accounts.inviteByEmail(ana.account.id, { email: 'Zoe@X.fr' });
+    expect(o.sent).toEqual([{ email: 'zoe@x.fr', sentAt: t, joinedAs: null }]);
+    expect(o.remainingToday).toBe(9);
+    const m = mailer.sent.at(-1)!;
+    expect(m.to).toBe('zoe@x.fr');
+    expect(m.subject).toBe('Ana vous invite à jouer sur Flash Poker');
+    const code = decodeURIComponent(/invitation=([^\s"&]+)/.exec(m.text)![1]!);
+    await rejects(accounts.inviteByEmail(ana.account.id, { email: 'zoe@x.fr' }), 'BAD_REQUEST'); // déjà invitée cette semaine
+    await rejects(accounts.inviteByEmail(ana.account.id, { email: 'bea@x.fr' }), 'EMAIL_TAKEN'); // déjà inscrite
+    await rejects(accounts.inviteByEmail(ana.account.id, { email: 'ana@x.fr' }), 'BAD_REQUEST'); // soi-même
+    await accounts.register({ nickname: 'Zoé', email: 'zoe@x.fr', password: 'motdepasse1', invite: code });
+    expect(accounts.invites(ana.account.id).sent[0]).toMatchObject({ joinedAs: 'Zoé' });
+    // 10 par jour au plus
+    for (let i = 0; i < 9; i++) await accounts.inviteByEmail(ana.account.id, { email: `ami${i}@x.fr` });
+    await rejects(accounts.inviteByEmail(ana.account.id, { email: 'encore@x.fr' }), 'RATE_LIMITED');
+    t += 86_400_001;
+    expect((await accounts.inviteByEmail(ana.account.id, { email: 'encore@x.fr' })).remainingToday).toBe(9);
+  });
+
+  it('sans e-mail configuré : seul le lien est proposé', async () => {
+    const { accounts } = service({ mail: false });
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    expect(accounts.invites(ana.account.id).mailEnabled).toBe(false);
+    await rejects(accounts.inviteByEmail(ana.account.id, { email: 'zoe@x.fr' }), 'UNAVAILABLE');
+  });
+});
+
 describe('comptes : routes HTTP et socket de présence', () => {
   async function start() {
     const { accounts } = service();
@@ -254,6 +302,11 @@ describe('comptes : routes HTTP et socket de présence', () => {
     expect((await inj('PATCH', '/me', token, { nickname: 'Anaïs' })).json()).toMatchObject({ nickname: 'Anaïs' });
     expect((await inj('GET', '/me/stats', token)).json()).toMatchObject({ games: 0, variants: [] });
     expect((await inj('GET', '/me/bankroll', token)).json()).toMatchObject({ totalCents: 0, series: [] });
+
+    const inv = (await inj('GET', '/me/invites', token)).json() as { code: string };
+    expect((await inj('GET', `/invites/${inv.code}`)).json()).toMatchObject({ inviter: { nickname: 'Anaïs' } });
+    expect((await inj('POST', '/me/invites', token, { email: 'zoe@x.fr' })).statusCode).toBe(201);
+    expect((await inj('GET', '/invites/zzzzzzzz')).statusCode).toBe(404);
 
     await inj('POST', '/auth/logout', token);
     expect((await inj('GET', '/me', token)).statusCode).toBe(401);

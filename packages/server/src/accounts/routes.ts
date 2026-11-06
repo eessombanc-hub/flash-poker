@@ -106,6 +106,16 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
     accounts.removeFavorite(me(req).id, req.params.id);
     return { ok: true };
   });
+  app.get('/me/invites', async (req) => accounts.invites(me(req).id));
+  app.post('/me/invites', async (req, reply) => {
+    const account = me(req);
+    guard('invite', req.ip);
+    return reply.status(201).send(await accounts.inviteByEmail(account.id, req.body));
+  });
+  app.get<{ Params: { code: string } }>('/invites/:code', async (req) => {
+    guard('invite-info', req.ip); // freine l'énumération des codes
+    return accounts.inviteInfo(String(req.params.code).slice(0, 40));
+  });
   app.get<{ Querystring: { q?: string } }>('/users', async (req) => ({ users: accounts.search(me(req).id, String(req.query.q ?? '').slice(0, 20)) }));
 }
 

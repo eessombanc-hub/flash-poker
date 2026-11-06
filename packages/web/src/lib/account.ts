@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
 const KEY = 'poker.account.v1';
@@ -124,7 +124,7 @@ export class AccountClient {
     this.store.setState({ token: null, account: null });
   }
 
-  register(input: { nickname: string; email: string; password: string; avatar?: string }): Promise<AccountPrivate> {
+  register(input: { nickname: string; email: string; password: string; avatar?: string; invite?: string }): Promise<AccountPrivate> {
     return this.request<{ token: string; account: AccountPrivate }>('POST', '/auth/register', input).then((r) => this.signedIn(r));
   }
   login(login: string, password: string): Promise<AccountPrivate> {
@@ -165,6 +165,10 @@ export class AccountClient {
   favorites = () => this.request<{ favorites: FavoritePlayer[] }>('GET', '/me/favorites').then((r) => r.favorites);
   addFavorite = (nickname: string) => this.request<FavoritePlayer>('POST', '/me/favorites', { nickname });
   removeFavorite = (id: string) => this.request('DELETE', `/me/favorites/${encodeURIComponent(id)}`);
+  invites = () => this.request<InviteOverview>('GET', '/me/invites');
+  inviteByEmail = (email: string) => this.request<InviteOverview>('POST', '/me/invites', { email });
+  /** Qui invite (lien reçu) : accessible sans compte. */
+  inviteInfo = (code: string) => this.request<{ inviter: AccountPublic }>('GET', `/invites/${encodeURIComponent(code)}`).then((r) => r.inviter);
   search = (q: string) => this.request<{ users: AccountPublic[] }>('GET', `/users?q=${encodeURIComponent(q)}`).then((r) => r.users);
 
   /** Présence : signale au serveur que ce joueur est en ligne, et reçoit les connexions de ses favoris. */

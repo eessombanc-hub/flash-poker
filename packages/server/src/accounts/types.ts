@@ -64,3 +64,22 @@ export interface FavoriteRound {
   players: FinishedGame['players'];
   round: RoundRecord;
 }
+
+/** Invitation envoyée par e-mail, et son état. */
+export interface SentInvite {
+  email: string;
+  sentAt: number;
+  /** Pseudo choisi par l'invité s'il a créé son compte, sinon null (en attente). */
+  joinedAs: string | null;
+}
+export interface InviteOverview {
+  /** Lien personnel à partager (SMS, messagerie…) ; chemin relatif à l'adresse du jeu. */
+  code: string;
+  /** Invitations par e-mail, des plus récentes aux plus anciennes. */
+  sent: SentInvite[];
+  /** Joueurs inscrits grâce à vos invitations (lien ou e-mail). */
+  joined: AccountPublic[];
+  /** Invitations par e-mail encore possibles aujourd'hui. */
+  remainingToday: number;
+  mailEnabled: boolean;
+}

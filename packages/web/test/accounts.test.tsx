@@ -83,6 +83,33 @@ describe('comptes joueurs dans l’interface', () => {
     expect(p.client.state.view!.players[0]!.registered).toBe(true);
   });
 
+  it('lien d’invitation : écran d’inscription avec l’invitant, puis favoris réciproques', async () => {
+    const env = await start();
+    const ana = env.make();
+    await ana.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    const { code } = await ana.account.invites();
+    window.history.replaceState(null, '', `/?invitation=${code}`);
+    const zoe = env.make();
+    const user = userEvent.setup();
+    renderApp(zoe);
+    expect(await screen.findByText(/vous invite à rejoindre Flash Poker/)).toBeTruthy();
+    expect(window.location.search).toBe(''); // lien retiré de la barre d'adresse
+    await user.type(screen.getByLabelText('Pseudo'), 'Zoe');
+    await user.type(screen.getByLabelText('Adresse e-mail'), 'zoe@x.fr');
+    await user.type(screen.getByLabelText('Mot de passe'), 'motdepasse1');
+    await user.click(screen.getByRole('button', { name: 'Créer mon compte' }));
+    expect(await screen.findByRole('button', { name: /Zoe/ })).toBeTruthy();
+    expect((await zoe.account.favorites()).map((f) => f.nickname)).toEqual(['Ana']);
+    expect((await ana.account.invites()).joined.map((u) => u.nickname)).toEqual(['Zoe']);
+
+    // Onglet « Inviter des amis » de Zoé : son propre lien
+    await user.click(screen.getByRole('button', { name: /Zoe/ }));
+    await user.click(screen.getByRole('tab', { name: /Inviter des amis/ }));
+    const input = (await screen.findByRole('textbox', { name: 'Lien d’invitation' })) as HTMLInputElement;
+    expect(input.value).toMatch(/\/\?invitation=[A-Za-z0-9_-]+$/);
+    expect(screen.getByRole('button', { name: 'Envoyer l’invitation' })).toBeTruthy(); // e-mail activé sur ce serveur de test
+  });
+
   it('un favori qui se connecte est annoncé dans l’application', async () => {
     const env = await start();
     const ana = env.make();
