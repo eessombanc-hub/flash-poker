@@ -6,6 +6,8 @@ import { Server as IOServer, type Socket } from 'socket.io';
 import { ServerError } from './errors';
 import { authSchema, excludeSchema, approveAssistanceSchema, type Outgoing } from './protocol';
 import { RateLimiter } from './rateLimiter';
+import { optionalAccount, registerAccountRoutes, registerPresence } from './accounts/routes';
+import type { AccountService } from './accounts/service';
 import type { RoomManager } from './roomManager';
 
 export interface ServerOptions {
@@ -25,6 +27,10 @@ export interface ServerOptions {
    * l'interface tourne séparément via Vite (voir `vite.config.ts`).
    */
   webDist?: string;
+  /** Comptes joueurs (facultatif) : connexion, espace personnel, favoris, présence. */
+  accounts?: AccountService;
+  /** Inscription / connexion / mot de passe oublié : tentatives par IP. */
+  authRateLimit?: { max: number; windowMs: number };
   onError?: (err: unknown) => void;
 }
 
@@ -144,8 +150,8 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   if (opts.corsOrigin) {
     app.addHook('onRequest', async (req, reply) => {
       reply.header('Access-Control-Allow-Origin', opts.corsOrigin!);
-      reply.header('Access-Control-Allow-Headers', 'content-type');
-      reply.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+      reply.header('Access-Control-Allow-Headers', 'content-type, authorization');
+      reply.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
       if (req.method === 'OPTIONS') return reply.status(204).send();
     });
   }
@@ -171,14 +177,17 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   });
   app.post('/rooms', async (req, reply) => {
     guard('create', req.ip);
-    return reply.status(201).send(opts.manager.createRoom(req.body));
+    const account = opts.accounts ? optionalAccount(opts.accounts, req) : null;
+    return reply.status(201).send(opts.manager.createRoom(req.body, account));
   });
   app.post<{ Params: { code: string } }>('/rooms/:code/join', async (req, reply) => {
     guard('join', req.ip); // freine l'énumération des codes de partie
-    return reply.status(201).send(opts.manager.joinRoom(req.params.code, req.body));
+    const account = opts.accounts ? optionalAccount(opts.accounts, req) : null;
+    return reply.status(201).send(opts.manager.joinRoom(req.params.code, req.body, account));
   });
+  if (opts.accounts) registerAccountRoutes(app, opts.accounts, { now, authRateLimit: opts.authRateLimit });
 
-  const isApiPath = (url: string): boolean => url.startsWith('/rooms') || url.startsWith('/socket.io') || url.startsWith('/health');
+  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/users'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
 
   if (opts.webDist && existsSync(opts.webDist)) {
     // Fichiers avec hash dans leur nom (assets Vite) : cache long ; `index.html` : jamais mis en cache (sert
@@ -202,6 +211,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     cors: opts.corsOrigin ? { origin: opts.corsOrigin } : undefined,
   });
   const realtime = new RealtimeManager(io, opts.manager, opts);
+  if (opts.accounts) registerPresence(io, opts.accounts);
   await app.ready();
   return {
     app,

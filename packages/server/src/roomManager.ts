@@ -21,6 +21,7 @@ import {
   type RoomSummary,
   type RoomView,
 } from './protocol';
+import type { FinishedGame } from './accounts/service';
 import type { Scheduler, Timer } from './scheduler';
 import { InMemoryRoomStore, type RoomConfig, type RoomSnapshot, type RoomStore } from './store';
 
@@ -54,12 +55,28 @@ export interface RoomManagerDeps {
   tokenFactory?: () => string;
   idFactory?: () => string;
   onError?: (err: unknown) => void;
+  /** Comptes joueurs (facultatif) : pseudos réservés aux inscrits, archivage des parties terminées. */
+  accounts?: AccountHooks;
+}
+
+/** Compte connecté qui crée ou rejoint une salle : son pseudo et son avatar sont ceux du compte. */
+export interface AccountRef {
+  id: string;
+  nickname: string;
+  avatar: string | null;
+}
+export interface AccountHooks {
+  /** Vrai si le pseudo appartient à un compte : un invité ne peut pas l'emprunter. */
+  isReservedNickname(nickname: string): boolean;
+  /** Partie terminée normalement (jamais pour une partie annulée). */
+  onGameFinished(game: FinishedGame): void;
 }
 
 interface PlayerRec {
   id: string;
   nickname: string;
   avatar: string | null;
+  accountId: string | null;
   tokenHash: string;
   connected: boolean;
   lastSeenAt: number;
@@ -115,10 +132,11 @@ export class RoomManager {
 
   // ---------- Création, arrivée ----------
 
-  createRoom(input: unknown): { code: string; playerId: string; token: string } {
+  createRoom(input: unknown, account?: AccountRef | null): { code: string; playerId: string; token: string } {
     const cfg = this.parse(createRoomSchema, input);
     const now = this.deps.scheduler.now();
-    const host = this.newPlayer(cfg.nickname, cfg.avatar ?? null, 'LOBBY', true); // propose l'assistance : l'approuve de fait
+    const who = this.identity(cfg.nickname, cfg.avatar ?? null, account);
+    const host = this.newPlayer(who, 'LOBBY', true); // propose l'assistance : l'approuve de fait
     const room: Room = {
       code: this.newCode(),
       config: { name: cfg.name, maxPlayers: cfg.maxPlayers, targetPoints: cfg.targetPoints, stakeCents: cfg.stakeCents, assistance: cfg.assistance ?? false, private: cfg.private ?? false },
@@ -141,16 +159,21 @@ export class RoomManager {
     return { code: room.code, playerId: host.rec.id, token: host.token };
   }
 
-  joinRoom(codeRaw: string, input: unknown): { playerId: string; token: string } {
+  joinRoom(codeRaw: string, input: unknown, account?: AccountRef | null): { playerId: string; token: string } {
     const room = this.room(codeRaw);
-    const { nickname, avatar } = this.parse(joinRoomSchema, input);
+    const parsed = this.parse(joinRoomSchema, input);
     if (room.status === 'FINISHED' || room.status === 'CANCELLED') throw new ServerError('WRONG_STATE', 'Cette partie est terminée');
+    const who = this.identity(parsed.nickname, parsed.avatar ?? null, account);
+    const nickname = who.nickname;
+    if (who.accountId && room.players.some((p) => p.accountId === who.accountId)) {
+      throw new ServerError('NICKNAME_TAKEN', 'Vous êtes déjà dans cette partie (sur un autre appareil ?)');
+    }
     if (room.players.some((p) => p.nickname.toLowerCase() === nickname.toLowerCase())) {
       throw new ServerError('NICKNAME_TAKEN', 'Ce pseudo est déjà pris dans cette partie');
     }
     // Les places sont limitées par le nombre de joueurs fixé à la création (sièges des exclus et file d'attente compris)
     if (room.players.length >= room.config.maxPlayers) throw new ServerError('ROOM_FULL', 'La partie est complète');
-    const { rec, token } = this.newPlayer(nickname, avatar ?? null, room.status === 'WAITING' ? 'LOBBY' : 'QUEUED', room.config.assistance ? null : true);
+    const { rec, token } = this.newPlayer(who, room.status === 'WAITING' ? 'LOBBY' : 'QUEUED', room.config.assistance ? null : true);
     room.players.push(rec);
     const events = [pub('PLAYER_JOINED', { player: rec.id, nickname: rec.nickname, queued: rec.state === 'QUEUED' })];
     if (room.status === 'RUNNING') this.afterTransition(room, events);
@@ -354,6 +377,29 @@ export class RoomManager {
     room.status = status;
     room.finishedAt = this.deps.scheduler.now();
     this.broadcast(room, events);
+    if (status === 'FINISHED') this.archive(room);
+  }
+
+  /** Archive la partie terminée pour l'historique des joueurs inscrits (sans effet sur la partie). */
+  private archive(room: Room): void {
+    const hooks = this.deps.accounts;
+    const outcome = room.game?.outcome();
+    if (!hooks || !room.game || !outcome || !room.players.some((p) => p.accountId)) return;
+    try {
+      hooks.onGameFinished({
+        code: room.code,
+        name: room.config.name,
+        endedAt: room.finishedAt ?? this.deps.scheduler.now(),
+        stakeCents: room.config.stakeCents,
+        targetPoints: room.config.targetPoints,
+        players: room.players.map((p) => ({ playerId: p.id, accountId: p.accountId, nickname: p.nickname, avatar: p.avatar })),
+        seated: Object.keys(outcome.settlement.payouts),
+        outcome,
+        history: room.game.history(),
+      });
+    } catch (e) {
+      (this.deps.onError ?? ((err) => console.error('[archive]', err)))(e);
+    }
   }
 
   // ---------- Minuteurs de 60 s ----------
@@ -450,7 +496,7 @@ export class RoomManager {
       config: { ...r.config },
       status: r.status,
       hostId: r.hostId,
-      players: r.players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, tokenHash: p.tokenHash, state: p.state, lastSeenAt: p.lastSeenAt, assistanceApproved: p.assistanceApproved })),
+      players: r.players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, accountId: p.accountId, tokenHash: p.tokenHash, state: p.state, lastSeenAt: p.lastSeenAt, assistanceApproved: p.assistanceApproved })),
       game: r.game ? r.game.snapshot() : null,
       version: r.version,
       createdAt: r.createdAt,
@@ -476,7 +522,7 @@ export class RoomManager {
       config: { ...s.config },
       status: s.status,
       hostId: s.hostId,
-      players: s.players.map((p) => ({ ...p, connected: false })),
+      players: s.players.map((p) => ({ ...p, accountId: p.accountId ?? null, connected: false })),
       game: s.game ? GameManager.restore(s.game, this.deps.rng, this.deps.gameHooks ?? {}) : null,
       version: s.version,
       createdAt: s.createdAt,
@@ -513,6 +559,7 @@ export class RoomManager {
       id: p.id,
       nickname: p.nickname,
       avatar: p.avatar,
+      registered: p.accountId !== null,
       connected: p.connected,
       state: p.state,
       isHost: p.id === room.hostId,
@@ -594,12 +641,20 @@ export class RoomManager {
     }
     return res.data;
   }
-  private newPlayer(nickname: string, avatar: string | null, state: PlayerState, assistanceApproved: boolean | null): { rec: PlayerRec; token: string } {
+  /** Pseudo et avatar du joueur : ceux du compte s'il est connecté ; un invité ne peut pas prendre le pseudo d'un compte. */
+  private identity(nickname: string, avatar: string | null, account?: AccountRef | null): { nickname: string; avatar: string | null; accountId: string | null } {
+    if (account) return { nickname: account.nickname, avatar: account.avatar ?? avatar, accountId: account.id };
+    if (this.deps.accounts?.isReservedNickname(nickname)) {
+      throw new ServerError('NICKNAME_RESERVED', 'Ce pseudo appartient à un joueur inscrit : connectez-vous ou choisissez-en un autre');
+    }
+    return { nickname, avatar, accountId: null };
+  }
+  private newPlayer(who: { nickname: string; avatar: string | null; accountId: string | null }, state: PlayerState, assistanceApproved: boolean | null): { rec: PlayerRec; token: string } {
     const token = this.deps.tokenFactory ? this.deps.tokenFactory() : randomBytes(24).toString('hex');
     const id = this.deps.idFactory ? this.deps.idFactory() : `p_${randomBytes(5).toString('hex')}`;
     return {
       token,
-      rec: { id, nickname, avatar, tokenHash: hashToken(token), connected: false, lastSeenAt: this.deps.scheduler.now(), state, assistanceApproved },
+      rec: { id, nickname: who.nickname, avatar: who.avatar, accountId: who.accountId, tokenHash: hashToken(token), connected: false, lastSeenAt: this.deps.scheduler.now(), state, assistanceApproved },
     };
   }
   private newCode(): string {

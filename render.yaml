@@ -26,6 +26,20 @@ services:
         value: ../web/dist # construit par buildCommand ; servi par ce même service (même origine)
       - key: DB_PATH
         value: ./data/flashpoker.db # perdu à chaque redémarrage sur le plan gratuit (disque éphémère)
+      # Comptes joueurs : base « comptes.db » à côté de DB_PATH (même limite : effacée à chaque redéploiement
+      # sur le plan gratuit). E-mails (mot de passe oublié, favori connecté) : valeurs à saisir dans Render,
+      # onglet Environment, jamais écrites ici. Sans SMTP_HOST, aucun e-mail ne part et la récupération du
+      # mot de passe est signalée indisponible dans l'application.
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
     # PORT et HOST : Render les fournit déjà (PORT=10000, écoute sur 0.0.0.0) ; main.ts les lit tels quels.
     healthCheckPath: /health
     autoDeployTrigger: commit # redéploie automatiquement à chaque push sur la branche connectée

@@ -1,8 +1,21 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../lib/api';
-import { useClient } from '../lib/context';
+import { useAccount, useClient } from '../lib/context';
 import { formatEuros } from '../lib/format';
-import { AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Segmented, Title } from '../components/ui';
+import { Avatar, AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Segmented, Title } from '../components/ui';
+import type { AccountPrivate } from '../lib/types';
+
+/** Joueur inscrit : il joue sous le pseudo et l'avatar de son compte (modifiables dans « Mon espace »). */
+function AccountIdentity({ me }: { me: AccountPrivate }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-gold-500/30 bg-gold-500/5 px-3 py-2.5">
+      <Avatar nickname={me.nickname} avatar={me.avatar} size={40} />
+      <p className="text-sm text-ivory-200">
+        Vous jouez sous le pseudo <strong className="text-ivory-50">{me.nickname}</strong>. La partie sera ajoutée à votre historique.
+      </p>
+    </div>
+  );
+}
 
 const NICK_RE = /^[\p{L}\p{N} _.'-]{1,20}$/u;
 
@@ -14,6 +27,7 @@ export function normalizeCode(raw: string): string {
 
 export function CreateRoom({ onBack }: { onBack: () => void }) {
   const client = useClient();
+  const me = useAccount((s) => s.account);
   const [name, setName] = useState('');
   const [maxPlayers, setMax] = useState(4);
   const [target, setTarget] = useState(3);
@@ -29,7 +43,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   const stakeCents = Math.round(stakeNumber * 100);
   const errors = {
     name: name.trim() ? '' : 'Donnez un nom à la table.',
-    nickname: NICK_RE.test(nickname.trim()) ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).',
+    nickname: me || NICK_RE.test(nickname.trim()) ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).',
     stake: stake.trim() !== '' && Number.isFinite(stakeNumber) && stakeCents >= 0 && stakeCents <= 1_000_000 ? '' : 'Mise de 0 à 10 000 €.',
   };
   const invalid = Object.values(errors).some(Boolean);
@@ -40,7 +54,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await client.createRoom({ name: name.trim(), maxPlayers, targetPoints: target, stakeCents, assistance, private: privateRoom, nickname: nickname.trim(), avatar });
+      await client.createRoom({ name: name.trim(), maxPlayers, targetPoints: target, stakeCents, assistance, private: privateRoom, nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? avatar });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Création impossible.');
       setBusy(false);
@@ -74,12 +88,18 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
           <Field label="Visibilité" hint={privateRoom ? 'Salle privée : absente des « Parties ouvertes ». Seules les personnes à qui vous donnez le code ou le lien d’invitation peuvent entrer.' : 'Salle publique : visible de tous dans « Parties ouvertes ».'}>
             <Segmented label="Visibilité" value={privateRoom ? 'privee' : 'publique'} options={['publique', 'privee'] as const} onChange={(v) => setPrivate(v === 'privee')} format={(v) => (v === 'privee' ? 'Privée' : 'Publique')} />
           </Field>
-          <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' ? '' : errors.nickname}>
-            <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
-          </Field>
-          <Field label="Avatar">
-            <AvatarPicker value={avatar} onChange={setAvatar} />
-          </Field>
+          {me ? (
+            <AccountIdentity me={me} />
+          ) : (
+            <>
+              <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' ? '' : errors.nickname}>
+                <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
+              </Field>
+              <Field label="Avatar">
+                <AvatarPicker value={avatar} onChange={setAvatar} />
+              </Field>
+            </>
+          )}
           {error && (
             <p role="alert" className="rounded-lg border border-ruby-500/50 bg-ruby-950/60 px-3 py-2 text-sm text-ruby-100">
               {error}
@@ -96,6 +116,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
 
 export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; initialCode?: string }) {
   const client = useClient();
+  const me = useAccount((s) => s.account);
   const [code, setCode] = useState(initialCode);
   const [nickname, setNick] = useState('');
   const [avatar, setAvatar] = useState('emeraude');
@@ -104,7 +125,7 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
 
   const normalized = normalizeCode(code);
   const codeOk = /^POKER-[2-9A-Z]{4}$/.test(normalized);
-  const nickOk = NICK_RE.test(nickname.trim());
+  const nickOk = Boolean(me) || NICK_RE.test(nickname.trim());
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -112,7 +133,7 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
     setBusy(true);
     setError(null);
     try {
-      await client.joinRoom(normalized, { nickname: nickname.trim(), avatar });
+      await client.joinRoom(normalized, { nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? avatar });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Impossible de rejoindre la partie.');
       setBusy(false);
@@ -131,12 +152,18 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
           <Field label="Code de la partie" htmlFor="code" hint="Format POKER-XXXX, communiqué par l’hôte.">
             <input id="code" className={`${inputClass} font-mono tracking-widest`} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="POKER-7K2M" autoCapitalize="characters" autoComplete="off" />
           </Field>
-          <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' || nickOk ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).'}>
-            <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
-          </Field>
-          <Field label="Avatar">
-            <AvatarPicker value={avatar} onChange={setAvatar} />
-          </Field>
+          {me ? (
+            <AccountIdentity me={me} />
+          ) : (
+            <>
+              <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' || nickOk ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).'}>
+                <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
+              </Field>
+              <Field label="Avatar">
+                <AvatarPicker value={avatar} onChange={setAvatar} />
+              </Field>
+            </>
+          )}
           {error && (
             <p role="alert" className="rounded-lg border border-ruby-500/50 bg-ruby-950/60 px-3 py-2 text-sm text-ruby-100">
               {error}

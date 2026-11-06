@@ -13,6 +13,9 @@ export default defineConfig({
     proxy: {
       '/rooms': SERVER,
       '/health': SERVER,
+      '/auth': SERVER,
+      '/me': SERVER,
+      '/users': SERVER,
       '/socket.io': { target: SERVER, ws: true },
     },
   },

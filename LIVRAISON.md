@@ -1,4 +1,45 @@
-# Flash Poker — dossier de livraison, phase 8
+# Flash Poker — dossier de livraison, phase 9 : comptes joueurs
+
+## Ce qui a été ajouté
+
+- **Comptes** : inscription par pseudo, adresse e-mail et mot de passe ; connexion par pseudo ou par e-mail. Le pseudo d’un inscrit lui est réservé : un invité ne peut pas jouer sous ce nom. Les invités peuvent toujours jouer sans compte.
+- **Mot de passe oublié** : lien par e-mail, valable une heure, à usage unique. Une fois utilisé, toutes les sessions ouvertes sont fermées. La réponse ne révèle jamais si une adresse correspond à un compte.
+- **Mon espace**, en six onglets :
+  - **Profil** : avatar, pseudo, adresse e-mail, mot de passe, alertes par e-mail.
+  - **Historique** : parties terminées. Chaque partie s’ouvre sur le résultat de chacune de ses manches.
+  - **Statistiques par variante** : manches jouées et gagnées, taux de réussite, points.
+  - **Manches favorites** : à marquer d’une étoile depuis l’historique.
+  - **Bankroll** : bilan gains − mises, partie après partie, assurances comprises, avec sa courbe.
+  - **Joueurs favoris** : recherche par pseudo et statut en ligne.
+- **Favori connecté** : quand vous êtes sur Flash Poker, une notification s’affiche dans l’application. Sinon, un e-mail part, au plus un par jour et par favori, si les alertes sont activées.
+- **Parties** : un joueur connecté crée une salle ou la rejoint sous le pseudo et l’avatar de son compte. Les parties terminées s’ajoutent à son historique ; les parties annulées n’y figurent pas.
+
+## Sécurité
+
+- Les mots de passe sont conservés uniquement sous forme d’empreinte scrypt avec un sel propre à chaque compte, jamais en clair.
+- Pour les sessions et les liens de réinitialisation, seule l’empreinte SHA-256 est conservée. Une session dure 30 jours.
+- Les tentatives d’inscription, de connexion et de récupération sont limitées par adresse IP.
+- Les identifiants d’envoi d’e-mails se règlent uniquement par variables d’environnement, jamais dans le code (voir `MISE_EN_LIGNE_RENDER.md`).
+- Seules les parties terminées sont archivées : aucune carte d’une partie en cours n’est enregistrée.
+
+## Tests
+
+- Serveur :
+  - 14 nouveaux tests : comptes, sessions, mot de passe oublié, archivage, statistiques, bankroll, favoris, e-mail une fois par jour, routes HTTP, limite de tentatives, socket de présence.
+  - Total : 112 tests.
+- Interface :
+  - 3 nouveaux tests, sur un vrai serveur : inscription puis partie sous le pseudo du compte, favori annoncé, espace joueur complet après une vraie partie.
+  - Total : 182 tests.
+- Bout en bout (`e2e/comptes.spec.ts`) : inscription sur ordinateur et sur iPhone, les six onglets, l’ajout d’un favori, la notification en direct et le refus du pseudo réservé. Chaque écran passe l’audit d’accessibilité sans défaut grave.
+
+## Ce qui dépend de vous
+
+1. **Choisir un service d’envoi d’e-mails** et saisir ses cinq réglages dans Render (marche à suivre dans `MISE_EN_LIGNE_RENDER.md`). D’ici là, tout fonctionne, sauf l’envoi d’e-mails.
+2. **VPS OVH** : sur Render gratuit, comptes et historiques sont effacés à chaque mise à jour du jeu. Le VPS résoudra ce point.
+
+---
+
+# Phase 8 (rappel) : tests de bout en bout, charge, accessibilité
 
 Date : 6 novembre 2026. Objet : tests de bout en bout, charge, accessibilité, préparation de l'espace de test.
 **Aucune règle de jeu n'a été modifiée.** Les seules modifications du code touchent la disposition de la table

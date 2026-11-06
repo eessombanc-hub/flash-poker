@@ -83,27 +83,29 @@ export function Home({ onCreate, onJoin, notice, account }: { onCreate: () => vo
   );
 }
 
-/** Grande tuile d'action de l'accueil : icône 3D, titre, une phrase d'explication. */
+/**
+ * Grande tuile d'action de l'accueil : icône 3D, titre, une phrase d'explication. Toute la tuile est cliquable,
+ * mais le bouton ne contient que le titre (son nom accessible est exactement le texte qu'il affiche) ; la phrase
+ * d'explication lui est rattachée comme description.
+ */
 function ActionTile({ icon, title, text, onClick, primary = false }: { icon: ReactNode; title: string; text: string; onClick: () => void; primary?: boolean }) {
   const id = useId();
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-labelledby={`${id}-t`}
-      aria-describedby={`${id}-d`}
-      className={`group flex items-center gap-4 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400 motion-reduce:transform-none sm:flex-col sm:items-start sm:p-5 ${
+    <div
+      className={`group relative flex items-center gap-4 rounded-2xl border p-4 transition hover:-translate-y-0.5 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-400 motion-reduce:transform-none sm:flex-col sm:items-start sm:p-5 ${
         primary
           ? 'border-gold-400/70 bg-gradient-to-br from-gold-500/25 via-ink-800/90 to-ink-900 shadow-gold'
           : 'border-ivory-100/12 bg-gradient-to-br from-ink-700/80 to-ink-900/90 hover:border-ivory-100/30'
       }`}
     >
-      <span className="transition group-hover:scale-105 motion-reduce:transform-none">{icon}</span>
+      <span className="transition group-hover:scale-105 motion-reduce:transform-none" aria-hidden="true">{icon}</span>
       <span className="min-w-0">
-        <span id={`${id}-t`} className="block font-display text-xl text-ivory-50">{title}</span>
+        <button type="button" onClick={onClick} aria-describedby={`${id}-d`} className="block text-left font-display text-xl text-ivory-50 focus:outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']">
+          {title}
+        </button>
         <span id={`${id}-d`} className="mt-1 block text-sm text-ivory-200/80">{text}</span>
       </span>
-    </button>
+    </div>
   );
 }
 

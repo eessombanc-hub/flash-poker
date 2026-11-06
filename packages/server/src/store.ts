@@ -27,6 +27,8 @@ export interface PlayerSnapshot {
   id: string;
   nickname: string;
   avatar: string | null;
+  /** Compte du joueur inscrit, null pour un invité (absent des sauvegardes antérieures aux comptes). */
+  accountId?: string | null;
   /** Empreinte SHA-256 du jeton : le jeton lui-même n'est jamais conservé. */
   tokenHash: string;
   state: PlayerState;

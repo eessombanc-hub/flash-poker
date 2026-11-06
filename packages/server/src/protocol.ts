@@ -54,6 +54,8 @@ export interface PlayerPublic {
   id: string;
   nickname: string;
   avatar: string | null;
+  /** Joueur inscrit (compte) : peut être ajouté en favori. */
+  registered: boolean;
   connected: boolean;
   state: PlayerState;
   isHost: boolean;

@@ -21,7 +21,7 @@ describe('sécurité : jetons et identité', () => {
     for (const token of Object.values(env.tokens)) expect(dump).not.toContain(token); // seule l'empreinte est conservée
     expect(dump).toContain('tokenHash');
     const snap = env.m.snapshotRoom(env.code);
-    for (const pl of snap.players) expect(Object.keys(pl).sort()).toEqual(['assistanceApproved', 'avatar', 'id', 'lastSeenAt', 'nickname', 'state', 'tokenHash']);
+    for (const pl of snap.players) expect(Object.keys(pl).sort()).toEqual(['accountId', 'assistanceApproved', 'avatar', 'id', 'lastSeenAt', 'nickname', 'state', 'tokenHash']);
   });
 
   it('l\'identité vient du jeton, jamais du message : un client ne peut pas agir au nom d\'un autre', () => {

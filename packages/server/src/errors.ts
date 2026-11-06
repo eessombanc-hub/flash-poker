@@ -7,7 +7,11 @@ export type ServerErrorCode =
   | 'FORBIDDEN'
   | 'WRONG_STATE'
   | 'RATE_LIMITED'
-  | 'RULE';
+  | 'RULE'
+  | 'EMAIL_TAKEN'
+  | 'NICKNAME_RESERVED'
+  | 'NOT_FOUND'
+  | 'UNAVAILABLE';
 
 const STATUS: Record<ServerErrorCode, number> = {
   BAD_REQUEST: 400,
@@ -19,6 +23,10 @@ const STATUS: Record<ServerErrorCode, number> = {
   WRONG_STATE: 409,
   RULE: 422,
   RATE_LIMITED: 429,
+  EMAIL_TAKEN: 409,
+  NICKNAME_RESERVED: 409,
+  NOT_FOUND: 404,
+  UNAVAILABLE: 503,
 };
 
 export class ServerError extends Error {

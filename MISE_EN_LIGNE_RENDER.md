@@ -43,6 +43,24 @@ la dernière version, avec les corrections de la phase 8. Vérifiez sur la page 
   un disque qui conserve les parties.
 - **Puissance réduite** : largement suffisante pour quelques tables entre amis, pas pour un public ouvert.
 
+## Activer les e-mails des comptes joueurs
+
+Sans réglage, les comptes fonctionnent, mais aucun e-mail ne part : le lien « Mot de passe oublié ? » est remplacé par un message d’indisponibilité, et les favoris ne sont signalés que dans l’application.
+
+Pour activer les e-mails, il faut un service d’envoi (Brevo, Mailjet ou l’offre e-mail OVH, par exemple). Il vous donne cinq informations, à saisir dans Render, service **flash-poker**, onglet **Environment**, bouton **Add Environment Variable** :
+
+| Variable | Exemple | Rôle |
+|---|---|---|
+| `SMTP_HOST` | `smtp-relay.brevo.com` | Serveur d’envoi |
+| `SMTP_PORT` | `587` | Port (587 en général, 465 pour certains services) |
+| `SMTP_USER` | identifiant fourni par le service | Connexion |
+| `SMTP_PASS` | clé fournie par le service | Connexion, ne la communiquez à personne |
+| `MAIL_FROM` | `Flash Poker <no-reply@votre-domaine.fr>` | Expéditeur affiché |
+
+Enregistrez : Render redémarre le service. Les liens des e-mails pointent automatiquement vers l’adresse Render du jeu (variable `APP_URL` pour en imposer une autre, par exemple votre futur nom de domaine).
+
+**Rappel** : sur le plan gratuit, le disque est effacé à chaque mise à jour. Les comptes, l’historique et les favoris disparaissent donc à chaque redéploiement, jusqu’au passage sur le VPS OVH.
+
 ## Mises à jour
 
 À chaque nouvelle version envoyée sur GitHub (branche `main`), Render redéploie automatiquement

@@ -26,3 +26,14 @@ export type {
 } from '@poker/engine';
 
 export type PlayerId = string;
+export type {
+  AccountPrivate,
+  AccountPublic,
+  Bankroll,
+  FavoritePlayer,
+  FavoriteRound,
+  FinishedGame,
+  GameDetail,
+  GameSummary,
+  VariantStats,
+} from '@poker/server/src/accounts/types';

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useStore } from 'zustand';
+import type { AccountClient, AccountState } from './account';
 import { GameClient, type ClientState } from './client';
 
 const ClientContext = createContext<GameClient | null>(null);
@@ -34,4 +35,20 @@ export function useServerNow(intervalMs = 250): number {
 export function useSecondsLeft(deadlineAt: number | null): number | null {
   const now = useServerNow();
   return deadlineAt === null ? null : Math.max(0, (deadlineAt - now) / 1000);
+}
+
+// ---------- Compte joueur (facultatif : absent, l'application fonctionne en invité uniquement) ----------
+const AccountContext = createContext<AccountClient | null>(null);
+
+export function AccountProvider({ account, children }: { account: AccountClient | null; children: ReactNode }) {
+  return <AccountContext.Provider value={account}>{children}</AccountContext.Provider>;
+}
+export function useAccountClient(): AccountClient | null {
+  return useContext(AccountContext);
+}
+const NO_ACCOUNT: AccountState = { token: null, account: null, ready: true, passwordRecovery: false };
+const noStore = { getState: () => NO_ACCOUNT, getInitialState: () => NO_ACCOUNT, subscribe: () => () => undefined, setState: () => undefined };
+export function useAccount<T>(selector: (s: AccountState) => T): T {
+  const a = useAccountClient();
+  return useStore((a?.store ?? noStore) as AccountClient['store'], selector);
 }

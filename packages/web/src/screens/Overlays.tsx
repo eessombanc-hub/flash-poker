@@ -35,9 +35,13 @@ const NO_POINT_REASON: Record<string, string> = {
 };
 
 export function awardText(record: RoundRecord, view: RoomView): string {
+  return awardTextBy(record, (id) => nick(view, id));
+}
+/** Même texte, avec les pseudos fournis par l'appelant (parties archivées de « Mon espace »). */
+export function awardTextBy(record: RoundRecord, nameOf: (id: string) => string): string {
   const a = record.award;
-  if (a.kind === 'POINTS') return `${nick(view, a.winner)} remporte la manche (+${pointsLabel(a.points)})${a.tiebreak ? ' après un Hold’em de départage' : ''}`;
-  if (a.kind === 'INSTANT_VICTORY') return `${nick(view, a.winner)} désigne une quinte flush à la ligne ${a.line} : victoire immédiate`;
+  if (a.kind === 'POINTS') return `${nameOf(a.winner)} remporte la manche (+${pointsLabel(a.points)})${a.tiebreak ? ' après un Hold’em de départage' : ''}`;
+  if (a.kind === 'INSTANT_VICTORY') return `${nameOf(a.winner)} désigne une quinte flush à la ligne ${a.line} : victoire immédiate`;
   return `Aucun point : ${NO_POINT_REASON[a.reason] ?? a.reason}`;
 }
 
@@ -363,35 +367,58 @@ export function RoundsRecap({ history, view }: { history: readonly RoundRecord[]
         <span>{open ? 'Masquer' : 'Voir'} le résultat de chaque manche ({history.length})</span>
         <span aria-hidden="true">{open ? '▴' : '▾'}</span>
       </Button>
-      {open && (
-        <ol className="mt-3 space-y-2">
-          {history.map((r) => {
-            const winner = r.award.kind === 'POINTS' || r.award.kind === 'INSTANT_VICTORY' ? r.award.winner : null;
-            const combo = winningCombination(r);
-            const pts = r.award.kind === 'POINTS' ? r.award.points : null;
-            return (
-              <li key={r.roundNo} className="rounded-xl bg-ink-900/60 px-3 py-2.5 text-sm">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <span className="font-semibold text-ivory-50">
-                    Manche {r.roundNo} · <span className="text-gold-300">{variantName(r.variant)}</span>
-                  </span>
-                  {pts !== null && <Badge tone="gold">+{pointsLabel(pts)}</Badge>}
-                </div>
-                <p className="mt-0.5 text-ivory-200/90">
-                  {winner ? (
-                    <>
-                      <strong className="text-ivory-50">{nick(view, winner)}</strong>
-                      {combo ? ` — ${combo}` : ''}
-                    </>
-                  ) : (
-                    awardText(r, view)
-                  )}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
-      )}
+      {open && <RoundList history={history} nameOf={(id) => nick(view, id)} />}
     </section>
+  );
+}
+
+/**
+ * Liste des manches : vainqueur, combinaison gagnante, points. `star` (facultatif) ajoute un bouton
+ * « manche favorite » par manche (parties archivées de « Mon espace »).
+ */
+export function RoundList({ history, nameOf, star }: { history: readonly RoundRecord[]; nameOf: (id: string) => string; star?: { isOn: (roundNo: number) => boolean; toggle: (roundNo: number) => void } }) {
+  return (
+    <ol className="mt-3 space-y-2">
+      {history.map((r) => {
+        const winner = r.award.kind === 'POINTS' || r.award.kind === 'INSTANT_VICTORY' ? r.award.winner : null;
+        const combo = winningCombination(r);
+        const pts = r.award.kind === 'POINTS' ? r.award.points : null;
+        const on = star?.isOn(r.roundNo) ?? false;
+        return (
+          <li key={r.roundNo} className="rounded-xl bg-ink-900/60 px-3 py-2.5 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <span className="font-semibold text-ivory-50">
+                Manche {r.roundNo} · <span className="text-gold-300">{variantName(r.variant)}</span>
+              </span>
+              <span className="flex items-center gap-2">
+                {pts !== null && <Badge tone="gold">+{pointsLabel(pts)}</Badge>}
+                {star && (
+                  <button
+                    type="button"
+                    onClick={() => star.toggle(r.roundNo)}
+                    aria-pressed={on}
+                    aria-label={`Manche ${r.roundNo} favorite`}
+                    title={on ? 'Retirer des manches favorites' : 'Ajouter aux manches favorites'}
+                    className={`rounded-full px-2 py-0.5 text-lg leading-none transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${on ? 'text-gold-300' : 'text-ivory-300/50 hover:text-gold-300'}`}
+                  >
+                    {on ? '★' : '☆'}
+                  </button>
+                )}
+              </span>
+            </div>
+            <p className="mt-0.5 text-ivory-200/90">
+              {winner ? (
+                <>
+                  <strong className="text-ivory-50">{nameOf(winner)}</strong>
+                  {combo ? ` — ${combo}` : ''}
+                </>
+              ) : (
+                awardTextBy(r, nameOf)
+              )}
+            </p>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

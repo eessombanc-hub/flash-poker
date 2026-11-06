@@ -1,4 +1,8 @@
+import { dirname, join } from 'node:path';
 import { CryptoRng } from '@poker/engine';
+import { AccountDb } from './accounts/db';
+import { resolveMailer } from './accounts/mailer';
+import { AccountService } from './accounts/service';
 import { buildServer } from './http';
 import { RoomManager } from './roomManager';
 import { RealScheduler } from './scheduler';
@@ -29,7 +33,19 @@ if (store instanceof SqliteRoomStore) console.log(`Parties sauvegardées dans ${
 const phaseSeconds = Number(process.env.PHASE_SECONDS ?? 60);
 const testTimers = Number.isInteger(phaseSeconds) && phaseSeconds >= 15 && phaseSeconds <= 600 && phaseSeconds !== 60;
 if (testTimers) console.warn(`⚠ Minuteurs allongés à ${phaseSeconds} s (mode essai) : la règle est de 60 s.`);
-const manager = new RoomManager({ rng: new CryptoRng(), scheduler, store, ...(testTimers ? { timers: { durationMs: phaseSeconds * 1000, warningMs: 10_000 } } : {}) });
+// Comptes joueurs : fichier SQLite à côté de celui des parties (ACCOUNTS_DB_PATH pour le déplacer) ; en mémoire si STORE=memory.
+// E-mails (mot de passe oublié, favori connecté) : variables SMTP_* (voir accounts/mailer.ts) ; sans elles, rien ne part.
+const accountsPath = process.env.STORE === 'memory' ? ':memory:' : (process.env.ACCOUNTS_DB_PATH ?? join(dirname(process.env.DB_PATH ?? './data/flashpoker.db'), 'comptes.db'));
+const mailer = resolveMailer(process.env);
+const accounts = new AccountService(new AccountDb(accountsPath), mailer, { appUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL });
+console.log(mailer.enabled ? 'E-mails activés (SMTP)' : 'E-mails désactivés : SMTP non configuré (mot de passe oublié indisponible)');
+const manager = new RoomManager({
+  rng: new CryptoRng(),
+  scheduler,
+  store,
+  accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g) },
+  ...(testTimers ? { timers: { durationMs: phaseSeconds * 1000, warningMs: 10_000 } } : {}),
+});
 await manager.restoreFromStore();
 
 // WEB_DIST (ex. ../web/dist, défini sur Render) : ce même serveur sert aussi l'interface, même origine.
@@ -39,9 +55,12 @@ await manager.restoreFromStore();
 const httpMax = Number(process.env.HTTP_RATE_LIMIT ?? 30);
 const server = await buildServer({
   manager,
+  accounts,
   corsOrigin: process.env.CORS_ORIGIN,
   webDist: process.env.WEB_DIST,
-  ...(Number.isInteger(httpMax) && httpMax > 0 && httpMax !== 30 ? { httpRateLimit: { max: httpMax, windowMs: 60_000 } } : {}),
+  ...(Number.isInteger(httpMax) && httpMax > 0 && httpMax !== 30
+    ? { httpRateLimit: { max: httpMax, windowMs: 60_000 }, authRateLimit: { max: httpMax, windowMs: 60_000 } }
+    : {}),
 });
 setInterval(() => manager.sweep(), 60_000).unref();
 

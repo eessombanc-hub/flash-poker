@@ -184,5 +184,7 @@ turn entre les 3 lignes — voir « Reste à faire ».)*
    le front est hébergé ailleurs que le serveur.
 4. **Phase 8** : faite (voir [LIVRAISON.md](LIVRAISON.md)) — parties de bout en bout, charge, accessibilité automatisée.
    Reste : essai avec un vrai lecteur d'écran (NVDA, VoiceOver) et sur Safari / Firefox réels.
+6. **Comptes joueurs** : faits (voir [LIVRAISON.md](LIVRAISON.md), code dans `packages/server/src/accounts/`, base
+   `comptes.db` à côté de `DB_PATH`). Reste : choisir le service d'envoi d'e-mails (variables `SMTP_*`).
 5. **Plusieurs instances de serveur** : la persistance SQLite actuelle suppose un seul processus ; passer à PostgreSQL
    (même interface `RoomStore`) le jour où la charge exige de répartir les parties sur plusieurs serveurs.

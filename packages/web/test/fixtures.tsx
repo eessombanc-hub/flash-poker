@@ -16,6 +16,7 @@ export function players(n = 3, over: Partial<Record<string, Partial<PlayerPublic
     id,
     nickname: NAMES[id]!,
     avatar: null,
+    registered: false,
     connected: true,
     state: 'SEATED' as const,
     isHost: i === 0,
