@@ -11,10 +11,12 @@ export default defineConfig({
     // mise à jour du jeu à l'autre et ne retélécharge que le code de Flash Poker.
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom'],
-          animation: ['framer-motion'],
-          reseau: ['socket.io-client', 'zustand'],
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'react';
+          if (/node_modules\/(framer-motion|motion-dom|motion-utils)\//.test(id)) return 'animation';
+          if (/node_modules\/(socket\.io-client|engine\.io-client|socket\.io-parser|engine\.io-parser|zustand|@socket\.io)\//.test(id)) return 'reseau';
+          return undefined;
         },
       },
     },
