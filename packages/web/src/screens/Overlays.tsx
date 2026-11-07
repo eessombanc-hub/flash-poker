@@ -170,7 +170,8 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
           </li>
         ))}
       </ul>
-      <div className="mt-6 flex items-center justify-end gap-3">
+      {/* Téléphone : le bouton reste visible en bas de la fenêtre, même quand le contenu défile. */}
+      <div className={`flex items-center justify-end gap-3 sticky -bottom-5 z-10 -mx-5 -mb-5 mt-6 border-t border-ivory-100/10 bg-ink-800 px-5 pb-8 pt-3 sm:static sm:mx-0 sm:mb-0 sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0`}>
         {left !== null && !interacted && <span className="text-xs text-ivory-300/60">Fermeture dans {left} s</span>}
         <Button onClick={onClose}>{final ? 'Voir le résultat final' : 'Continuer'}</Button>
       </div>
@@ -206,6 +207,19 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
             <span className="text-sm text-ivory-200/80">{s.position} · {pointsLabel(s.score)}</span>
           </li>
         ))}
+        {/* Les autres joueurs ne sont pas classés par la règle (seuls le vainqueur et son partenaire d'assurance
+            le sont) : ils restent affichés, sans rang, avec leurs points. */}
+        {game.players
+          .filter((p) => !o.standings.some((st) => st.player === p.player))
+          .sort((a, b) => b.score - a.score)
+          .map((p) => (
+            <li key={p.player} className="flex items-center gap-3 rounded-xl bg-ink-900/40 px-3 py-2.5">
+              <span className="w-6 text-center font-display text-xl text-ivory-300/50" aria-label="non classé">–</span>
+              <Avatar nickname={nick(view, p.player)} avatar={view.players.find((x) => x.id === p.player)?.avatar} size={34} dim={p.excluded} />
+              <span className="flex-1 font-medium text-ivory-100">{nick(view, p.player)}</span>
+              <span className="text-sm text-ivory-200/70">{p.position} · {pointsLabel(p.score)}</span>
+            </li>
+          ))}
       </ol>
       {o.insurance && insured && (
         <p className="mt-2 text-xs text-ivory-300/80">
@@ -213,7 +227,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
         </p>
       )}
 
-      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Répartition de la cagnotte</h3>
+      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Répartition de la cagnotte, en jetons</h3>
       <table className="w-full text-sm">
         <caption className="sr-only">Mise, gain, bilan et jetons en fin de partie de chaque joueur (cave de départ : {formatChips(STARTING_CHIPS)})</caption>
         <thead>
@@ -233,8 +247,8 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
               <tr key={p.player} className="border-t border-ivory-100/10">
                 <td className="py-1.5 text-ivory-50">{nick(view, p.player)}</td>
                 <td className="hidden py-1.5 text-right tabular-nums text-ivory-200/80 sm:table-cell">{formatChips(game.stakeChips)}</td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-50">{formatChips(payout)}</td>
-                <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}>{formatSignedChips(net)}</td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-50"><span className="sm:hidden">{payout.toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatChips(payout)}</span></td>
+                <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}><span className="sm:hidden">{net > 0 ? '+' : net < 0 ? '−' : ''}{Math.abs(net).toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatSignedChips(net)}</span></td>
                 <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net).toLocaleString('fr-FR')}</td>
               </tr>
             );
@@ -244,7 +258,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
           <tr className="border-t border-gold-500/40 text-ivory-50">
             <td className="py-1.5 font-semibold">Cagnotte</td>
             <td className="hidden sm:table-cell" />
-            <td className="py-1.5 text-right font-semibold tabular-nums">{formatChips(o.settlement.potChips)}</td>
+            <td className="py-1.5 text-right font-semibold tabular-nums"><span className="sm:hidden">{o.settlement.potChips.toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatChips(o.settlement.potChips)}</span></td>
             <td />
             <td />
           </tr>
@@ -252,7 +266,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
       </table>
       <RoundsRecap history={game.history} view={view} />
 
-      <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <div className={`flex flex-col gap-2 sm:flex-row sm:justify-end sticky -bottom-5 z-10 -mx-5 -mb-5 mt-6 border-t border-ivory-100/10 bg-ink-800 px-5 pb-8 pt-3 sm:static sm:mx-0 sm:mb-0 sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0`}>
         <Button variant="secondary" onClick={onClose}>
           Revoir la table
         </Button>
@@ -342,7 +356,7 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
   return (
     <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/50 bg-gradient-to-r from-gold-500/20 to-transparent px-3 py-2.5" data-testid="vainqueur-manche">
       <TrophyIcon size={40} />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[10rem] flex-1">
         <p className="text-xs uppercase tracking-widest text-gold-300">Vainqueur de la manche</p>
         <p className="font-display text-xl text-ivory-50">
           {nick(view, winner)} <span className="text-gold-300">— {combo}</span>

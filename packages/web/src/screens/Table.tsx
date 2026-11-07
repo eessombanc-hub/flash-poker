@@ -1,5 +1,5 @@
-import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Board } from '../components/Board';
 import { Seat } from '../components/Seat';
 import { Badge, Button, Modal, Panel } from '../components/ui';
@@ -28,10 +28,13 @@ import { RulesModal } from './Home';
 import { collectRoundEvents, GameOverModal, RoundResultModal, ScoreModal } from './Overlays';
 
 // ---------- Annonces (« Variante choisie : … », « Nouvel ordre : … ») ----------
-function Announcer() {
+type CurrentAnnouncement = (Announcement & { id: number }) | null;
+
+/** Dernière annonce publique de la partie, visible quelques secondes. */
+function useAnnouncement(): CurrentAnnouncement {
   const feed = useGame((s) => s.feed);
   const view = useGame((s) => s.view)!;
-  const [current, setCurrent] = useState<(Announcement & { id: number }) | null>(null);
+  const [current, setCurrent] = useState<CurrentAnnouncement>(null);
   const seen = useRef(feed.at(-1)?.id ?? 0);
   useEffect(() => {
     const fresh = feed.filter((f) => f.id > seen.current);
@@ -48,41 +51,57 @@ function Announcer() {
     const t = setTimeout(() => setCurrent(null), 4200);
     return () => clearTimeout(t);
   }, [current]);
-  const tone = current?.tone === 'warning' ? 'border-amber-400/50 text-amber-100' : current?.tone === 'success' ? 'border-jade-400/40 text-jade-100' : 'border-gold-500/40 text-ivory-50';
-  return (
-    // En surimpression sur la barre du haut, quelques secondes : une annonce ne décale ni ne cache jamais les cartes.
-    <div className="pointer-events-none absolute inset-x-3 top-1.5 z-30 sm:top-2" aria-live="polite" role="status">
-      <AnimatePresence mode="wait">
-        {current && (
-          <motion.p key={current.id} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className={`mx-auto w-fit max-w-full rounded-full border bg-ink-800/95 px-4 py-1.5 text-center text-xs font-medium shadow-panel sm:text-sm ${tone}`}>
-            {current.text}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+  return current;
 }
 
+/** Annonce du moment, partagée entre la barre d'état (ordinateur) et le bandeau du tapis (téléphone). */
+const NewsContext = createContext<CurrentAnnouncement>(null);
+
+const ANNOUNCE_TONE = { warning: 'text-amber-100', success: 'text-jade-100', info: 'text-ivory-50', error: 'text-ruby-100' } as const;
+
 // ---------- Barre d'état ----------
+/**
+ * Ordinateur : l'annonce du moment s'affiche DANS la barre, à la place des pastilles. Téléphone : elle remplace le
+ * bandeau de la variante sur le tapis (voir `TableCenter`). Elle ne recouvre jamais le menu ni les cartes.
+ */
 function TopBar({ onScores, onRules, onOptions }: { onScores: () => void; onRules: () => void; onOptions: () => void }) {
   const { view, game, round } = useTable();
+  const news = useContext(NewsContext);
+  const newsText = news && (
+    <motion.span key={news.id} initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className={`block font-medium ${ANNOUNCE_TONE[news.tone]}`}>
+      {news.text}
+    </motion.span>
+  );
   return (
     <header className="flex shrink-0 items-center justify-between gap-2 rounded-2xl border border-ivory-100/10 bg-ink-800/90 px-3 py-1.5 sm:flex-wrap sm:px-4 sm:py-2">
-      <div className="min-w-0">
-        <p className="truncate font-display text-base text-ivory-50 sm:text-lg">{view.name}</p>
-        <p className="truncate font-mono text-[11px] tracking-widest text-gold-400 sm:text-xs">
-          {view.code}
-          {/* Téléphone : l'essentiel des pastilles en une ligne, sous le code. */}
-          <span className="font-sans tracking-normal text-ivory-200/80 sm:hidden">
-            {' '}· M{game.roundNo} · {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''} · {formatChips(game.potChips)}
-          </span>
-        </p>
+      <span className="sr-only" aria-live="polite" role="status">
+        {news?.text ?? ''}
+      </span>
+      <div className="flex min-w-0 flex-1 items-center">
+        <div className="min-w-0">
+          <p className="truncate font-display text-base text-ivory-50 sm:text-lg">{view.name}</p>
+          <p className="flex min-w-0 font-mono text-[11px] tracking-widest text-gold-400 sm:text-xs">
+            <span className="shrink-0">{view.code}</span>
+            {/* Téléphone : l'essentiel des pastilles en une ligne, sous le code (le code, lui, n'est jamais coupé). */}
+            <span className="truncate font-sans tracking-normal text-ivory-200/80 sm:hidden">
+              {' '}· M{game.roundNo} · {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''} · {formatChips(game.potChips)}
+            </span>
+          </p>
+        </div>
       </div>
-      <div className="hidden flex-wrap items-center gap-1.5 sm:flex">
-        <Badge tone="neutral">Manche {game.roundNo}</Badge>
-        {round && <Badge tone="gold">{variantName(round.variant)}</Badge>}
-        <Badge tone="neutral">Objectif {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''}</Badge>
-        <Badge tone="green">Cagnotte {formatChips(game.potChips)}</Badge>
+      <div className="hidden min-w-0 flex-wrap items-center justify-center gap-1.5 sm:flex">
+        {news ? (
+          <p className="rounded-full border border-gold-500/40 bg-ink-900/80 px-4 py-1 text-sm" aria-hidden="true">
+            {newsText}
+          </p>
+        ) : (
+          <>
+            <Badge tone="neutral">Manche {game.roundNo}</Badge>
+            {round && <Badge tone="gold">{variantName(round.variant)}</Badge>}
+            <Badge tone="neutral">Objectif {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''}</Badge>
+            <Badge tone="green">Cagnotte {formatChips(game.potChips)}</Badge>
+          </>
+        )}
       </div>
       <nav className="flex shrink-0 gap-0 sm:gap-1" aria-label="Menu de la table">
         <Button variant="ghost" className="min-h-[40px] px-1.5 text-xs sm:px-3 sm:text-sm" onClick={onScores}>
@@ -140,17 +159,28 @@ function useSeatProps() {
 
 function TableCenter() {
   const { game, round } = useTable();
+  const news = useContext(NewsContext);
+  // Téléphone : l'annonce du moment prend un instant la place du bandeau de la variante (ordinateur : barre d'état).
+  const phoneNews = news && (
+    <motion.p key={news.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`rounded-full bg-ink-950/70 px-3 py-0.5 text-[11px] font-medium leading-snug sm:hidden ${ANNOUNCE_TONE[news.tone]}`} aria-hidden="true">
+      {news.text}
+    </motion.p>
+  );
   return (
     <div className="flex flex-col items-center gap-1 text-center sm:gap-1.5">
       {round ? (
         <>
           <Board round={round} size="board" />
-          <p className="rounded-full bg-ink-950/50 px-3 py-0.5 text-[10px] uppercase tracking-[0.2em] text-gold-300 sm:text-xs">
+          {phoneNews}
+          <p className={`rounded-full bg-ink-950/50 px-3 py-0.5 text-[10px] uppercase tracking-[0.2em] text-gold-300 sm:block sm:text-xs ${news ? 'hidden' : ''}`}>
             {variantName(round.variant)} · {phaseLabel(round.variant, round.phase)}
           </p>
         </>
       ) : (
-        <p className="font-display text-base text-ivory-50 sm:text-2xl">{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo} — choix de la variante`}</p>
+        <>
+          {phoneNews}
+          <p className={`font-display text-base text-ivory-50 sm:block sm:text-2xl ${news ? 'hidden' : ''}`}>{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo} — choix de la variante`}</p>
+        </>
       )}
       <p className="hidden text-xs text-ivory-100/85 sm:block sm:text-sm">
         Cagnotte <strong className="text-gold-300">{formatChips(game.potChips)}</strong>
@@ -295,11 +325,12 @@ export function Table() {
 
   const events = useMemo(() => (result ? collectRoundEvents(feed, result.roundNo) : []), [feed, result]);
   const over = game.phase === 'GAME_OVER';
+  const news = useAnnouncement();
 
   return (
+    <NewsContext.Provider value={news}>
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-2 py-1.5 sm:px-3 sm:py-2 lg:max-w-[100rem]">
       <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} />
-      <Announcer />
       {/* Téléphone et tablette : table au-dessus, actions en dessous. Écran large : côte à côte, pour que la table,
           votre main et les boutons tiennent ensemble dans la hauteur de l'écran, sans défiler. */}
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 lg:flex-row lg:gap-4">
@@ -347,6 +378,7 @@ export function Table() {
         {game.phase === 'VARIANT_SELECTION' ? `${nick(view, game.chooser)} choisit la variante` : ''}
       </span>
     </main>
+    </NewsContext.Provider>
   );
 }
 

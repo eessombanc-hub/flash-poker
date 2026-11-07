@@ -70,7 +70,7 @@ describe('comptes joueurs dans l’interface', () => {
     const user = userEvent.setup();
     renderApp(p);
     await user.click(await screen.findByRole('button', { name: /Se connecter/ }));
-    await user.click(screen.getByRole('button', { name: 'Créer un compte' }));
+    await user.click(await screen.findByRole('button', { name: 'Créer un compte' }));
     await user.type(screen.getByLabelText('Pseudo'), 'Emeric');
     await user.type(screen.getByLabelText('Adresse e-mail'), 'emeric@exemple.fr');
     await user.type(screen.getByLabelText('Mot de passe'), 'motdepasse1');
@@ -107,7 +107,7 @@ describe('comptes joueurs dans l’interface', () => {
 
     // Onglet « Inviter des amis » de Zoé : son propre lien
     await user.click(screen.getByRole('button', { name: /Zoe/ }));
-    await user.click(screen.getByRole('tab', { name: /Inviter des amis/ }));
+    await user.click(await screen.findByRole('tab', { name: /Inviter des amis/ }));
     const input = (await screen.findByRole('textbox', { name: 'Lien d’invitation' })) as HTMLInputElement;
     expect(input.value).toMatch(/\/\?invitation=[A-Za-z0-9_-]+$/);
     expect(screen.getByRole('button', { name: 'Envoyer l’invitation' })).toBeTruthy(); // e-mail activé sur ce serveur de test
@@ -151,7 +151,7 @@ describe('comptes joueurs dans l’interface', () => {
     const user = userEvent.setup();
     renderApp(ana);
     await user.click(await screen.findByRole('button', { name: /Ana/ }));
-    await user.click(screen.getByRole('tab', { name: /Historique/ }));
+    await user.click(await screen.findByRole('tab', { name: /Historique/ }));
     const row = await screen.findByRole('button', { name: /Mardi soir/ });
     expect(row.textContent?.replace(/[\u202f\u00a0]/g, ' ')).toContain(won ? '+20 jetons' : '−20 jetons');
     await user.click(row);

@@ -28,7 +28,7 @@ export function ClosedPanel() {
     >
       {canAct ? (
         <>
-          <SelectableHand label="Votre main" cards={hand} selected={draft} max={3} disabled={validated} onToggle={(c) => toggle(c, 3)} />
+          <SelectableHand label="Votre main" cards={hand} selected={draft} max={3} disabled={validated} onToggle={(c) => toggle(c, 3)} fan />
           <AssistBadge active={game.assistance} category={assistCategory(round)} />
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className="text-sm text-ivory-200/80" aria-live="polite">

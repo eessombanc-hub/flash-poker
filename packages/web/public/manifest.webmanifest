@@ -1,0 +1,17 @@
+{
+  "name": "Flash Poker",
+  "short_name": "Flash Poker",
+  "description": "Le poker entre amis, en un éclair : huit variantes, de 2 à 6 joueurs, en temps réel.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#081a3d",
+  "theme_color": "#081a3d",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

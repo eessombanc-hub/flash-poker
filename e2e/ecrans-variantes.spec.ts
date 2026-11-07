@@ -21,9 +21,14 @@ async function hiddenOf(page: Page, selector: string): Promise<{ total: number; 
       const r = el.getBoundingClientRect();
       const inside = r.top >= -1 && r.left >= -1 && r.bottom <= innerHeight + 1 && r.right <= innerWidth + 1 && r.height > 0;
       const probes = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 3, r.top + 3], [r.right - 3, r.bottom - 3]];
-      const seen = inside && probes.every(([x, y]) => {
+      // Main en éventail (téléphone) : chaque carte peut recouvrir le bas droit de la précédente ; son coin (valeur
+      // et couleur) et son centre doivent rester visibles, et rien d'autre qu'une carte voisine ne doit la couvrir.
+      const group = el.closest('[aria-label="Votre main"]');
+      const seen = inside && probes.every(([x, y], i) => {
         const hit = document.elementFromPoint(x!, y!);
-        return !!hit && (el === hit || el.contains(hit));
+        if (!hit) return false;
+        if (el === hit || el.contains(hit)) return true;
+        return i === 2 && !!group && group.contains(hit);
       });
       if (!seen) hidden++;
     }
@@ -35,6 +40,9 @@ for (const screen of SCREENS) {
   for (const [label, pattern] of VARIANTS) {
     for (const players of [2, 5]) {
       test(`${label}, ${players} joueurs, ${screen.name} : cartes et minuteur visibles sans défiler`, async ({ browser }, info) => {
+        // 5 ou 6 navigateurs à la fois : sous la charge de toute la série, ce test peut dépasser 3 minutes sans
+        // défaut du jeu. Il dispose donc d'un délai triple.
+        if (players >= 5) test.slow();
         const ps = [];
         for (let i = 0; i < players; i++) {
           const page = await newPage(browser, screen.use);

@@ -82,3 +82,40 @@ describe('service des fichiers statiques (webDist)', () => {
     expect(await res.json()).toEqual({ ok: true });
   });
 });
+
+describe('aperçu des liens partagés (balises Open Graph)', () => {
+  const TEMPLATE =
+    '<!doctype html><title>Flash Poker</title><meta property="og:title" content="Flash Poker" /><meta property="og:description" content="Huit variantes" /><meta property="og:image" content="__APP_URL__/og-image.jpg" />';
+
+  async function startWith(publicUrl?: string) {
+    const dir = mkdtempSync(join(tmpdir(), 'flashpoker-og-'));
+    writeFileSync(join(dir, 'index.html'), TEMPLATE);
+    cleanup.push(() => rmSync(dir, { recursive: true, force: true }));
+    const manager = new RoomManager({ rng: new SeededRng(7), scheduler: new ManualScheduler() });
+    const server = await buildServer({ manager, onError: () => undefined, webDist: dir, publicUrl });
+    await server.app.listen({ port: 0, host: '127.0.0.1' });
+    cleanup.push(() => server.close());
+    return `http://127.0.0.1:${(server.app.server.address() as { port: number }).port}`;
+  }
+
+  it('image d’aperçu en adresse complète ; page d’accueil jamais mise en cache', async () => {
+    const url = await startWith('https://jeu.example/');
+    const res = await fetch(`${url}/`);
+    expect(res.headers.get('cache-control')).toBe('no-cache');
+    expect(await res.text()).toContain('content="https://jeu.example/og-image.jpg"');
+  });
+
+  it('lien de partie : titre « Une table vous attend », sans le nom de la salle', async () => {
+    const url = await startWith('https://jeu.example');
+    const html = await (await fetch(`${url}/?code=poker-7k2m`)).text();
+    expect(html).toContain('content="Une table de Flash Poker vous attend"');
+    expect(html).toContain('Partie POKER-7K2M');
+  });
+
+  it('paramètres invalides ou piégés : aperçu par défaut, rien d’injecté', async () => {
+    const url = await startWith('https://jeu.example');
+    const html = await (await fetch(`${url}/?code=${encodeURIComponent('"><script>x</script>')}&invitation=${encodeURIComponent('<b>')}`)).text();
+    expect(html).not.toContain('<script>x');
+    expect(html).toContain('content="Flash Poker"');
+  });
+});

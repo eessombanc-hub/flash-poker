@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Avatar, Button, Panel, ToastHost } from './components/ui';
 import { ProfileIcon } from './components/Icons3D';
-import { formatChips } from './lib/format';
 import { useAccount, useAccountClient, useClient, useGame } from './lib/context';
 import { SettingsProvider, useSettings } from './lib/settings';
 import { Sound } from './lib/sound';
-import { AuthScreen, type AuthMode } from './screens/Auth';
+import type { AuthMode } from './screens/Auth';
 import { CreateRoom, JoinRoom } from './screens/Forms';
-import { Space } from './screens/Space';
 import { Home } from './screens/Home';
 import { Lobby } from './screens/Lobby';
 import { Table } from './screens/Table';
+
+// Écrans de compte chargés à la demande : la première page (accueil, table) s'affiche plus vite sur téléphone.
+const loadAuth = () => import('./screens/Auth');
+const loadSpace = () => import('./screens/Space');
+const AuthScreen = lazy(() => loadAuth().then((m) => ({ default: m.AuthScreen })));
+const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 
 type Screen = 'home' | 'create' | 'join' | 'space' | { auth: AuthMode };
 
@@ -135,6 +139,11 @@ export function App() {
     client.resume(); // reprise automatique après un rechargement (jeton conservé)
     return () => client.dispose();
   }, [client]);
+  useEffect(() => {
+    // Écrans de compte préchargés en tâche de fond, une fois l'accueil affiché : ils s'ouvrent ensuite sans attente.
+    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace()]).catch(() => undefined), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   let content;
   if (session) {
@@ -173,7 +182,7 @@ export function App() {
     <SettingsProvider>
       <SoundBridge />
       <ConnectionBanner />
-      {content}
+      <Suspense fallback={<p className="p-8 text-center text-sm text-ivory-300/70" role="status">Chargement…</p>}>{content}</Suspense>
       <ToastHost toasts={toasts} onDismiss={client.dismissToast} />
     </SettingsProvider>
   );

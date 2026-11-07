@@ -1,5 +1,5 @@
 import fastifyStatic from '@fastify/static';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { Server as IOServer, type Socket } from 'socket.io';
@@ -9,6 +9,7 @@ import { RateLimiter } from './rateLimiter';
 import { optionalAccount, registerAccountRoutes, registerPresence } from './accounts/routes';
 import type { AccountService } from './accounts/service';
 import type { RoomManager } from './roomManager';
+import { renderIndex } from './sharePreview';
 
 export interface ServerOptions {
   manager: RoomManager;
@@ -29,6 +30,8 @@ export interface ServerOptions {
   webDist?: string;
   /** Comptes joueurs (facultatif) : connexion, espace personnel, favoris, présence. */
   accounts?: AccountService;
+  /** Adresse publique du jeu (APP_URL ou celle fournie par Render), pour l'aperçu des liens partagés. */
+  publicUrl?: string;
   /** Inscription / connexion / mot de passe oublié : tentatives par IP. */
   authRateLimit?: { max: number; windowMs: number };
   onError?: (err: unknown) => void;
@@ -52,7 +55,7 @@ export class RealtimeManager {
   private sockets = new Map<string, Set<Socket>>();
 
   constructor(
-    private readonly io: IOServer,
+    io: IOServer,
     private readonly manager: RoomManager,
     private readonly opts: ServerOptions,
   ) {
@@ -195,12 +198,29 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     // toute requête GET qui ne correspond ni à l'API ni à un fichier existant.
     // `@fastify/static` exige un chemin absolu : `webDist` peut être relatif (ex. `../web/dist` en variable
     // d'environnement), donc résolu ici plutôt que de reporter la contrainte sur l'appelant.
-    await app.register(fastifyStatic, { root: resolve(opts.webDist), wildcard: false, cacheControl: true, maxAge: '1y', immutable: true });
+    // `index: false` : la page d'accueil n'est jamais servie telle quelle, elle passe par `renderIndex` (aperçu
+    // des liens partagés) ; ses fichiers voisins (images, icônes, manifeste) restent servis directement.
+    const root = resolve(opts.webDist);
+    await app.register(fastifyStatic, { root, index: false, wildcard: false, cacheControl: true, maxAge: '1y', immutable: true });
+    const template = existsSync(resolve(root, 'index.html')) ? readFileSync(resolve(root, 'index.html'), 'utf8') : '';
     app.setNotFoundHandler((req, reply) => {
       if (req.method !== 'GET' || isApiPath(req.url)) {
         return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Introuvable' } });
       }
-      return reply.sendFile('index.html', { cacheControl: false, maxAge: 0 });
+      const proto = String(req.headers['x-forwarded-proto'] ?? req.protocol).split(',')[0]!.trim();
+      const baseUrl = (opts.publicUrl ?? `${proto}://${req.headers.host ?? 'localhost'}`).replace(/\/+$/, '');
+      const html = renderIndex(template, {
+        baseUrl,
+        query: req.query as Record<string, string | undefined>,
+        inviterOf: (code) => {
+          try {
+            return opts.accounts?.inviteInfo(code).inviter.nickname ?? null;
+          } catch {
+            return null;
+          }
+        },
+      });
+      return reply.header('cache-control', 'no-cache').type('text/html; charset=utf-8').send(html);
     });
   } else {
     app.setNotFoundHandler((_req, reply) => reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Introuvable' } }));

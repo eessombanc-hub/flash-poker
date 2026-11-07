@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#15336e"/><stop offset="1" stop-color="#081a3d"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e6cf9c"/><stop offset="0.55" stop-color="#c9a25a"/><stop offset="1" stop-color="#846531"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf7"/><stop offset="1" stop-color="#ece4d2"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g transform="translate(256 286)">
+    <g transform="rotate(-16) translate(-136 -140)">
+      <rect width="168" height="236" rx="20" fill="url(#card)" stroke="#c9a25a" stroke-width="6"/>
+      <path d="M84 62 C124 98 132 124 112 136 C100 143 90 136 87 128 C87 141 91 150 100 157 L68 157 C77 150 81 141 81 128 C78 136 68 143 56 136 C36 124 44 98 84 62 Z" fill="#14213d"/>
+    </g>
+    <g transform="rotate(14) translate(-28 -150)">
+      <rect width="168" height="236" rx="20" fill="url(#card)" stroke="#c9a25a" stroke-width="6"/>
+      <path d="M84 150 C40 120 36 92 54 79 C69 69 84 81 84 92 C84 81 99 69 114 79 C132 92 128 120 84 150 Z" fill="#b3202a"/>
+    </g>
+    <path transform="translate(118 64) scale(0.62)" d="M18 -168 L-46 -16 L4 -16 L-22 112 L72 -60 L20 -60 L46 -168 Z" fill="url(#gold)" stroke="#081a3d" stroke-width="10" stroke-linejoin="round"/>
+  </g>
+</svg>

@@ -1,3 +1,29 @@
+# Flash Poker : corrections après le test du 7 novembre 2026
+
+## Ergonomie
+
+- **Annonces** (« Variante choisie… ») : sur ordinateur, elles s'affichent dans la barre du haut, à la place des pastilles. Sur téléphone, elles remplacent un instant le bandeau de la variante sur le tapis. Elles ne masquent plus ni le nom de la table ni les boutons Scores, Règles et Options.
+- **Classement final** : tous les joueurs apparaissent. Seul le vainqueur (et son partenaire d'assurance) porte un rang, comme le prévoit la règle ; les autres figurent sans rang, avec leurs points.
+- **Poker fermé sur téléphone** : la main s'affiche en éventail, avec des cartes environ 25 % plus grandes, sur une seule ligne dès 360 pixels de large.
+- **Fenêtres de résultat sur téléphone** : le bouton « Voir le résultat final », « Continuer » ou « Retour à l'accueil » reste fixé en bas, même quand le contenu défile. Le bandeau du vainqueur ne se compresse plus.
+- **Tableau de fin de partie sur téléphone** : nombres seuls (le titre précise « en jetons ») et colonne Mise masquée.
+- **Code de partie** : il n'est plus jamais coupé dans la barre du haut.
+
+## Partage et installation
+
+- **Aperçu des liens** : un lien envoyé par WhatsApp, SMS ou sur un réseau social affiche une image, un titre et une description. Pour un lien d'invitation : « [Pseudo] vous invite sur Flash Poker ». Pour un lien de partie : « Une table de Flash Poker vous attend », sans révéler le nom d'une salle privée. L'adresse publique est lue dans `APP_URL`, sinon dans l'adresse fournie automatiquement par Render.
+- **Installation sur téléphone** : icône, nom et couleurs pour « Ajouter à l'écran d'accueil » (iPhone et Android) ; nouvelle icône du site.
+- **Couleur de la barre du navigateur** : bleu saphir, assorti au jeu.
+
+## Technique
+
+- **Sécurité** : mise à jour de `@fastify/static` (10.1.10), `fastify` (5.12.8), `nodemailer` (10.3.1) et `zod` (4.6.7). L'audit des dépendances ne signale plus aucune faille.
+- **Chargement** : les bibliothèques sont séparées du code du jeu, ce qui permet au navigateur de les garder en cache d'une mise à jour à l'autre. Les écrans de compte se chargent à la demande, puis sont préchargés en arrière-plan. Le premier chargement passe de 170 à 163 Ko compressés ; le gain principal est sur les visites suivantes.
+- **Nettoyage** : code inutilisé supprimé.
+- **Tests de bout en bout** : les tests à 5 ou 6 navigateurs simultanés disposent d'un délai triple, pour ne plus échouer par simple surcharge de la machine de test.
+
+---
+
 # Flash Poker : jetons, cave de 1 000 par partie
 
 ## Règles en vigueur

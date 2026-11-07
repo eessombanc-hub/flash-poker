@@ -25,7 +25,7 @@ export const passwordChangeSchema = z.object({ current: z.string().min(1).max(12
 export const forgotSchema = z.object({ email });
 export const resetSchema = z.object({ token: z.string().min(20).max(100), password });
 
-function parse<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, input: unknown): T {
+function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
   const r = schema.safeParse(input);
   if (!r.success) throw new ServerError('BAD_REQUEST', r.error.issues[0]?.message ?? 'Requête invalide');
   return r.data;

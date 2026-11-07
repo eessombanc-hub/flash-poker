@@ -56,6 +56,7 @@ const httpMax = Number(process.env.HTTP_RATE_LIMIT ?? 30);
 const server = await buildServer({
   manager,
   accounts,
+  publicUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL,
   corsOrigin: process.env.CORS_ORIGIN,
   webDist: process.env.WEB_DIST,
   ...(Number.isInteger(httpMax) && httpMax > 0 && httpMax !== 30

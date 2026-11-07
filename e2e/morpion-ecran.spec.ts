@@ -38,6 +38,9 @@ async function fullyVisible(page: Page, selector: string, text?: string): Promis
 for (const screen of SCREENS) {
   for (const players of [2, 6]) {
     test(`Morpion, ${players} joueurs, ${screen.name} : tout est visible sans défiler`, async ({ browser }, info) => {
+      // 5 ou 6 navigateurs à la fois : sous la charge de toute la série, ce test peut dépasser 3 minutes sans
+      // défaut du jeu. Il dispose donc d'un délai triple.
+      if (players >= 5) test.slow();
       const ps = [];
       for (let i = 0; i < players; i++) {
         const page = await newPage(browser, screen.use);

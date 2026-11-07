@@ -51,20 +51,26 @@ interface HandProps {
   /** Cartes atténuées (main couchée). */
   dimmed?: boolean;
   label: string;
+  /**
+   * Téléphone : cartes plus grandes, légèrement superposées en éventail (le coin de chaque carte reste visible).
+   * Réservé aux mains de 5 cartes au plus, pour qu'elles tiennent sur une ligne dès 360 px de large.
+   */
+  fan?: boolean;
 }
 
 /** Ma main : cartes cliquables, jusqu'à `max` sélectionnées. */
-export function SelectableHand({ cards, selected, max, onToggle, disabled = false, size = 'md', dimmed = false, label }: HandProps) {
+export function SelectableHand({ cards, selected, max, onToggle, disabled = false, size = 'md', dimmed = false, label, fan = false }: HandProps) {
   const { fourColor } = useSettings();
+  const spread = fan && cards.length <= 5;
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap items-end justify-center gap-1.5 pt-3.5 sm:gap-2.5">
+    <div role="group" aria-label={label} className={`flex items-end justify-center pt-3.5 ${spread ? 'flex-nowrap -space-x-4 sm:flex-wrap sm:gap-2.5 sm:space-x-0' : 'flex-wrap gap-1.5 sm:gap-2.5'}`}>
       {cards.map((code, i) => {
         const isSel = selected.includes(code);
         return (
           <PlayingCard
             key={code}
             code={code}
-            size={fitted(size, cards.length)}
+            size={spread ? 'fan' : fitted(size, cards.length)}
             fourColor={fourColor}
             selected={isSel}
             dimmed={dimmed}
