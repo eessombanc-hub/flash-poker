@@ -1,7 +1,7 @@
 import { LockIcon } from '../components/Icons3D';
 import { useState } from 'react';
 import { useClient, useGame } from '../lib/context';
-import { formatChips } from '../lib/format';
+import { formatChips, STARTING_CHIPS } from '../lib/format';
 import { Avatar, Badge, Button, Eyebrow, Panel, Title } from '../components/ui';
 
 export function Lobby() {
@@ -79,7 +79,7 @@ export function Lobby() {
           ))}
         </dl>
         <p className="mt-3 text-center text-sm text-ivory-200/80">
-          Cagnotte actuelle : <strong className="text-gold-300">{formatChips(view.config.potChips)}</strong>
+          Chaque joueur reçoit {formatChips(STARTING_CHIPS)} au début de la partie · Cagnotte actuelle : <strong className="text-gold-300">{formatChips(view.config.potChips)}</strong>
         </p>
 
         {view.config.assistance ? (

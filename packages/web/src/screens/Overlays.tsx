@@ -5,7 +5,7 @@ import { Confetti } from '../components/Confetti';
 import { TrophyIcon } from '../components/Icons3D';
 import { Avatar, Badge, Button, Eyebrow, Modal, ScorePips } from '../components/ui';
 import type { FeedItem } from '../lib/client';
-import { deNom, formatChips, formatSignedChips, pointsLabel } from '../lib/format';
+import { deNom, formatChips, formatSignedChips, pointsLabel, STARTING_CHIPS } from '../lib/format';
 import { categoryLabel, INSURANCE_LABELS, variantName, VICTORY_LABELS, winningCards, winningCombination } from '../lib/labels';
 import { nick } from '../lib/selectors';
 import { useSettings } from '../lib/settings';
@@ -213,15 +213,16 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
         </p>
       )}
 
-      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Répartition de la cagnotte (virtuelle)</h3>
+      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Répartition de la cagnotte</h3>
       <table className="w-full text-sm">
-        <caption className="sr-only">Mise, gain et solde de chaque joueur</caption>
+        <caption className="sr-only">Mise, gain, bilan et jetons en fin de partie de chaque joueur (cave de départ : {formatChips(STARTING_CHIPS)})</caption>
         <thead>
           <tr className="text-left text-xs uppercase tracking-wider text-ivory-300/70">
             <th className="py-1 font-medium">Joueur</th>
-            <th className="py-1 text-right font-medium">Mise</th>
+            <th className="hidden py-1 text-right font-medium sm:table-cell">Mise</th>
             <th className="py-1 text-right font-medium">Reçoit</th>
-            <th className="py-1 text-right font-medium">Solde</th>
+            <th className="py-1 text-right font-medium">Bilan</th>
+            <th className="py-1 text-right font-medium">Jetons finaux</th>
           </tr>
         </thead>
         <tbody>
@@ -231,9 +232,10 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
             return (
               <tr key={p.player} className="border-t border-ivory-100/10">
                 <td className="py-1.5 text-ivory-50">{nick(view, p.player)}</td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-200/80">{formatChips(game.stakeChips)}</td>
+                <td className="hidden py-1.5 text-right tabular-nums text-ivory-200/80 sm:table-cell">{formatChips(game.stakeChips)}</td>
                 <td className="py-1.5 text-right tabular-nums text-ivory-50">{formatChips(payout)}</td>
                 <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}>{formatSignedChips(net)}</td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net).toLocaleString('fr-FR')}</td>
               </tr>
             );
           })}
@@ -241,8 +243,9 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
         <tfoot>
           <tr className="border-t border-gold-500/40 text-ivory-50">
             <td className="py-1.5 font-semibold">Cagnotte</td>
-            <td />
+            <td className="hidden sm:table-cell" />
             <td className="py-1.5 text-right font-semibold tabular-nums">{formatChips(o.settlement.potChips)}</td>
+            <td />
             <td />
           </tr>
         </tfoot>

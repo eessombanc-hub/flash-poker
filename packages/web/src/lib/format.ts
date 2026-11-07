@@ -1,15 +1,5 @@
-const EUR_WHOLE = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 });
-const EUR_CENTS = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-/** Prix réel (boutique de jetons uniquement) : centimes → « 1,99 € » ou « 20 € ». */
-export function formatEuros(cents: number): string {
-  return (cents % 100 === 0 ? EUR_WHOLE : EUR_CENTS).format(cents / 100);
-}
-
-export function formatSignedEuros(cents: number): string {
-  if (cents === 0) return formatEuros(0);
-  return `${cents > 0 ? '+' : '−'}${formatEuros(Math.abs(cents))}`;
-}
+/** Cave : jetons reçus par chaque joueur au début de chaque partie (même valeur que `STARTING_CHIPS` du protocole serveur). */
+export const STARTING_CHIPS = 1_000;
 
 const FRACTIONS: Record<number, string> = { 60: '1', 30: '½', 20: '⅓', 15: '¼', 12: '⅕', 10: '⅙' };
 

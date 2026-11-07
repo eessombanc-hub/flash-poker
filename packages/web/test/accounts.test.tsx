@@ -36,8 +36,6 @@ async function start() {
     accounts: {
       isReservedNickname: (n) => accounts.isReservedNickname(n),
       onGameFinished: (g) => accounts.recordGame(g),
-      debit: (i, a, r) => accounts.wallet.debit(i, a, r),
-      credit: (i, a, r) => accounts.wallet.credit(i, a, r),
     },
   });
   const server = await buildServer({ manager, accounts, now: () => scheduler.now(), onError: () => undefined, httpRateLimit: { max: 1000, windowMs: 60_000 } });
@@ -130,7 +128,7 @@ describe('comptes joueurs dans l’interface', () => {
     await until(() => seen.includes('Bea'), 'notification reçue');
   });
 
-  it('Mon espace : historique, manche favorite, statistiques, bankroll, jetons', async () => {
+  it('Mon espace : historique, manche favorite, statistiques, bankroll', async () => {
     const env = await start();
     const ana = env.make();
     const guest = env.make();
@@ -170,9 +168,6 @@ describe('comptes joueurs dans l’interface', () => {
     await user.click(screen.getByRole('tab', { name: /Bankroll/ }));
     expect(await screen.findByRole('img', { name: /Bilan cumulé sur 1 partie/ })).toBeTruthy();
 
-    await user.click(screen.getByRole('tab', { name: /Jetons/ }));
-    expect((await screen.findAllByText(won ? '120' : '80')).length).toBeGreaterThan(0);
-    expect(await screen.findByRole('button', { name: /Acheter Coffret : 3000 jetons/ })).toBeDisabled(); // paiement pas encore activé
-    expect(screen.getAllByText(/Mise : Mardi soir/).length).toBe(1);
+    expect(screen.queryByRole('tab', { name: /Jetons/ })).toBeNull(); // pas de boutique tant que la vente n'est pas validée
   });
 });

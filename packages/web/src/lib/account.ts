@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, InviteOverview, LedgerEntry, ShopView, VariantStats, WalletView } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
 const KEY = 'poker.account.v1';
@@ -20,8 +20,6 @@ export interface AccountState {
   /** Vrai une fois la session vérifiée auprès du serveur (ou en l'absence de jeton). */
   ready: boolean;
   passwordRecovery: boolean;
-  /** Solde de jetons (null tant qu'il n'est pas chargé, ou sans compte). */
-  wallet: WalletView | null;
 }
 
 export interface AccountOptions {
@@ -47,7 +45,7 @@ export class AccountClient {
     } catch {
       token = null;
     }
-    this.store = createStore<AccountState>(() => ({ token, account: null, ready: !token, passwordRecovery: false, wallet: null }));
+    this.store = createStore<AccountState>(() => ({ token, account: null, ready: !token, passwordRecovery: false }));
   }
 
   get state(): AccountState {
@@ -97,7 +95,6 @@ export class AccountClient {
       const account = await this.request<AccountPrivate>('GET', '/me');
       this.store.setState({ account, ready: true });
       this.openPresence();
-      void this.refreshWallet();
     } catch (e) {
       // Réseau indisponible : on garde le jeton pour réessayer plus tard ; session refusée : déjà oubliée.
       this.store.setState({ ready: true });
@@ -113,7 +110,6 @@ export class AccountClient {
     }
     this.store.setState({ token: res.token, account: res.account, ready: true });
     this.openPresence();
-    void this.refreshWallet();
     return res.account;
   }
 
@@ -125,7 +121,7 @@ export class AccountClient {
     }
     this.presence?.close();
     this.presence = null;
-    this.store.setState({ token: null, account: null, wallet: null });
+    this.store.setState({ token: null, account: null });
   }
 
   register(input: { nickname: string; email: string; password: string; avatar?: string; invite?: string }): Promise<AccountPrivate> {
@@ -169,19 +165,6 @@ export class AccountClient {
   favorites = () => this.request<{ favorites: FavoritePlayer[] }>('GET', '/me/favorites').then((r) => r.favorites);
   addFavorite = (nickname: string) => this.request<FavoritePlayer>('POST', '/me/favorites', { nickname });
   removeFavorite = (id: string) => this.request('DELETE', `/me/favorites/${encodeURIComponent(id)}`);
-  /** Solde de jetons à jour (remontée à 100 comprise) et derniers mouvements. */
-  async refreshWallet(): Promise<(WalletView & { ledger: LedgerEntry[] }) | null> {
-    if (!this.token) return null;
-    try {
-      const w = await this.request<WalletView & { ledger: LedgerEntry[] }>('GET', '/me/wallet');
-      this.store.setState({ wallet: { chips: w.chips, refillLevel: w.refillLevel, refillEveryMs: w.refillEveryMs, nextRefillAt: w.nextRefillAt } });
-      return w;
-    } catch {
-      return null;
-    }
-  }
-  shop = () => this.request<ShopView>('GET', '/me/shop');
-  purchase = (offerId: string, adult: boolean) => this.request('POST', '/me/shop/purchase', { offerId, adult });
   invites = () => this.request<InviteOverview>('GET', '/me/invites');
   inviteByEmail = (email: string) => this.request<InviteOverview>('POST', '/me/invites', { email });
   /** Qui invite (lien reçu) : accessible sans compte. */

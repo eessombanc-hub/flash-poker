@@ -43,7 +43,7 @@ test('comptes : inscription, espace joueur, favori connecté, sur ordinateur et 
 
   // Ana ajoute Bea en favori
   await ana.page.getByRole('button', { name: new RegExp(`Ana${stamp}`) }).click();
-  for (const tab of ['Profil', 'Jetons', 'Historique', 'Statistiques', 'Manches favorites', 'Bankroll', 'Joueurs favoris']) {
+  for (const tab of ['Profil', 'Historique', 'Statistiques', 'Manches favorites', 'Bankroll', 'Joueurs favoris']) {
     await ana.page.getByRole('tab', { name: tab }).click();
     await expect(ana.page.getByRole('tabpanel')).toBeVisible();
     await audit(ana.page, `espace ${tab} (ordinateur)`);

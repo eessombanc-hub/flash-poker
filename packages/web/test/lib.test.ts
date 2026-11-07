@@ -4,7 +4,7 @@ import { isCardCode, parseCode, sortHand } from '../src/lib/cards';
 import { dealDelay } from '../src/components/Card';
 const cardName = (c: string) => parseCode(c).name;
 import { CATEGORY_LABELS, INSURANCE_LABELS, NEXT_REASON_TEXT, VARIANTS, winningCards, winningCombination } from '../src/lib/labels';
-import { clockText, deNom, formatChips, formatEuros, formatLinePoints, formatSignedChips, initials } from '../src/lib/format';
+import { clockText, deNom, formatChips, formatLinePoints, formatSignedChips, initials } from '../src/lib/format';
 import { describeInsurance } from '../src/lib/insurance';
 import { describeEvent } from '../src/lib/events';
 import { LocalSessionStore, MemorySessionStore } from '../src/lib/session';
@@ -45,8 +45,6 @@ describe('formats', () => {
     expect(flat(formatChips(0))).toBe('0 jeton');
     expect(flat(formatSignedChips(-1000))).toBe('−1 000 jetons');
     expect(flat(formatSignedChips(500))).toBe('+500 jetons');
-    expect(flat(formatEuros(199))).toBe('1,99 €');
-    expect(flat(formatEuros(2000))).toBe('20 €');
   });
   it('points de ligne du 6-3 en fractions', () => {
     expect(['60', '30', '20', '15', '12', '10'].map((u) => formatLinePoints(Number(u)))).toEqual(['1', '½', '⅓', '¼', '⅕', '⅙']);

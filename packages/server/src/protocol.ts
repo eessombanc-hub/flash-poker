@@ -10,11 +10,14 @@ const nickname = z
 /** Avatar facultatif : identifiant de préréglage (jamais une URL). */
 const avatar = z.string().regex(/^[a-z0-9_-]{1,32}$/).optional();
 
+/** Cave : chaque joueur reçoit 1 000 jetons au début de chaque partie ; la mise est prise dessus (jetons sans valeur monétaire). */
+export const STARTING_CHIPS = 1_000;
+
 export const createRoomSchema = z.object({
   name: z.string().transform((s) => s.trim()).pipe(z.string().min(1).max(40)),
   maxPlayers: z.number().int().min(2).max(6),
   targetPoints: z.number().int().min(1).max(5),
-  stakeChips: z.number().int().min(0).max(10_000), // jetons
+  stakeChips: z.number().int().min(0).max(STARTING_CHIPS), // jetons, pris sur la cave
   /** Partie « avec assistance », proposée par l'hôte : doit être approuvée par tous les joueurs de la salle
    * avant le départ, sinon la partie démarre sans assistance (voir `lobby:approveAssistance`). Faux par défaut. */
   assistance: z.boolean().optional(),

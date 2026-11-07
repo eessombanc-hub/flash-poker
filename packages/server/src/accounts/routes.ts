@@ -106,21 +106,6 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
     accounts.removeFavorite(me(req).id, req.params.id);
     return { ok: true };
   });
-  // ---------- Jetons ----------
-  app.get('/me/wallet', async (req) => {
-    const account = me(req);
-    return { ...accounts.wallet.view(account.id), ledger: accounts.wallet.ledger(account.id, 30) };
-  });
-  app.get('/me/shop', async (req) => ({ ...accounts.wallet.shop(me(req).id), paymentEnabled: false }));
-  app.post('/me/shop/purchase', async (req) => {
-    const account = me(req);
-    const p = z.object({ offerId: z.string().min(1).max(40), adult: z.boolean() }).safeParse(req.body);
-    if (!p.success) throw new ServerError('BAD_REQUEST', 'Offre invalide');
-    accounts.wallet.checkPurchase(account.id, p.data.offerId, p.data.adult);
-    // Le paiement en ligne (prestataire à choisir, par exemple Stripe) n'est pas encore branché : rien n'est débité.
-    throw new ServerError('UNAVAILABLE', 'Le paiement en ligne n’est pas encore activé : la boutique ouvrira prochainement');
-  });
-
   app.get('/me/invites', async (req) => accounts.invites(me(req).id));
   app.post('/me/invites', async (req, reply) => {
     const account = me(req);

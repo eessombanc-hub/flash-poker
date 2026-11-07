@@ -21,7 +21,7 @@ describe('sécurité : jetons et identité', () => {
     for (const token of Object.values(env.tokens)) expect(dump).not.toContain(token); // seule l'empreinte est conservée
     expect(dump).toContain('tokenHash');
     const snap = env.m.snapshotRoom(env.code);
-    for (const pl of snap.players) expect(Object.keys(pl).sort()).toEqual(['accountId', 'assistanceApproved', 'avatar', 'held', 'id', 'lastSeenAt', 'nickname', 'state', 'tokenHash']);
+    for (const pl of snap.players) expect(Object.keys(pl).sort()).toEqual(['accountId', 'assistanceApproved', 'avatar', 'id', 'lastSeenAt', 'nickname', 'state', 'tokenHash']);
   });
 
   it('l\'identité vient du jeton, jamais du message : un client ne peut pas agir au nom d\'un autre', () => {
@@ -179,7 +179,7 @@ describe('minuteurs de 60 s', () => {
     expect(v.status).toBe('FINISHED');
     expect(v.deadline).toBeNull();
     expect(v.game!.outcome).toMatchObject({ winner: env.order[0], victoryType: 'SCORE' });
-    expect(v.game!.outcome!.settlement.payouts[env.order[0]!]).toBe(4000);
+    expect(v.game!.outcome!.settlement.payouts[env.order[0]!]).toBe(400);
     expect(env.scheduler.pending()).toBe(0);
     expectErr(() => env.act(1, CLOSED_1), 'WRONG_STATE');
     expectErr(() => env.m.joinRoom(env.code, { nickname: 'Tard' }), 'WRONG_STATE');
@@ -227,11 +227,11 @@ describe('arrivée en cours de partie', () => {
     env.m.connect(env.code, j.playerId);
     let v = env.m.view(env.code, env.order[0]!);
     expect(v.players.find((p) => p.id === j.playerId)).toMatchObject({ state: 'QUEUED', position: null });
-    expect(v.config.potChips).toBe(6000);
+    expect(v.config.potChips).toBe(600);
     env.scheduler.advance(60_000); // la manche se termine : il est assis
     v = env.m.view(env.code, env.order[0]!);
     expect(v.players.find((p) => p.id === j.playerId)).toMatchObject({ state: 'SEATED', position: 'UTG+3', score: 0 });
-    expect(v.config.potChips).toBe(8000);
+    expect(v.config.potChips).toBe(800);
     expect(env.updates(env.order[0]!).flatMap((u) => u.events).some((e) => e.type === 'PLAYER_ADDED')).toBe(true);
     expect(env.m.view(env.code, j.playerId).you.role).toBe('PLAYER');
     env.m.command(env.code, env.order[1]!, { type: 'CHOOSE_VARIANT', variant: 'CLOSED_1' }); // il est intégré à la rotation
@@ -260,7 +260,7 @@ describe('exclusion par l\'hôte en cours de partie', () => {
     const v = env.m.view(env.code, env.host.playerId);
     expect(v.game!.history).toHaveLength(1);
     expect(v.players.find((p) => p.id === target)).toMatchObject({ excluded: true, state: 'SEATED' });
-    expect(v.config.potChips).toBe(6000); // sa mise reste dans la cagnotte
+    expect(v.config.potChips).toBe(600); // sa mise reste dans la cagnotte
     expectErr(() => env.m.command(env.code, target, CLOSED_1), 'RULE', 'EXCLUDED');
     expectErr(() => env.m.excludePlayer(env.code, target, present[0]!), 'FORBIDDEN'); // pas l'hôte
   });

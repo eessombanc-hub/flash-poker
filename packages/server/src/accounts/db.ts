@@ -87,28 +87,7 @@ export class AccountDb {
         day TEXT NOT NULL,
         PRIMARY KEY (user_id, fav_id, day)
       );
-      CREATE TABLE IF NOT EXISTS chip_ledger (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        at INTEGER NOT NULL,
-        delta INTEGER NOT NULL,
-        balance INTEGER NOT NULL,
-        reason TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS chip_ledger_by_user ON chip_ledger (user_id, at);
-      CREATE TABLE IF NOT EXISTS purchases (
-        payment_ref TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        offer_id TEXT NOT NULL,
-        chips INTEGER NOT NULL,
-        price_cents INTEGER NOT NULL,
-        at INTEGER NOT NULL
-      );
     `);
-    // Portefeuille de jetons (ajouté après la création des comptes) : colonnes ajoutées aux bases existantes.
-    const cols = new Set((this.db.prepare('PRAGMA table_info(users)').all() as { name: string }[]).map((c) => c.name));
-    if (!cols.has('chips')) this.db.exec('ALTER TABLE users ADD COLUMN chips INTEGER NOT NULL DEFAULT 100');
-    if (!cols.has('refill_at')) this.db.exec('ALTER TABLE users ADD COLUMN refill_at INTEGER NOT NULL DEFAULT 0');
   }
 
   close(): void {

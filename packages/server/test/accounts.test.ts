@@ -120,7 +120,7 @@ describe('comptes : parties terminées, historique, statistiques, bankroll, manc
       gameHooks: { stackedDeck: (r) => (r === 1 ? closedWin(2, 0) : undefined) },
       accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g) },
     });
-    const host = m.createRoom({ name: 'Mardi soir', maxPlayers: 2, targetPoints: 1, stakeChips: cfg.stakeChips ?? 2000, nickname: 'ignoré' }, ana.account);
+    const host = m.createRoom({ name: 'Mardi soir', maxPlayers: 2, targetPoints: 1, stakeChips: cfg.stakeChips ?? 200, nickname: 'ignoré' }, ana.account);
     const guest = m.joinRoom(host.code, { nickname: 'Invité' });
     m.connect(host.code, host.playerId);
     m.connect(host.code, guest.playerId);
@@ -143,12 +143,12 @@ describe('comptes : parties terminées, historique, statistiques, bankroll, manc
     const won = winner === host.playerId;
     const games = accounts.games(ana.account.id);
     expect(games).toHaveLength(1);
-    expect(games[0]).toMatchObject({ name: 'Mardi soir', won, netChips: won ? 2000 : -2000, rounds: 1, opponents: ['Invité'] });
+    expect(games[0]).toMatchObject({ name: 'Mardi soir', won, netChips: won ? 200 : -200, rounds: 1, opponents: ['Invité'] });
     const stats = accounts.stats(ana.account.id);
     expect(stats).toMatchObject({ games: 1, gamesWon: won ? 1 : 0 });
     expect(stats.variants).toEqual([{ variant: 'CLOSED_1', played: 1, won: won ? 1 : 0, points: won ? 1 : 0 }]);
     const b = accounts.bankroll(ana.account.id);
-    expect(b).toMatchObject({ totalChips: won ? 2000 : -2000, games: 1 });
+    expect(b).toMatchObject({ totalChips: won ? 200 : -200, games: 1 });
     expect(b.series[0]).toMatchObject({ name: 'Mardi soir', cumulativeChips: b.totalChips });
   });
 
@@ -263,96 +263,6 @@ describe('comptes : invitations', () => {
     const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
     expect(accounts.invites(ana.account.id).mailEnabled).toBe(false);
     await rejects(accounts.inviteByEmail(ana.account.id, { email: 'zoe@x.fr' }), 'UNAVAILABLE');
-  });
-});
-
-describe('jetons', () => {
-  const H = 3 * 3_600_000;
-  it('100 jetons à l’inscription ; sous 100, remontée à 100 toutes les 3 heures ; au-dessus, rien', async () => {
-    let t = 1_000_000;
-    const { accounts } = service({ now: () => t });
-    const ana = (await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' })).account.id;
-    const w = accounts.wallet;
-    expect(w.view(ana)).toMatchObject({ chips: 100, nextRefillAt: null });
-    t += 1000;
-    w.debit(ana, 60, 'Mise');
-    expect(w.view(ana)).toMatchObject({ chips: 40, nextRefillAt: t + H });
-    t += H - 1;
-    expect(w.view(ana).chips).toBe(40);
-    t += 1;
-    expect(w.view(ana).chips).toBe(100); // remonté à 100, pas +100
-    w.credit(ana, 50, 'Gain');
-    t += 2 * H;
-    expect(w.view(ana).chips).toBe(150); // au-dessus de 100 : rien
-    w.debit(ana, 140, 'Mise');
-    expect(w.view(ana).chips).toBe(10);
-    t += H;
-    expect(w.view(ana).chips).toBe(100);
-    expect(w.ledger(ana).map((e) => [e.delta, e.balance])).toEqual([[90, 100], [-140, 10], [50, 150], [60, 100], [-60, 40], [100, 100]]);
-    await rejects(() => w.debit(ana, 500, 'Mise'), 'INSUFFICIENT_CHIPS');
-    expect(w.view(ana).chips).toBe(100);
-  });
-
-  it('table avec mise : compte exigé, mise retenue à l’arrivée, rendue au départ, cagnotte versée au gagnant', async () => {
-    const { accounts } = service();
-    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
-    const bea = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
-    const scheduler = new ManualScheduler();
-    const m = new RoomManager({
-      rng: new SeededRng(7),
-      scheduler,
-      gameHooks: { stackedDeck: (r) => (r === 1 ? closedWin(2, 0) : undefined) },
-      accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g), debit: (i, a, r) => accounts.wallet.debit(i, a, r), credit: (i, a, r) => accounts.wallet.credit(i, a, r) },
-    });
-    const chips = (id: string) => accounts.wallet.view(id).chips;
-    const room = m.createRoom({ name: 'Mardi', maxPlayers: 2, targetPoints: 1, stakeChips: 30, nickname: 'x' }, ana.account);
-    expect(chips(ana.account.id)).toBe(70);
-    await rejects(() => m.joinRoom(room.code, { nickname: 'Invité' }), 'ACCOUNT_REQUIRED');
-    await rejects(() => m.createRoom({ name: 'Grosse', maxPlayers: 2, targetPoints: 1, stakeChips: 500, nickname: 'x' }, bea.account), 'INSUFFICIENT_CHIPS');
-    expect(chips(bea.account.id)).toBe(100);
-    let b = m.joinRoom(room.code, { nickname: 'y' }, bea.account);
-    expect(chips(bea.account.id)).toBe(70);
-    m.leaveLobby(room.code, b.playerId);
-    expect(chips(bea.account.id)).toBe(100);
-    b = m.joinRoom(room.code, { nickname: 'y' }, bea.account);
-    m.connect(room.code, room.playerId);
-    m.connect(room.code, b.playerId);
-    m.startGame(room.code, room.playerId);
-    const order = m._debug(room.code).game!.players();
-    m.command(room.code, order[0]!, CLOSED_1);
-    scheduler.advance(60_000);
-    const winner = m.view(room.code, room.playerId).game!.outcome!.winner;
-    const [w, l] = winner === room.playerId ? [ana, bea] : [bea, ana];
-    expect(chips(w.account.id)).toBe(130);
-    expect(chips(l.account.id)).toBe(70);
-    // Table sans mise : ouverte aux invités, aucun jeton en jeu
-    const free = m.createRoom({ name: 'Amicale', maxPlayers: 3, targetPoints: 1, stakeChips: 0, nickname: 'x' }, ana.account);
-    expect(() => m.joinRoom(free.code, { nickname: 'Invité' })).not.toThrow();
-    // Annulation : chacun récupère sa mise
-    const c = m.createRoom({ name: 'Annulée', maxPlayers: 3, targetPoints: 1, stakeChips: 20, nickname: 'x' }, w.account);
-    m.joinRoom(c.code, { nickname: 'y' }, l.account);
-    m.cancelRoom(c.code, c.playerId);
-    expect([chips(w.account.id), chips(l.account.id)]).toEqual([130, 70]);
-  });
-
-  it('boutique : offre de bienvenue unique, achat réservé aux majeurs, plafond de 50 € sur 7 jours, crédit idempotent', async () => {
-    let t = 1_000_000;
-    const { accounts } = service({ now: () => t });
-    const ana = (await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' })).account.id;
-    const w = accounts.wallet;
-    expect(w.shop(ana).offers.map((o) => o.id)).toContain('bienvenue');
-    await rejects(() => w.checkPurchase(ana, 'pile', false), 'FORBIDDEN');
-    expect(w.grantPurchase(ana, 'bienvenue', 'pay_1')).toBe(true);
-    expect(w.grantPurchase(ana, 'bienvenue', 'pay_1')).toBe(false); // même paiement confirmé deux fois
-    expect(w.view(ana).chips).toBe(1_100);
-    expect(w.shop(ana).offers.map((o) => o.id)).not.toContain('bienvenue');
-    await rejects(() => w.checkPurchase(ana, 'bienvenue', true), 'BAD_REQUEST');
-    w.grantPurchase(ana, 'mallette', 'pay_2'); // 19,99 €
-    w.grantPurchase(ana, 'mallette', 'pay_3'); // 39,98 € + 0,99 €
-    await rejects(() => w.checkPurchase(ana, 'coffret', true), 'RATE_LIMITED'); // 9,99 € dépasserait 50 €
-    expect(w.checkPurchase(ana, 'pile', true).chips).toBe(500);
-    t += 7 * 24 * 3_600_000 + 1;
-    expect(w.checkPurchase(ana, 'coffret', true).chips).toBe(3_000);
   });
 });
 

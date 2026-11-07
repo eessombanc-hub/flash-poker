@@ -7,7 +7,7 @@ import { RoomManager } from '../src/roomManager';
 import { ManualScheduler } from '../src/scheduler';
 import { closedWin, codesIn, LOSERS, WIN } from './helpers';
 
-const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 5, stakeChips: 2000, nickname: 'Host' };
+const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 5, stakeChips: 200, nickname: 'Host' };
 
 interface Client {
   socket: Socket;

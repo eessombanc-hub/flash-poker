@@ -6,7 +6,6 @@ import type { AccountDb } from './db';
 import { mail, type Mailer } from './mailer';
 import { hashPassword, newToken, tokenHash, verifyPassword } from './password';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
-import { Wallet } from './wallet';
 
 // ---------- Validation des entrées ----------
 const nickname = z
@@ -32,7 +31,7 @@ function parse<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, input: unknown): 
   return r.data;
 }
 
-export type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LedgerEntry, SentInvite, ShopOffer, ShopView, VariantStats, WalletView } from './types';
+export type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, SentInvite, VariantStats } from './types';
 
 const SESSION_MS = 30 * 24 * 3_600_000;
 /** Invitations par e-mail : 10 par jour et par joueur, et pas deux fois la même adresse en 7 jours (anti-abus). */
@@ -55,12 +54,7 @@ export class AccountService {
     private readonly store: AccountDb,
     private readonly mailer: Mailer,
     private readonly opts: { appUrl?: string; now?: () => number; log?: (s: string) => void } = {},
-  ) {
-    this.wallet = new Wallet(store.db, () => this.now());
-  }
-
-  /** Jetons : solde, remontée à 100, mises, gains, boutique. */
-  readonly wallet: Wallet;
+  ) {}
 
   private get db() {
     return this.store.db;
@@ -82,7 +76,6 @@ export class AccountService {
     this.db
       .prepare('INSERT INTO users (id, nickname, email, pass_hash, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(id, data.nickname, data.email, await hashPassword(data.password), data.avatar ?? null, this.now());
-    this.wallet.open(id);
     if (data.invite) this.acceptInvite(data.invite, id, data.email);
     return { token: this.openSession(id), account: this.account(id)! };
   }

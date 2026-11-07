@@ -84,33 +84,3 @@ export interface InviteOverview {
   mailEnabled: boolean;
 }
 
-/** Solde de jetons (sans valeur monétaire) et prochaine remontée à 100 jetons. */
-export interface WalletView {
-  chips: number;
-  refillLevel: number;
-  refillEveryMs: number;
-  /** Heure de la prochaine remontée (si le solde est sous le seuil), sinon null. */
-  nextRefillAt: number | null;
-}
-export interface LedgerEntry {
-  at: number;
-  delta: number;
-  balance: number;
-  reason: string;
-}
-export interface ShopOffer {
-  id: string;
-  name: string;
-  chips: number;
-  /** Prix TTC en centimes d'euro (argent réel, pour l'achat de jetons uniquement). */
-  priceCents: number;
-  oncePerAccount: boolean;
-  tagline: string;
-  highlight?: boolean;
-}
-export interface ShopView {
-  offers: ShopOffer[];
-  spentThisWeekCents: number;
-  weeklyCapCents: number;
-  paymentEnabled: boolean;
-}

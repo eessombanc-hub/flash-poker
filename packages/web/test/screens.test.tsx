@@ -128,7 +128,7 @@ describe('salle d’attente', () => {
 });
 
 describe('formulaires', () => {
-  it('création sans compte : validation, puis envoi d’une partie sans jetons', async () => {
+  it('création sans compte : validation, mise prise sur la cave de 1 000 jetons, envoi', async () => {
     const user = userEvent.setup();
     const { client } = renderWith(<CreateRoom onBack={() => undefined} />, null);
     const created = vi.fn(async () => undefined);
@@ -138,11 +138,12 @@ describe('formulaires', () => {
     await user.type(screen.getByLabelText('Nom de la table'), 'Vendredi');
     await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
     await user.click(within(screen.getByRole('radiogroup', { name: 'Objectif en points' })).getByRole('radio', { name: '5' }));
-    expect(screen.getByText(/Sans compte, la partie se joue sans jetons/)).toBeInTheDocument();
-    expect(screen.queryByRole('radiogroup', { name: 'Mise par joueur' })).toBeNull();
+    expect(screen.getByText(/Chaque joueur reçoit 1\s000 jetons au début de la partie/u)).toBeInTheDocument();
+    await user.click(within(screen.getByRole('radiogroup', { name: 'Mise par joueur' })).getByRole('radio', { name: /^500$/ }));
+    expect(screen.getByText(/Cagnotte : 2\s000 jetons à 4 joueurs/u)).toBeInTheDocument();
     expect(submit).toBeEnabled();
     await user.click(submit);
-    expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeChips: 0, assistance: false, private: false, nickname: 'Emeric', avatar: 'or' });
+    expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeChips: 500, assistance: false, private: false, nickname: 'Emeric', avatar: 'or' });
   });
   it('création : le niveau « avec assistance » est proposé et transmis au serveur', async () => {
     const user = userEvent.setup();

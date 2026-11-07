@@ -204,7 +204,7 @@ export function BellIcon(props: IconProps) {
   );
 }
 
-/** Jeton seul, vu de face : solde et boutique de jetons. */
+/** Jeton seul, vu de face. */
 export function CoinIcon(props: IconProps) {
   const id = useId();
   return (

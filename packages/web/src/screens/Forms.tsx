@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../lib/api';
 import { useAccount, useClient } from '../lib/context';
-import { formatChips } from '../lib/format';
+import { formatChips, STARTING_CHIPS } from '../lib/format';
 import { Avatar, AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Segmented, Title } from '../components/ui';
 import type { AccountPrivate } from '../lib/types';
 
@@ -31,8 +31,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   const [name, setName] = useState('');
   const [maxPlayers, setMax] = useState(4);
   const [target, setTarget] = useState(3);
-  const wallet = useAccount((s) => s.wallet);
-  const [stakeChoice, setStake] = useState(10);
+  const [stakeChips, setStake] = useState(100);
   const [nickname, setNick] = useState('');
   const [avatar, setAvatar] = useState('or');
   const [assistance, setAssistance] = useState(false);
@@ -40,12 +39,9 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Sans compte, la table se joue sans jetons (les mises exigent un portefeuille).
-  const stakeChips = me ? stakeChoice : 0;
   const errors = {
     name: name.trim() ? '' : 'Donnez un nom à la table.',
     nickname: me || NICK_RE.test(nickname.trim()) ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).',
-    stake: !wallet || stakeChips <= wallet.chips ? '' : `Vous avez ${formatChips(wallet.chips)} : choisissez une mise plus petite.`,
   };
   const invalid = Object.values(errors).some(Boolean);
 
@@ -80,19 +76,12 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
           <Field label="Objectif en points" hint="Le premier à atteindre l’objectif remporte la cagnotte.">
             <Segmented label="Objectif en points" value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
           </Field>
-          {me ? (
-            <Field
-              label="Mise par joueur (jetons)"
-              hint={errors.stake ? undefined : stakeChips === 0 ? 'Partie amicale, sans jetons : ouverte aussi aux joueurs sans compte.' : `Cagnotte : ${formatChips(stakeChips * maxPlayers)} à ${maxPlayers} joueurs. Chaque joueur doit avoir un compte.${wallet ? ` Votre solde : ${formatChips(wallet.chips)}.` : ''}`}
-              error={errors.stake}
-            >
-              <Segmented label="Mise par joueur" value={stakeChoice} options={[0, 10, 25, 50, 100, 250]} onChange={setStake} format={(v) => (v === 0 ? 'Sans' : String(v))} />
-            </Field>
-          ) : (
-            <p className="rounded-xl border border-gold-500/30 bg-gold-500/5 px-3 py-2.5 text-sm text-ivory-200">
-              Sans compte, la partie se joue sans jetons. Créez un compte gratuit pour recevoir 100 jetons et jouer avec des mises.
-            </p>
-          )}
+          <Field
+            label="Mise par joueur (jetons)"
+            hint={`Chaque joueur reçoit ${formatChips(STARTING_CHIPS)} au début de la partie ; la mise est prise sur cette cave.${stakeChips > 0 ? ` Cagnotte : ${formatChips(stakeChips * maxPlayers)} à ${maxPlayers} joueurs.` : ' Sans mise, la partie se joue pour les points seulement.'}`}
+          >
+            <Segmented label="Mise par joueur" value={stakeChips} options={[0, 50, 100, 200, 500, 1000]} onChange={setStake} format={(v) => (v === 0 ? 'Sans' : v.toLocaleString('fr-FR'))} />
+          </Field>
           <Field label="Niveau de la partie" hint={assistance ? 'Chaque joueur devra approuver l’assistance dans la salle d’attente ; sans l’accord de tous, la partie se jouera sans assistance.' : 'Aucune indication : chacun juge seul la force de sa main.'}>
             <Segmented label="Niveau de la partie" value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? 'Avec assistance' : 'Sans assistance')} />
           </Field>

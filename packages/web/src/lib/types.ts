@@ -36,10 +36,6 @@ export type {
   GameDetail,
   GameSummary,
   InviteOverview,
-  LedgerEntry,
   SentInvite,
-  ShopOffer,
-  ShopView,
-  WalletView,
   VariantStats,
 } from '@poker/server/src/accounts/types';
