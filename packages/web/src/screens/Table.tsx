@@ -1,7 +1,8 @@
-import { motion } from 'framer-motion';
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Board } from '../components/Board';
 import { Seat } from '../components/Seat';
+import { SettingsBody } from '../components/SettingsBody';
 import { Badge, Button, Modal, Panel } from '../components/ui';
 import { useClient, useGame } from '../lib/context';
 import { useGameAlerts } from '../lib/alerts';
@@ -13,6 +14,7 @@ import { closedInfo, discardInfo, line63Info, reveal61Info } from '../lib/roundI
 import { nick, opponentCards, seatedPlayers } from '../lib/selectors';
 import { useSettings } from '../lib/settings';
 import { Sound } from '../lib/sound';
+import { FELT_OPTIONS } from '../lib/theme';
 import { useTable } from '../lib/table';
 import type { PlayerPublic, RoomView, RoundRecord } from '../lib/types';
 import { ClosedPanel } from '../panels/ClosedPanel';
@@ -172,14 +174,14 @@ function TableCenter() {
         <>
           <Board round={round} size="board" />
           {phoneNews}
-          <p className={`rounded-full bg-ink-950/50 px-3 py-0.5 text-[10px] uppercase tracking-[0.2em] text-gold-300 sm:block sm:text-xs ${news ? 'hidden' : ''}`}>
-            {variantName(round.variant)} · {phaseLabel(round.variant, round.phase)}
+          <p className={`rounded-full bg-ink-950/50 px-3 py-0.5 text-xs uppercase tracking-[0.2em] text-gold-300 sm:block ${news ? 'hidden' : ''}`}>
+            {variantName(round.variant)}{round.variant === 'CLOSED_1' || round.variant === 'CLOSED_2' ? '' : ` (${phaseLabel(round.variant, round.phase)})`}
           </p>
         </>
       ) : (
         <>
           {phoneNews}
-          <p className={`font-display text-base text-ivory-50 sm:block sm:text-2xl ${news ? 'hidden' : ''}`}>{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo} — choix de la variante`}</p>
+          <p className={`font-display text-base text-ivory-50 sm:block sm:text-2xl ${news ? 'hidden' : ''}`}>{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo} : choix de la variante`}</p>
         </>
       )}
       <p className="hidden text-xs text-ivory-100/85 sm:block sm:text-sm">
@@ -212,6 +214,9 @@ function TableFelt() {
   const { view, me } = useTable();
   const seatProps = useSeatProps();
   const desktop = useMediaQuery('(min-width: 768px)');
+  const { feltColor } = useSettings();
+  const felt = FELT_OPTIONS.find((f) => f.id === feltColor) ?? FELT_OPTIONS[0]!;
+  const feltVars = { '--felt-a': felt.a, '--felt-b': felt.b, '--felt-c': felt.c } as CSSProperties;
   const players = seatedPlayers(view);
   const ordered = orderFromMe(players, me);
 
@@ -227,7 +232,7 @@ function TableFelt() {
             </div>
           ))}
         </div>
-        <div className="felt flex min-h-[150px] items-center justify-center rounded-[999px] px-[9%] py-3">
+        <div className="felt flex min-h-[150px] items-center justify-center rounded-[999px] px-[9%] py-3" style={feltVars}>
           <div className="w-full max-w-2xl">
             <TableCenter />
           </div>
@@ -236,7 +241,7 @@ function TableFelt() {
     );
   }
   return (
-    <div className="felt shrink-0 rounded-3xl p-1.5" role="group" aria-label="Table de jeu">
+    <div className="felt shrink-0 rounded-3xl p-1.5" style={feltVars} role="group" aria-label="Table de jeu">
       <div className="py-1">
         <TableCenter />
       </div>
@@ -294,7 +299,7 @@ export function Table() {
   const client = useClient();
   const { view, game, me } = useTable();
   const feed = useGame((s) => s.feed);
-  const { fourColor, setFourColor, sound, setSound } = useSettings();
+  const { sound } = useSettings();
   const [modal, setModal] = useState<null | 'scores' | 'rules' | 'options'>(null);
   const [result, setResult] = useState<RoundRecord | null>(null);
   const [finalOpen, setFinalOpen] = useState(game.phase === 'GAME_OVER');
@@ -350,20 +355,9 @@ export function Table() {
       {modal === 'options' && (
         <Modal title="Options" onClose={() => setModal(null)}>
           <h2 className="font-display text-2xl text-ivory-50">Options</h2>
-          <label className="mt-5 flex cursor-pointer items-start gap-3">
-            <input type="checkbox" className="mt-1 h-5 w-5 accent-yellow-600" checked={fourColor} onChange={(e) => setFourColor(e.target.checked)} />
-            <span>
-              <span className="block font-medium text-ivory-50">Cartes en quatre couleurs</span>
-              <span className="text-sm text-ivory-200/80">Trèfle vert, carreau bleu : lecture plus rapide des couleurs.</span>
-            </span>
-          </label>
-          <label className="mt-4 flex cursor-pointer items-start gap-3">
-            <input type="checkbox" className="mt-1 h-5 w-5 accent-yellow-600" checked={sound} onChange={(e) => setSound(e.target.checked)} />
-            <span>
-              <span className="block font-medium text-ivory-50">Sons et vibrations</span>
-              <span className="text-sm text-ivory-200/80">Sélection, retournement, votre tour — et vibration mobile en fin de minuteur.</span>
-            </span>
-          </label>
+          <div className="mt-5">
+            <SettingsBody />
+          </div>
           <div className="mt-6 flex justify-end">
             <Button onClick={() => setModal(null)}>Fermer</Button>
           </div>

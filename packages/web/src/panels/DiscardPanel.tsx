@@ -24,7 +24,7 @@ export function DiscardPanel() {
 
   return (
     <PanelShell
-      eyebrow={`${round.variant === 'AVIATION' ? 'Aviation' : 'Avia 6'} — défausse ${info.step} / 2`}
+      eyebrow={`${round.variant === 'AVIATION' ? 'Aviation' : 'Avia 6'}, défausse ${info.step} / 2`}
       title={`Jetez exactement ${n} carte${n > 1 ? 's' : ''}`}
       hint={`Après le ${info.step === 1 ? 'flop' : 'turn'}. Il vous restera ${hand.length - n} carte${hand.length - n > 1 ? 's' : ''}. Sans défausse complète à l’échéance, votre main est couchée.`}
     >

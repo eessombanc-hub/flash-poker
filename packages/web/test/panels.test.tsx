@@ -148,13 +148,13 @@ describe('6-3 : aucune aide au joueur', () => {
     expect(within(recap).getByText('Brelan')).toBeInTheDocument();
     expect(within(recap).getByText('Carte haute')).toBeInTheDocument();
     expect(within(recap).getByText('Ligne perdue')).toBeInTheDocument();
-    expect(flat(recap.textContent)).toContain('Emeric · 1 pt');
+    expect(flat(recap.textContent)).toContain('Emeric, 1 pt');
     expect(screen.getByRole('heading', { level: 2 }).textContent).toContain('LIGNE 2');
   });
   it('point de ligne partagé affiché en fraction', () => {
     const lines = [{ line: 1, designations: { p1: { pair: ['As', 'Ad'], rank: 9, category: 1 }, p2: { pair: ['Kc', 'Ks'], rank: 9, category: 1 }, p3: null }, winners: ['p1', 'p2'], unitsEach: 30 }];
     renderWith(<Line63Panel />, view({ line: 2, lines }));
-    expect(flat(screen.getByLabelText('Lignes terminées').textContent)).toContain('Emeric + Alice · ½ pt chacun');
+    expect(flat(screen.getByLabelText('Lignes terminées').textContent)).toContain('Emeric + Alice, ½ pt chacun');
   });
 });
 
@@ -187,10 +187,10 @@ describe('6-1 : révélations', () => {
   it('mes cartes non encore retournées : dos de carte, jamais leur valeur — même pour moi', () => {
     renderWith(<Reveal61Panel />, view('p1'));
     const hand = within(screen.getByRole('group', { name: 'Votre main' }));
-    const backs = hand.getAllByRole('img', { name: 'Carte face cachée — pas encore retournée' });
+    const backs = hand.getAllByRole('img', { name: 'Carte face cachée : pas encore retournée' });
     expect(backs).toHaveLength(5); // 5 des 6 cartes : jamais révélées, y compris à leur propriétaire
     for (const rank of ['9', '5', 'Roi', '2', '7']) expect(hand.queryByRole('img', { name: new RegExp(rank) })).toBeNull();
-    expect(hand.getByRole('img', { name: '3 de cœur — visible de tous' })).toBeInTheDocument(); // la seule déjà visible
+    expect(hand.getByRole('img', { name: '3 de cœur : visible de tous' })).toBeInTheDocument(); // la seule déjà visible
   });
 
   it('classement du plus faible au plus fort, avec la carte qui vient d’être retournée', () => {

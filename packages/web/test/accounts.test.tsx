@@ -163,7 +163,7 @@ describe('comptes joueurs dans l’interface', () => {
 
     await user.click(screen.getByRole('tab', { name: /Statistiques/ }));
     const table = await screen.findByRole('table');
-    expect(within(table).getByRole('rowheader', { name: /fermé — 1 change/i })).toBeTruthy();
+    expect(within(table).getByRole('rowheader', { name: /fermé \(1 change\)/i })).toBeTruthy();
 
     await user.click(screen.getByRole('tab', { name: /Bankroll/ }));
     expect(await screen.findByRole('img', { name: /Bilan cumulé sur 1 partie/ })).toBeTruthy();

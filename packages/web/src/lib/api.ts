@@ -16,6 +16,8 @@ export interface CreateRoomInput {
   stakeChips: number;
   /** Partie « avec assistance », proposée aux joueurs (ils doivent tous l'approuver en salle d'attente). */
   assistance?: boolean;
+  /** Mode entraînement : nombre d'adversaires CPU (1 à 5). La table est privée et la partie démarre aussitôt. */
+  cpu?: number;
   /** Salle privée : absente de la liste publique, entrée par code ou lien d'invitation uniquement. */
   private?: boolean;
   nickname: string;

@@ -10,7 +10,7 @@ import { Home } from '../src/screens/Home';
 // Liste publique des parties ouvertes sur l'accueil : affichage, état vide, état d'erreur, sélection
 // (navigation vers « Rejoindre » avec le code pré-rempli), et actualisation périodique.
 
-function renderHome(listRooms: () => Promise<RoomSummary[]>, onJoin = vi.fn(), onCreate = vi.fn()) {
+function renderHome(listRooms: () => Promise<RoomSummary[]>, onJoin = vi.fn(), onCreate = vi.fn(), onTrain = vi.fn()) {
   const client = new GameClient({ storage: new MemorySessionStore() });
   client.resume = () => false;
   client.dispose = () => undefined;
@@ -18,11 +18,11 @@ function renderHome(listRooms: () => Promise<RoomSummary[]>, onJoin = vi.fn(), o
   const utils = render(
     <SettingsProvider>
       <ClientProvider client={client}>
-        <Home onCreate={onCreate} onJoin={onJoin} />
+        <Home onCreate={onCreate} onJoin={onJoin} onTrain={onTrain} />
       </ClientProvider>
     </SettingsProvider>,
   );
-  return { ...utils, onJoin, onCreate };
+  return { ...utils, onJoin, onCreate, onTrain };
 }
 
 const ROOM: RoomSummary = { code: 'POKER-7K2M', name: 'Vendredi soir', status: 'WAITING', maxPlayers: 4, seatsLeft: 2, targetPoints: 3, stakeChips: 2000, assistance: false };

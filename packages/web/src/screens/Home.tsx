@@ -7,19 +7,26 @@ import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { PlayingCard } from '../components/Card';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { CardsIcon, ChipsIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
+import { SettingsBody } from '../components/SettingsBody';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onCreate, onJoin, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; notice?: string | null; account?: ReactNode }) {
+export function Home({ onCreate, onJoin, onTrain, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; notice?: string | null; account?: ReactNode }) {
   const [rules, setRules] = useState(false);
+  const [settings, setSettings] = useState(false);
   return (
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <p className="flex items-center gap-2 font-display text-xl tracking-wide text-ivory-50">
+        <p className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-xl tracking-wide text-ivory-50">
           <CardsIcon size={34} />
           Flash Poker
         </p>
-        {account}
+        <div className="flex items-center gap-0 sm:gap-1">
+          <Button variant="ghost" className="whitespace-nowrap px-2 sm:px-3" onClick={() => setSettings(true)}>
+            Paramètres
+          </Button>
+          {account}
+        </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-5 pb-12">
@@ -54,9 +61,10 @@ export function Home({ onCreate, onJoin, notice, account }: { onCreate: () => vo
         </section>
 
         {/* Actions principales */}
-        <section aria-label="Commencer" className="grid gap-3 sm:grid-cols-3">
+        <section aria-label="Commencer" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ActionTile icon={<CardsIcon size={58} />} title="Créer une partie" text="Choisissez la mise, l’objectif et la visibilité, puis invitez vos amis." onClick={onCreate} primary />
           <ActionTile icon={<JoinIcon size={58} />} title="Rejoindre avec un code" text="Entrez le code POKER-XXXX reçu de l’hôte, ou ouvrez son lien d’invitation." onClick={() => onJoin()} />
+          <ActionTile icon={<TrophyIcon size={58} />} title="S’entraîner contre le CPU" text="Seul à la table, contre un à cinq adversaires gérés par l’ordinateur. Aucune mise." onClick={onTrain} />
           <ActionTile icon={<RulesIcon size={58} />} title="Mémo des règles" text="Les huit variantes et les règles communes, en un coup d’œil." onClick={() => setRules(true)} />
         </section>
 
@@ -79,6 +87,17 @@ export function Home({ onCreate, onJoin, notice, account }: { onCreate: () => vo
         <p className="mt-10 text-center text-xs text-ivory-300/60">Jetons sans valeur monétaire : rien à gagner en argent.</p>
       </main>
       {rules && <RulesModal onClose={() => setRules(false)} />}
+      {settings && (
+        <Modal title="Paramètres" onClose={() => setSettings(false)}>
+          <h2 className="font-display text-2xl text-ivory-50">Paramètres</h2>
+          <div className="mt-5">
+            <SettingsBody />
+          </div>
+          <div className="mt-7 flex justify-end">
+            <Button onClick={() => setSettings(false)}>Fermer</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -145,7 +164,7 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
       <Panel className="divide-y divide-ivory-100/10 p-2">
         {rooms === null && !error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Recherche de tables…</p>}
         {error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Liste indisponible pour l’instant.</p>}
-        {rooms?.length === 0 && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Aucune partie ouverte — soyez le premier à en créer une.</p>}
+        {rooms?.length === 0 && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Aucune partie ouverte pour le moment. Soyez le premier à en créer une.</p>}
         {rooms?.map((r) => (
           <button
             key={r.code}
@@ -159,7 +178,6 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
                 <span>
                   {r.maxPlayers - r.seatsLeft}/{r.maxPlayers} joueurs
                 </span>
-                <span aria-hidden="true">·</span>
                 <span>Objectif {r.targetPoints} pt{r.targetPoints > 1 ? 's' : ''}</span>
                 {r.stakeChips > 0 && (
                   <>
@@ -188,7 +206,7 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         {VARIANTS.map((v) => (
           <li key={v.id} className="rounded-xl border border-ivory-100/10 bg-ink-900/60 p-3.5">
             <p className="font-display text-lg text-ivory-50">
-              {v.name} <span className="ml-1 text-sm text-gold-400">— {v.tagline}</span>
+              {v.name} <span className="ml-1 text-sm text-gold-400">({v.tagline})</span>
             </p>
             <p className="mt-1 text-sm text-ivory-200/85">{v.description}</p>
           </li>

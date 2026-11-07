@@ -36,6 +36,8 @@ export interface PlayerSnapshot {
   /** Vote sur l'assistance proposée par l'hôte : true = approuve, false = refuse, null = pas encore répondu
    * (compte comme un refus au départ). Toujours true si `RoomConfig.assistance` est faux (rien à approuver). */
   assistanceApproved: boolean | null;
+  /** Joueur CPU du mode entraînement. Absent des anciennes sauvegardes : vaut alors false. */
+  bot?: boolean;
 }
 
 /** État complet et sérialisable d'une room (contient les cartes : usage serveur uniquement). */

@@ -142,6 +142,15 @@ les 3 lignes ; en cas d'égalité en tête à 3 joueurs ou moins, 0 point pour t
 départage entre les seuls ex aequo. *(Corrigé le 22/09/2026 : la version précédente partageait à tort le flop et le
 turn entre les 3 lignes — voir « Reste à faire ».)*
 
+**Mode entraînement contre le CPU** (bouton « S'entraîner contre le CPU » sur l'accueil). L'hôte choisit de 1 à 5
+adversaires CPU, l'objectif et l'assistance ; la table est privée (complète dès la création) et démarre aussitôt, sans
+mise. Les CPU sont pilotés par le serveur (`RoomManager`, délai de réflexion de 0,9 à 2,4 s) et décident avec
+`cpuPlan` (`packages/engine/src/cpu/cpu.ts`), qui ne lit que la vue d'un joueur : jamais les cartes cachées des autres.
+6-3 et Morpion : meilleure combinaison calculée exactement. Poker fermé, Aviation, Avia 6 : estimation par tirages
+aléatoires. 6-1 et Le 10 : ils retournent leur carte quand c'est leur tour. Variante choisie au hasard parmi les
+variantes jouables ; assurance toujours refusée et jamais proposée. Choix de règles à valider : aucune règle du jeu
+n'est modifiée, le CPU n'utilise que les commandes ouvertes à un joueur humain.
+
 ## Plan de tests
 
 | Domaine | Couverture |

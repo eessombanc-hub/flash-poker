@@ -5,7 +5,7 @@ import { useAccount, useAccountClient, useClient, useGame } from './lib/context'
 import { SettingsProvider, useSettings } from './lib/settings';
 import { Sound } from './lib/sound';
 import type { AuthMode } from './screens/Auth';
-import { CreateRoom, JoinRoom } from './screens/Forms';
+import { CreateRoom, JoinRoom, TrainingRoom } from './screens/Forms';
 import { Home } from './screens/Home';
 import { Lobby } from './screens/Lobby';
 import { Table } from './screens/Table';
@@ -16,7 +16,7 @@ const loadSpace = () => import('./screens/Space');
 const AuthScreen = lazy(() => loadAuth().then((m) => ({ default: m.AuthScreen })));
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 
-type Screen = 'home' | 'create' | 'join' | 'space' | { auth: AuthMode };
+type Screen = 'home' | 'create' | 'join' | 'train' | 'space' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -110,7 +110,7 @@ function ConnectionBanner() {
   return (
     <div role="status" aria-live="polite" className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-amber-950/95 px-4 py-2 text-center text-sm text-amber-100 backdrop-blur">
       <span className="h-2 w-2 animate-pulseRing rounded-full bg-amber-400" />
-      {connection === 'connecting' && !view ? 'Connexion à la table…' : 'Connexion perdue — reconnexion en cours. Les minuteurs continuent de s’écouler.'}
+      {connection === 'connecting' && !view ? 'Connexion à la table…' : 'Connexion perdue, reconnexion en cours. Les minuteurs continuent de s’écouler.'}
     </div>
   );
 }
@@ -164,11 +164,13 @@ export function App() {
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
   else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
+  else if (screen === 'train') content = <TrainingRoom onBack={() => setScreen('home')} />;
   else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={joinCode} />;
   else
     content = (
       <Home
         onCreate={() => setScreen('create')}
+        onTrain={() => setScreen('train')}
         onJoin={(code) => {
           setJoinCode(code ?? '');
           setScreen('join');

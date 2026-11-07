@@ -31,7 +31,7 @@ export function Reveal10Panel() {
 
   return (
     <PanelShell
-      eyebrow={`Le 10 — révélation ${Math.min(info.reveals + 1, 9 * n)} / ${9 * n}`}
+      eyebrow={`Le 10, révélation ${Math.min(info.reveals + 1, 9 * n)} / ${9 * n}`}
       title={info.next ? (myTurn ? 'À toi de révéler' : `${nick(view, info.next)} doit révéler`) : 'Showdown'}
       hint={info.next && info.reason ? `Joueur le plus faible désigné : ${NEXT_REASON_TEXT_10[info.reason]}. Sans retournement en 60 secondes, la carte est retournée automatiquement.` : undefined}
       timerLabel="Retournement"
@@ -77,7 +77,7 @@ export function Reveal10Panel() {
 
       {mine.length > 0 && (
         <div className="mt-5">
-          <p className="mb-2 text-center text-xs uppercase tracking-widest text-ivory-300/70">Votre main — cartes retournées dans l’ordre de distribution</p>
+          <p className="mb-2 text-center text-xs uppercase tracking-widest text-ivory-300/70">Votre main : cartes retournées dans l’ordre de distribution</p>
           <StaticHand label="Votre main" size="sm" cards={mine.map((c, i) => ({ code: c.code, visible: c.visible, next: i === firstHidden }))} />
         </div>
       )}

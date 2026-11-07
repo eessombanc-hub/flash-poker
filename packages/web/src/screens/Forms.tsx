@@ -114,6 +114,73 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   );
 }
 
+/** Entraînement : une table privée contre des adversaires CPU, démarrée tout de suite (aucune salle d'attente). */
+export function TrainingRoom({ onBack }: { onBack: () => void }) {
+  const client = useClient();
+  const [cpu, setCpu] = useState(3);
+  const [target, setTarget] = useState(3);
+  const [assistance, setAssistance] = useState(false);
+  const [nickname, setNick] = useState('');
+  const [avatar, setAvatar] = useState('or');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const nickOk = NICK_RE.test(nickname.trim());
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!nickOk || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await client.createRoom({ name: 'Entraînement', maxPlayers: cpu + 1, targetPoints: target, stakeChips: 0, assistance, cpu, nickname: nickname.trim(), avatar });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Création impossible.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="mx-auto max-w-xl px-4 py-8">
+      <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">
+        ← Retour
+      </Button>
+      <Panel className="p-6 sm:p-8">
+        <Eyebrow>Entraînement</Eyebrow>
+        <Title className="mb-2 mt-1 text-3xl">S’entraîner contre le CPU</Title>
+        <p className="mb-6 text-sm text-ivory-200/85">
+          Une table privée, prête tout de suite et sans mise. Les CPU jouent avec les mêmes règles que vous et ne voient jamais vos cartes. Ils choisissent la variante au hasard quand vient leur tour et refusent toute assurance.
+        </p>
+        <form onSubmit={submit} className="space-y-5" noValidate>
+          <Field label="Adversaires CPU" hint={cpu === 5 ? 'À 6 joueurs, Le 10 et le Poker fermé à 2 changes ne sont pas jouables.' : `À ${cpu + 1} joueurs, toutes les variantes sont jouables.`}>
+            <Segmented label="Adversaires CPU" value={cpu} options={[1, 2, 3, 4, 5]} onChange={setCpu} />
+          </Field>
+          <Field label="Objectif en points" hint="Le premier à atteindre l’objectif gagne la partie.">
+            <Segmented label="Objectif en points" value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
+          </Field>
+          <Field label="Niveau de la partie" hint={assistance ? 'Le nom de votre combinaison s’affiche pendant que vous choisissez vos cartes.' : 'Aucune indication : vous jugez seul la force de votre main.'}>
+            <Segmented label="Niveau de la partie" value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? 'Avec assistance' : 'Sans assistance')} />
+          </Field>
+          <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' || nickOk ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).'}>
+            <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
+          </Field>
+          <Field label="Avatar">
+            <AvatarPicker value={avatar} onChange={setAvatar} />
+          </Field>
+          {error && (
+            <p role="alert" className="rounded-lg border border-ruby-500/50 bg-ruby-950/60 px-3 py-2 text-sm text-ruby-100">
+              {error}
+            </p>
+          )}
+          <Button type="submit" disabled={!nickOk || busy} className="w-full py-3.5 text-base">
+            {busy ? 'Création…' : 'Lancer l’entraînement'}
+          </Button>
+        </form>
+      </Panel>
+    </main>
+  );
+}
+
 export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; initialCode?: string }) {
   const client = useClient();
   const me = useAccount((s) => s.account);

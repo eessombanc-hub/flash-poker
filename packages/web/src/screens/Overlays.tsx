@@ -63,7 +63,7 @@ export function TiebreakSequence({ tiebreak, view }: { tiebreak: TiebreakOutcome
   return (
     <section aria-label="Hold’em de départage" className="rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
       <div className="flex items-center justify-between gap-3">
-        <Eyebrow>Hold’em de départage{tiebreak.rounds.length > 1 ? ` — tour ${Math.floor(t / 4) + 1}` : ''}</Eyebrow>
+        <Eyebrow>Hold’em de départage{tiebreak.rounds.length > 1 ? ` (tour ${Math.floor(t / 4) + 1})` : ''}</Eyebrow>
         {!done && (
           <Button variant="ghost" className="min-h-[32px] px-2 py-1 text-xs" onClick={() => setT(total - 1)}>
             Passer
@@ -122,7 +122,7 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
     <Modal title={`Résultat de la manche ${record.roundNo}`} onClose={onClose} wide>
       <div onPointerDown={() => setInteracted(true)} onWheel={() => setInteracted(true)}>
       <Eyebrow>
-        Manche {record.roundNo} — {variantName(record.variant)}
+        Manche {record.roundNo}, {variantName(record.variant)}
       </Eyebrow>
       <h2 className="mt-1 font-display text-2xl text-ivory-50 sm:text-3xl" aria-live="polite">
         {awardText(record, view)}
@@ -204,7 +204,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
             <span className="w-6 font-display text-xl text-gold-400">{s.rank}</span>
             <Avatar nickname={nick(view, s.player)} avatar={view.players.find((p) => p.id === s.player)?.avatar} size={34} />
             <span className="flex-1 font-medium text-ivory-50">{nick(view, s.player)}</span>
-            <span className="text-sm text-ivory-200/80">{s.position} · {pointsLabel(s.score)}</span>
+            <span className="text-sm text-ivory-200/80">{s.position}, {pointsLabel(s.score)}</span>
           </li>
         ))}
         {/* Les autres joueurs ne sont pas classés par la règle (seuls le vainqueur et son partenaire d'assurance
@@ -223,7 +223,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
       </ol>
       {o.insurance && insured && (
         <p className="mt-2 text-xs text-ivory-300/80">
-          Assurance appliquée : {nick(view, insured[0])} et {nick(view, insured[1])} — {INSURANCE_LABELS[o.insurance.type].name}.
+          Assurance appliquée : {nick(view, insured[0])} et {nick(view, insured[1])} ({INSURANCE_LABELS[o.insurance.type].name}).
         </p>
       )}
 
@@ -311,6 +311,7 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
               <tr key={p.player} className="border-t border-ivory-100/10">
                 <td className="py-2 text-ivory-50">
                   {nick(view, p.player)} <span className="text-xs text-gold-400">{p.position}</span>
+                  {view.players.find((x) => x.id === p.player)?.bot && <span className="ml-2 align-middle"><Badge tone="neutral">CPU</Badge></span>}
                   {ins && <span className="ml-2 align-middle"><Badge tone="gold">Assuré avec {nick(view, ins.players.find((x) => x !== p.player)!)}</Badge></span>}
                   {p.excluded && <span className="ml-2 align-middle"><Badge tone="red">Exclu</Badge></span>}
                 </td>
@@ -330,7 +331,7 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
             <li key={r.roundNo} className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg bg-ink-900/60 px-3 py-2 text-sm">
               <span className="text-ivory-50">
                 <span className="mr-2 text-ivory-300/60">#{r.roundNo}</span>
-                {variantName(r.variant)} <span className="text-xs text-ivory-300/60">— choisie par {nick(view, r.chooser)}</span>
+                {variantName(r.variant)} <span className="text-xs text-ivory-300/60">(choisie par {nick(view, r.chooser)})</span>
               </span>
               <span className="text-ivory-200/85">{r.award.kind === 'POINTS' ? `${nick(view, r.award.winner)} +${r.award.points}${r.award.tiebreak ? ' (départage)' : ''}` : r.award.kind === 'INSTANT_VICTORY' ? 'Quinte flush : victoire' : 'Aucun point'}</span>
             </li>
@@ -359,7 +360,7 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
       <div className="min-w-[10rem] flex-1">
         <p className="text-xs uppercase tracking-widest text-gold-300">Vainqueur de la manche</p>
         <p className="font-display text-xl text-ivory-50">
-          {nick(view, winner)} <span className="text-gold-300">— {combo}</span>
+          {nick(view, winner)} <span className="text-gold-300">({combo})</span>
         </p>
       </div>
       {cards.length > 0 && (
@@ -427,7 +428,7 @@ export function RoundList({ history, nameOf, star }: { history: readonly RoundRe
               {winner ? (
                 <>
                   <strong className="text-ivory-50">{nameOf(winner)}</strong>
-                  {combo ? ` — ${combo}` : ''}
+                  {combo ? ` (${combo})` : ''}
                 </>
               ) : (
                 awardTextBy(r, nameOf)

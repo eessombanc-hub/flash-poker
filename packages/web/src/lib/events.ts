@@ -64,7 +64,7 @@ export function describeEvent(e: RoundEvent, view: RoomView): Announcement | nul
     case 'ROOM_ABANDONED':
       return { text: 'Partie abandonnée : plus aucun joueur connecté', tone: 'warning' };
     case 'WARNING':
-      return { text: `Sélection incomplète — il vous reste ${d.secondsLeft ?? 10} secondes`, tone: 'warning' };
+      return { text: `Sélection incomplète : il vous reste ${d.secondsLeft ?? 10} secondes`, tone: 'warning' };
     case 'INSURANCE_AVAILABLE':
       return { text: 'Assurance disponible : vous êtes à 1 point de la victoire', tone: 'info' };
     default:

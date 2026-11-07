@@ -3,7 +3,7 @@ import { chooseVariant, closeRecap, createRoom, joinRoom, jsErrors, newPlayer, t
 
 /** Chaque joueur garde sa main au poker fermé (aucune règle n'est jouée ici : seulement le parcours). */
 async function playClosedRound(players: Player[]): Promise<boolean> {
-  await chooseVariant(players, /Poker fermé — 1 change/);
+  await chooseVariant(players, /Poker fermé \(1 change\)/);
   for (const p of players) {
     const keep = p.page.getByRole('button', { name: 'Garder ma main' });
     await expect(keep).toBeVisible();
@@ -15,7 +15,7 @@ async function playClosedRound(players: Player[]): Promise<boolean> {
   for (const p of players) {
     await expect(p.page.getByRole('button', { name: /Continuer|Voir le résultat final/ })).toBeVisible({ timeout: 30_000 });
     // Au poker fermé, la manche a toujours un vainqueur (au besoin par Hold'em de départage) : nom et combinaison affichés.
-    await expect(p.page.getByTestId('vainqueur-manche')).toContainText(/— (Carte haute|Paire|Double paire|Brelan|Quinte|Couleur|Full|Carré)/);
+    await expect(p.page.getByTestId('vainqueur-manche')).toContainText(/\((Carte haute|Paire|Double paire|Brelan|Quinte|Couleur|Full|Carré)/);
     finished = (await closeRecap(p)) || finished;
   }
   return finished;
@@ -45,7 +45,7 @@ test('table de trois : rechargement de page en pleine manche, la main et le tour
   await joinRoom(b, code);
   await joinRoom(c, code);
   await a.page.getByRole('button', { name: /Démarrer/ }).click();
-  await chooseVariant([a, b, c], /Poker fermé — 1 change/);
+  await chooseVariant([a, b, c], /Poker fermé \(1 change\)/);
 
   const hand = () => c.page.getByRole('group', { name: 'Votre main' }).getByRole('button');
   await expect(hand()).toHaveCount(5);
@@ -66,7 +66,7 @@ test('sans action, la manche se termine seule à l’échéance du minuteur', as
   const code = await createRoom(a, { table: 'E2E minuteur', players: 2, target: 3 });
   await joinRoom(b, code);
   await a.page.getByRole('button', { name: /Démarrer/ }).click();
-  await chooseVariant([a, b], /Poker fermé — 1 change/);
+  await chooseVariant([a, b], /Poker fermé \(1 change\)/);
   // Minuteurs de 30 s en test (60 s en vrai) : personne ne joue, la manche doit se clore d'elle-même.
   for (const p of [a, b]) await expect(p.page.getByRole('button', { name: /Continuer|Voir le résultat final/ })).toBeVisible({ timeout: 60_000 });
 });

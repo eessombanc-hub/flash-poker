@@ -17,7 +17,7 @@ export function Button({ variant = 'primary', className = '', ...props }: Button
     <button
       type="button"
       {...props}
-      className={`inline-flex min-h-[44px] select-none items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold tracking-wide transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400 disabled:cursor-not-allowed ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex min-h-[44px] select-none items-center justify-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold tracking-wide transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400 disabled:cursor-not-allowed ${VARIANTS[variant]} ${className}`}
     />
   );
 }
@@ -25,7 +25,7 @@ export function Button({ variant = 'primary', className = '', ...props }: Button
 // ---------- Surfaces ----------
 export function Panel({ children, className = '', as: Tag = 'section', ...rest }: { children: ReactNode; className?: string; as?: 'section' | 'div' | 'aside' } & React.HTMLAttributes<HTMLElement>) {
   return (
-    <Tag {...rest} className={`rounded-2xl border border-ivory-100/10 bg-ink-800/90 shadow-panel backdrop-blur ${className}`}>
+    <Tag {...rest} className={`rounded-[28px] border border-ivory-100/10 bg-ink-800/90 shadow-panel backdrop-blur ${className}`}>
       {children}
     </Tag>
   );
@@ -58,7 +58,7 @@ export function Field({ label, hint, error, children, htmlFor }: { label: string
 }
 
 export const inputClass =
-  'w-full min-h-[44px] rounded-lg border border-ivory-100/15 bg-ink-900 px-3.5 py-2.5 text-ivory-50 placeholder:text-ivory-300/40 focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-500/30';
+  'w-full min-h-[44px] rounded-2xl border border-ivory-100/15 bg-ink-900 px-3.5 py-2.5 text-ivory-50 placeholder:text-ivory-300/40 focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-500/30';
 
 /** Choix parmi quelques valeurs (2 à 6 joueurs, 1 à 5 points…). */
 export function Segmented<T extends string | number>({ value, options, onChange, label, format }: { value: T; options: readonly T[]; onChange: (v: T) => void; label: string; format?: (v: T) => string }) {
@@ -71,7 +71,7 @@ export function Segmented<T extends string | number>({ value, options, onChange,
           role="radio"
           aria-checked={o === value}
           onClick={() => onChange(o)}
-          className={`min-h-[44px] flex-1 rounded-lg border px-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${o === value ? 'border-gold-500 bg-gold-500/15 text-gold-300' : 'border-ivory-100/15 text-ivory-200 hover:border-ivory-100/35'}`}
+          className={`min-h-[44px] flex-1 rounded-xl border px-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${o === value ? 'border-gold-500 bg-gold-500/15 text-gold-300' : 'border-ivory-100/15 text-ivory-200 hover:border-ivory-100/35'}`}
         >
           {format ? format(o) : String(o)}
         </button>
@@ -125,9 +125,9 @@ export function AvatarPicker({ value, onChange }: { value: string; onChange: (v:
           aria-checked={value === id}
           aria-label={`Avatar ${id}`}
           onClick={() => onChange(id)}
-          className={`rounded-full p-0.5 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${value === id ? 'ring-2 ring-gold-400' : 'opacity-70 hover:opacity-100'}`}
+          className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-1 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${value === id ? 'ring-2 ring-gold-400' : 'opacity-70 hover:opacity-100'}`}
         >
-          <Avatar nickname="?" avatar={id} size={34} />
+          <Avatar nickname="?" avatar={id} size={38} />
         </button>
       ))}
     </div>
@@ -196,7 +196,7 @@ export function Modal({ title, onClose, children, wide = false }: { title: strin
         aria-label={title}
         initial={{ y: 24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className={`max-h-[92vh] w-full overflow-y-auto rounded-2xl border border-gold-500/30 bg-ink-800 p-5 shadow-panel outline-none sm:p-7 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
+        className={`max-h-[92vh] w-full overflow-y-auto rounded-[28px] border border-gold-500/30 bg-ink-800 p-5 shadow-panel outline-none sm:p-7 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
       >
         {children}
       </motion.div>

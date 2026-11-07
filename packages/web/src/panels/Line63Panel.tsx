@@ -69,7 +69,7 @@ export function LinesRecap({ lines, view, scale }: { lines: LineResult[]; view: 
         <div key={l.line} className="rounded-xl border border-ivory-100/10 bg-ink-900/60 p-3">
           <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-ivory-50">
             Ligne {l.line}
-            {l.winners.length === 0 ? <Badge tone="amber">Aucun gagnant</Badge> : <Badge tone="gold">{l.winners.map((w) => nick(view, w)).join(' + ')} · {formatLinePoints(l.unitsEach, scale)} pt{l.winners.length > 1 ? ' chacun' : ''}</Badge>}
+            {l.winners.length === 0 ? <Badge tone="amber">Aucun gagnant</Badge> : <Badge tone="gold">{l.winners.map((w) => nick(view, w)).join(' + ')}, {formatLinePoints(l.unitsEach, scale)} pt{l.winners.length > 1 ? ' chacun' : ''}</Badge>}
           </p>
           <ul className="grid gap-2 sm:grid-cols-2">
             {Object.entries(l.designations).map(([pid, d]) => (

@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import {
   assignPositions,
+  cpuPlan,
   GameManager,
   RuleError,
   type GameCommand,
@@ -55,6 +56,8 @@ export interface RoomManagerDeps {
   tokenFactory?: () => string;
   idFactory?: () => string;
   onError?: (err: unknown) => void;
+  /** Délai de réflexion des joueurs CPU (mode entraînement), tiré au hasard dans cet intervalle. */
+  bots?: Partial<BotConfig>;
   /** Comptes joueurs (facultatif) : pseudos réservés aux inscrits, archivage des parties terminées. */
   accounts?: AccountHooks;
 }
@@ -71,6 +74,14 @@ export interface AccountHooks {
   /** Partie terminée normalement (jamais pour une partie annulée). */
   onGameFinished(game: FinishedGame): void;
 }
+export interface BotConfig {
+  minDelayMs: number;
+  maxDelayMs: number;
+}
+
+/** Prénoms des adversaires CPU, dans l'ordre ; ceux déjà pris par l'hôte sont sautés. */
+const BOT_NAMES = ['Gaspard', 'Léa', 'Hugo', 'Inès', 'Lucien', 'Margaux', 'Octave', 'Salomé'];
+const BOT_AVATARS = ['ardoise', 'ambre', 'saphir', 'perle', 'onyx', 'rubis', 'emeraude', 'or'];
 
 interface PlayerRec {
   id: string;
@@ -82,6 +93,8 @@ interface PlayerRec {
   lastSeenAt: number;
   state: PlayerState;
   assistanceApproved: boolean | null;
+  /** Joueur CPU : jamais de socket, c'est le serveur qui joue pour lui (voir `scheduleBots`). */
+  bot: boolean;
 }
 
 interface Room {
@@ -100,6 +113,8 @@ interface Room {
   timerKind: 'VARIANT' | 'INSURANCE' | 'ROUND' | null;
   deadlineAt: number | null;
   handles: { deadline?: Timer; warning?: Timer };
+  /** Prochain tour de jeu des CPU (distinct des minuteurs de 60 s, qui ne concernent que les humains). */
+  botTimer?: Timer;
 }
 
 const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
@@ -116,11 +131,13 @@ export class RoomManager {
   private readonly timers: TimerConfig;
   private readonly ttl: TtlConfig;
   private readonly store: RoomStore;
+  private readonly botCfg: BotConfig;
 
   constructor(private readonly deps: RoomManagerDeps) {
     this.timers = { durationMs: 60_000, warningMs: 10_000, ...deps.timers };
     this.ttl = { waitingMs: 2 * 3_600_000, finishedMs: 3_600_000, idleRunningMs: 30 * 60_000, ...deps.ttl };
     this.store = deps.store ?? new InMemoryRoomStore();
+    this.botCfg = { minDelayMs: 900, maxDelayMs: 2400, ...deps.bots };
   }
 
   // ---------- Abonnement aux messages sortants ----------
@@ -138,9 +155,11 @@ export class RoomManager {
     const who = this.identity(cfg.nickname, cfg.avatar ?? null, account);
     const code = this.newCode();
     const host = this.newPlayer(who, 'LOBBY', true); // propose l'assistance : l'approuve de fait
+    // Entraînement : la table est exactement l'hôte + ses adversaires CPU, donc privée (aucun siège libre)
+    const maxPlayers = cfg.cpu ? cfg.cpu + 1 : cfg.maxPlayers;
     const room: Room = {
       code,
-      config: { name: cfg.name, maxPlayers: cfg.maxPlayers, targetPoints: cfg.targetPoints, stakeChips: cfg.stakeChips, assistance: cfg.assistance ?? false, private: cfg.private ?? false },
+      config: { name: cfg.name, maxPlayers, targetPoints: cfg.targetPoints, stakeChips: cfg.stakeChips, assistance: cfg.assistance ?? false, private: cfg.cpu ? true : cfg.private ?? false },
       status: 'WAITING',
       hostId: host.rec.id,
       players: [host.rec],
@@ -156,8 +175,25 @@ export class RoomManager {
       handles: {},
     };
     this.rooms.set(room.code, room);
+    if (cfg.cpu) {
+      room.players.push(...this.newBots(cfg.cpu, host.rec));
+      this.launch(room); // démarre aussitôt : l'hôte retrouve la partie en cours dès qu'il se connecte
+      return { code: room.code, playerId: host.rec.id, token: host.token };
+    }
     this.broadcast(room, [pub('ROOM_CREATED', { code: room.code })]);
     return { code: room.code, playerId: host.rec.id, token: host.token };
+  }
+
+  /** Adversaires CPU : prénoms et avatars distincts de l'hôte et entre eux, toujours « connectés ». */
+  private newBots(count: number, host: PlayerRec): PlayerRec[] {
+    const names = BOT_NAMES.filter((n) => n.toLowerCase() !== host.nickname.toLowerCase());
+    const avatars = BOT_AVATARS.filter((a) => a !== host.avatar);
+    return Array.from({ length: count }, (_, i) => {
+      const { rec } = this.newPlayer({ nickname: names[i]!, avatar: avatars[i % avatars.length]!, accountId: null }, 'LOBBY', true);
+      rec.bot = true;
+      rec.connected = true;
+      return rec;
+    });
   }
 
   joinRoom(codeRaw: string, input: unknown, account?: AccountRef | null): { playerId: string; token: string } {
@@ -232,6 +268,11 @@ export class RoomManager {
     this.assertHost(room, actorId);
     if (room.status !== 'WAITING') throw new ServerError('WRONG_STATE', 'La partie a déjà démarré ou est terminée');
     if (room.players.length < 2) throw new ServerError('WRONG_STATE', 'Il faut au moins 2 joueurs pour démarrer');
+    this.launch(room);
+  }
+
+  /** Tirage des positions, création de la partie, premier minuteur. Partagé par le lobby et le mode entraînement. */
+  private launch(room: Room): void {
     // Assistance : seulement si TOUS les joueurs de la salle l'ont approuvée, sinon la partie démarre sans (silence = refus).
     const assistance = room.config.assistance && room.players.every((p) => p.assistanceApproved === true);
     // Positions tirées au sort, stables pendant toute la partie ; paramètres verrouillés
@@ -358,6 +399,48 @@ export class RoomManager {
     }
     this.rearm(room);
     this.broadcast(room, events);
+    this.scheduleBots(room);
+  }
+
+  // ---------- Joueurs CPU (mode entraînement) ----------
+
+  private clearBotTimer(room: Room): void {
+    room.botTimer?.cancel();
+    room.botTimer = undefined;
+  }
+
+  /**
+   * Après chaque transition : si un CPU est attendu, il joue dans un instant (délai de réflexion aléatoire).
+   * Un seul CPU à la fois ; sa décision relance cette méthode, donc les CPU suivants jouent à leur tour.
+   */
+  private scheduleBots(room: Room): void {
+    this.clearBotTimer(room);
+    if (room.status !== 'RUNNING' || !room.game) return;
+    const awaiting = new Set(room.game.awaiting());
+    if (!room.players.some((p) => p.bot && awaiting.has(p.id))) return;
+    const { minDelayMs, maxDelayMs } = this.botCfg;
+    const delay = minDelayMs + (maxDelayMs > minDelayMs ? this.deps.rng.int(maxDelayMs - minDelayMs + 1) : 0);
+    room.botTimer = this.deps.scheduler.setTimeout(() => this.guard(() => this.playBot(room.code)), delay);
+  }
+
+  /** Le CPU attendu joue SES commandes, décidées d'après SA vue uniquement (jamais les cartes des autres). */
+  private playBot(code: string): void {
+    const room = this.rooms.get(code);
+    if (!room || room.status !== 'RUNNING' || !room.game) return;
+    room.botTimer = undefined;
+    const awaiting = new Set(room.game.awaiting());
+    const bot = room.players.find((p) => p.bot && awaiting.has(p.id));
+    if (!bot) return;
+    for (const cmd of cpuPlan(room.game.view(bot.id), bot.id, this.deps.rng)) {
+      try {
+        this.applyGame(room, cmd);
+      } catch (e) {
+        // Un coup refusé trahit un défaut du CPU : on le signale sans interrompre la partie (le minuteur prend le relais)
+        (this.deps.onError ?? ((err) => console.error('[RoomManager] CPU', err)))(e);
+        return;
+      }
+      if (room.status !== 'RUNNING') return;
+    }
   }
 
   /** Les joueurs arrivés en cours de partie sont assis entre deux manches, à la dernière position libre. */
@@ -374,6 +457,7 @@ export class RoomManager {
 
   private close(room: Room, status: 'FINISHED' | 'CANCELLED', events: RoundEvent[]): void {
     this.clearTimers(room);
+    this.clearBotTimer(room);
     room.timerKey = room.timerKind = room.deadlineAt = null;
     room.status = status;
     room.finishedAt = this.deps.scheduler.now();
@@ -472,7 +556,7 @@ export class RoomManager {
     const now = this.deps.scheduler.now();
     const removed: string[] = [];
     for (const room of [...this.rooms.values()]) {
-      const idle = !room.players.some((p) => p.connected);
+      const idle = !room.players.some((p) => p.connected && !p.bot); // les CPU sont toujours connectés : seuls les humains comptent
       if (room.status === 'WAITING' && now - room.createdAt > this.ttl.waitingMs) removed.push(room.code);
       else if ((room.status === 'FINISHED' || room.status === 'CANCELLED') && now - (room.finishedAt ?? room.updatedAt) > this.ttl.finishedMs) {
         removed.push(room.code);
@@ -498,7 +582,7 @@ export class RoomManager {
       config: { ...r.config },
       status: r.status,
       hostId: r.hostId,
-      players: r.players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, accountId: p.accountId, tokenHash: p.tokenHash, state: p.state, lastSeenAt: p.lastSeenAt, assistanceApproved: p.assistanceApproved })),
+      players: r.players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, accountId: p.accountId, tokenHash: p.tokenHash, state: p.state, lastSeenAt: p.lastSeenAt, assistanceApproved: p.assistanceApproved, bot: p.bot })),
       game: r.game ? r.game.snapshot() : null,
       version: r.version,
       createdAt: r.createdAt,
@@ -524,7 +608,7 @@ export class RoomManager {
       config: { ...s.config },
       status: s.status,
       hostId: s.hostId,
-      players: s.players.map((p) => ({ ...p, accountId: p.accountId ?? null, connected: false })),
+      players: s.players.map((p) => ({ ...p, accountId: p.accountId ?? null, connected: p.bot === true, bot: p.bot === true })),
       game: s.game ? GameManager.restore(s.game, this.deps.rng, this.deps.gameHooks ?? {}) : null,
       version: s.version,
       createdAt: s.createdAt,
@@ -541,6 +625,7 @@ export class RoomManager {
       const t = room.game.timer();
       if (t && t.key === room.timerKey && room.deadlineAt !== null) this.schedule(room); // reprend au temps restant
       else this.rearm(room);
+      this.scheduleBots(room);
     }
   }
 
@@ -568,6 +653,7 @@ export class RoomManager {
       position: seat.get(p.id)?.position ?? null,
       score: seat.get(p.id)?.score ?? null,
       excluded: seat.get(p.id)?.excluded ?? false,
+      bot: p.bot,
       assistanceApproved: p.assistanceApproved,
     }));
     return {
@@ -656,7 +742,7 @@ export class RoomManager {
     const id = this.deps.idFactory ? this.deps.idFactory() : `p_${randomBytes(5).toString('hex')}`;
     return {
       token,
-      rec: { id, nickname: who.nickname, avatar: who.avatar, accountId: who.accountId, tokenHash: hashToken(token), connected: false, lastSeenAt: this.deps.scheduler.now(), state, assistanceApproved },
+      rec: { id, nickname: who.nickname, avatar: who.avatar, accountId: who.accountId, tokenHash: hashToken(token), connected: false, lastSeenAt: this.deps.scheduler.now(), state, assistanceApproved, bot: false },
     };
   }
   private newCode(): string {

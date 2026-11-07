@@ -9,7 +9,7 @@ const SCREENS = [
   { name: 'Galaxy S8', use: { ...devices['Galaxy S8'] } },
 ];
 const VARIANTS: [string, RegExp][] = [
-  ['6-3', /^6-3/], ['6-1', /^6-1/], ['fermé 1', /Poker fermé — 1 change/], ['fermé 2', /Poker fermé — 2 changes/],
+  ['6-3', /^6-3/], ['6-1', /^6-1/], ['fermé 1', /Poker fermé \(1 change\)/], ['fermé 2', /Poker fermé \(2 changes\)/],
   ['Aviation', /^Aviation/], ['Avia 6', /^Avia 6/], ['Le 10', /^Le 10/],
 ];
 

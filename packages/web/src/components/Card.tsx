@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { useId } from 'react';
 import { parseCode, type Suit } from '../lib/cards';
+import type { CardBack as CardBackId } from '../lib/settings';
 
 export type CardSize = 'xs' | 'board' | 'sm' | 'md' | 'wide6' | 'fan' | 'lg';
 // `board` : cartes communes sur le tapis, un peu plus petites sur téléphone pour que la table et votre main
@@ -72,17 +73,43 @@ function Face({ code, fourColor }: { code: string; fourColor: boolean }) {
   );
 }
 
-function Back({ id }: { id: string }) {
+/** Les 3 motifs de dos proposés dans les Paramètres. Chacun reste sobre (deux teintes + or), pour rester
+ * lisible en très petite taille (sièges, mains d'adversaires). */
+function BackPattern({ id, back }: { id: string; back: CardBackId }) {
+  if (back === 'rayures') {
+    return (
+      <pattern id={id} width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="9" height="9" fill="#5c1a24" />
+        <rect width="4.5" height="9" fill="#7a2230" />
+      </pattern>
+    );
+  }
+  if (back === 'etoile') {
+    return (
+      <pattern id={id} width="16" height="16" patternUnits="userSpaceOnUse">
+        <rect width="16" height="16" fill="#15336e" />
+        <path d="M8 3 L9.4 6.6 L13 8 L9.4 9.4 L8 13 L6.6 9.4 L3 8 L6.6 6.6 Z" fill="#c9a25a" opacity=".85" />
+      </pattern>
+    );
+  }
+  return (
+    <pattern id={id} width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="12" height="12" fill="#13543f" />
+      <path d="M0 6 H12 M6 0 V12" stroke="#0a3325" strokeWidth="1.4" />
+      <circle cx="6" cy="6" r="1.3" fill="#c9a25a" opacity=".65" />
+    </pattern>
+  );
+}
+
+const BACK_BORDER: Record<CardBackId, string> = { losange: '#0a3325', rayures: '#3a0f17', etoile: '#0c2050' };
+
+function Back({ id, back = 'losange' }: { id: string; back?: CardBackId }) {
   return (
     <>
       <defs>
-        <pattern id={id} width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="12" height="12" fill="#13543f" />
-          <path d="M0 6 H12 M6 0 V12" stroke="#0a3325" strokeWidth="1.4" />
-          <circle cx="6" cy="6" r="1.3" fill="#c9a25a" opacity=".65" />
-        </pattern>
+        <BackPattern id={id} back={back} />
       </defs>
-      <rect x="1" y="1" width="98" height="138" rx="9" fill="#0a3325" stroke="#c9a25a" strokeWidth="1.6" />
+      <rect x="1" y="1" width="98" height="138" rx="9" fill={BACK_BORDER[back]} stroke="#c9a25a" strokeWidth="1.6" />
       <rect x="8" y="8" width="84" height="124" rx="5" fill={`url(#${id})`} stroke="#c9a25a" strokeWidth=".8" opacity=".95" />
     </>
   );
@@ -106,6 +133,8 @@ interface CardProps {
   /** Liseré doré (carte mise en avant, ex. prochaine carte à révéler au 6-1). */
   highlight?: boolean;
   fourColor?: boolean;
+  /** Motif du dos (carte face cachée uniquement). Par défaut « losange ». */
+  back?: CardBackId;
   /** Animation de retournement à l'apparition (révélations). */
   flip?: boolean;
   /** Position dans la distribution (0, 1, 2…) : décale l'arrivée de quelques dizaines de ms par carte, pour
@@ -126,7 +155,7 @@ export function spokenName(code: string): string {
 }
 
 /** Une carte : face, ou dos si `code` est nul. Cliquable (sélection) ou purement décorative. */
-export function PlayingCard({ code, size = 'md', selected = false, disabled = false, dimmed = false, highlight = false, fourColor = false, flip = false, dealIndex, onClick, hint, className = '' }: CardProps) {
+export function PlayingCard({ code, size = 'md', selected = false, disabled = false, dimmed = false, highlight = false, fourColor = false, back = 'losange', flip = false, dealIndex, onClick, hint, className = '' }: CardProps) {
   const uid = useId();
   const reduce = useReducedMotion();
   // Figures : la lettre dessinée (J, Q, K) figure aussi dans le nom, pour la commande vocale (« cliquer K »).
@@ -136,8 +165,8 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
   // Carte cliquable : c'est le bouton qui porte le nom ; le dessin est alors décoratif (sinon le nom serait
   // lu deux fois, et le texte dessiné « K ♦ » ne correspondrait pas au nom « Roi de carreau »).
   const inner = (
-    <svg viewBox="0 0 100 140" className="block h-auto w-full" {...(onClick ? { 'aria-hidden': true, focusable: false } : { role: 'img', 'aria-label': hint ? `${label} — ${hint}` : label })}>
-      {code ? <Face code={code} fourColor={fourColor} /> : <Back id={`back-${uid}`} />}
+    <svg viewBox="0 0 100 140" className="block h-auto w-full" {...(onClick ? { 'aria-hidden': true, focusable: false } : { role: 'img', 'aria-label': hint ? `${label} : ${hint}` : label })}>
+      {code ? <Face code={code} fourColor={fourColor} /> : <Back id={`back-${uid}`} back={back} />}
     </svg>
   );
   const common = {
@@ -159,7 +188,7 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
       >
         {/* Nom du bouton porté par un texte réservé aux lecteurs d'écran, le dessin étant décoratif : le
             rang dessiné en double (coins, centre) n'entre pas en conflit avec le nom (WCAG 2.5.3). */}
-        <span className="sr-only">{hint ? `${label} — ${hint}` : label}</span>
+        <span className="sr-only">{hint ? `${label} : ${hint}` : label}</span>
         {inner}
       </motion.button>
     );
@@ -172,7 +201,7 @@ export function CardSlot({ code, size = 'md', label, fourColor, flip, dealIndex 
   if (code) return <PlayingCard code={code} size={size} fourColor={fourColor} flip={flip} dealIndex={dealIndex} />;
   return (
     <span
-      className={`relative inline-flex aspect-[5/7] shrink-0 items-center justify-center rounded-[9px] border border-dashed border-ivory-100/25 bg-ink-950/25 text-center text-[10px] leading-tight text-ivory-200/60 ${WIDTH[size]}`}
+      className={`relative inline-flex aspect-[5/7] shrink-0 items-center justify-center rounded-[9px] border border-dashed border-ivory-100/25 bg-ink-950/25 text-center text-[11px] leading-tight text-ivory-200/60 ${WIDTH[size]}`}
       aria-label={label ?? 'Carte pas encore dévoilée'}
       role="img"
     >

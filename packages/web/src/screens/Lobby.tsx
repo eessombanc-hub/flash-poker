@@ -89,7 +89,7 @@ export function Lobby() {
               <Badge tone={allApproved ? 'green' : 'amber'}>{allApproved ? 'Accord de tous' : 'En attente d’accord'}</Badge>
             </div>
             <p className="mt-2 text-sm text-ivory-200/85">
-              L’assistance affiche simplement le nom de votre combinaison (paire, brelan…) pendant que vous choisissez vos cartes — jamais de suggestion.
+              L’assistance affiche simplement le nom de votre combinaison (paire, brelan…) pendant que vous choisissez vos cartes, sans jamais suggérer un coup.
               Elle n’est active que si <strong>tous</strong> les joueurs l’approuvent avant le départ ; sinon la partie se joue sans assistance.
             </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">

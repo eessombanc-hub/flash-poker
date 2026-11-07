@@ -16,7 +16,8 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 .felt {
-  background: radial-gradient(ellipse at 50% 38%, #1a6b51 0%, #0e4130 52%, #06261c 100%);
+  /* Couleur choisie dans les Paramètres (variables posées en style inline sur l'élément) ; vert par défaut. */
+  background: radial-gradient(ellipse at 50% 38%, var(--felt-a, #1a6b51) 0%, var(--felt-b, #0e4130) 52%, var(--felt-c, #06261c) 100%);
   box-shadow: inset 0 0 0 6px #081a3d, inset 0 0 0 8px rgba(201, 162, 90, 0.55), inset 0 0 90px rgba(0, 0, 0, 0.55), 0 24px 60px rgba(0, 0, 0, 0.5);
 }
 .scroll-thin {

@@ -4,7 +4,7 @@ import { chooseVariant, createRoom, joinRoom, jsErrors, newPlayer } from './help
 // Chaque variante : l'écran de jeu s'affiche chez les deux joueurs (ordinateur et téléphone), sans erreur.
 // Aucune règle n'est jouée ici : les règles sont couvertes par les tests du moteur et du serveur.
 const VARIANTS: [string, RegExp][] = [
-  ['6-3', /^6-3/], ['6-1', /^6-1/], ['fermé 1 change', /Poker fermé — 1 change/], ['fermé 2 changes', /Poker fermé — 2 changes/],
+  ['6-3', /^6-3/], ['6-1', /^6-1/], ['fermé 1 change', /Poker fermé \(1 change\)/], ['fermé 2 changes', /Poker fermé \(2 changes\)/],
   ['Aviation', /^Aviation/], ['Avia 6', /^Avia 6/], ['Morpion', /^Morpion/], ['Le 10', /^Le 10/],
 ];
 

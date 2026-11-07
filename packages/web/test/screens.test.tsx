@@ -65,7 +65,7 @@ describe('salle d’attente', () => {
       renderWith(<Lobby />, withAssist(3, { p1: true, p2: null, p3: true }));
       const box = screen.getByRole('region', { name: 'Assistance' });
       expect(within(box).getByText('En attente d’accord')).toBeInTheDocument(); // p2 n'a pas encore répondu
-      expect(within(box).getByText(/jamais de suggestion/)).toBeInTheDocument();
+      expect(within(box).getByText(/sans jamais suggérer un coup/)).toBeInTheDocument();
       const list = screen.getByRole('list', { name: 'Joueurs' });
       expect(within(list).getAllByText('Assistance : oui')).toHaveLength(2);
       expect(within(list).getAllByText('Assistance : en attente')).toHaveLength(1);
@@ -223,12 +223,12 @@ describe('fin de partie', () => {
     expect(row('Alice')).toContain('2 000 jetons');
     expect(row('Bob')).toContain('−2 000 jetons');
     expect(flat(screen.getByRole('row', { name: /Cagnotte/ }).textContent)).toContain('6 000 jetons');
-    expect(screen.getByText(/Assurance appliquée : Emeric et Alice — Le perdant ne paye pas/)).toBeInTheDocument();
+    expect(screen.getByText(/Assurance appliquée : Emeric et Alice \(Le perdant ne paye pas\)/)).toBeInTheDocument();
   });
   it('quinte flush au 6-3 : victoire immédiate, sans assurance', () => {
     const o = outcome({ victoryType: 'STRAIGHT_FLUSH_63', insurance: null, settlement: { potChips: 6000, payouts: { p1: 6000, p2: 0, p3: 0 }, applied: null } });
     renderWith(<GameOverModal view={over(o)} onClose={() => undefined} onLeave={() => undefined} />, over(o));
-    expect(screen.getByText('Quinte flush au 6-3 — victoire immédiate')).toBeInTheDocument();
+    expect(screen.getByText('Quinte flush au 6-3 : victoire immédiate')).toBeInTheDocument();
     expect(screen.queryByText(/Assurance appliquée/)).toBeNull();
     expect(flat(screen.getByRole('row', { name: /Emeric/ }).textContent)).toContain('+4 000 jetons');
   });
@@ -415,7 +415,7 @@ describe('application : écrans selon l’état', () => {
   it('bannière de connexion perdue : les minuteurs continuent', () => {
     const w = renderWith(<App />, roomView({}, game({ round: null, phase: 'VARIANT_SELECTION' })));
     act(() => w.client.store.setState({ connection: 'offline' }));
-    expect(screen.getByText(/Connexion perdue — reconnexion en cours/)).toBeInTheDocument();
+    expect(screen.getByText(/Connexion perdue, reconnexion en cours/)).toBeInTheDocument();
     act(() => w.client.store.setState({ connection: 'online' }));
     expect(screen.queryByText(/Connexion perdue/)).toBeNull();
   });

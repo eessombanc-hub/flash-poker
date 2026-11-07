@@ -23,6 +23,7 @@ export function players(n = 3, over: Partial<Record<string, Partial<PlayerPublic
     position: POS[i]!,
     score: 0,
     excluded: false,
+    bot: false,
     assistanceApproved: true,
     ...over[id],
   }));

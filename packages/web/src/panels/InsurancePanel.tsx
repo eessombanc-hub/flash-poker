@@ -43,7 +43,7 @@ export function InsurancePanel() {
       <Panel className="p-4 sm:p-5">
         <Eyebrow>Assurance</Eyebrow>
         <p className="mt-1 text-sm text-ivory-200/90">
-          {p.proposer === me ? `Proposition envoyée à ${nick(view, p.partner)} (${INSURANCE_LABELS[p.type].name}) — en attente de sa réponse.` : `${nick(view, p.proposer)} propose une assurance à ${nick(view, p.partner)}.`}
+          {p.proposer === me ? `Proposition envoyée à ${nick(view, p.partner)} (${INSURANCE_LABELS[p.type].name}), en attente de sa réponse.` : `${nick(view, p.proposer)} propose une assurance à ${nick(view, p.partner)}.`}
         </p>
       </Panel>
     );

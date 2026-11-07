@@ -23,14 +23,14 @@ export interface SeatProps {
 
 /** Siège d'un joueur : identité, points, statut, et ses cartes (dos pour les cartes cachées). */
 export function Seat({ player, isMe, target, shown, hiddenCount, active, validated, folded, insured, isChooser, score, compact }: SeatProps) {
-  const { fourColor } = useSettings();
+  const { fourColor, cardBack } = useSettings();
   const out = player.excluded;
   if (compact) return <CompactSeat {...{ player, isMe, target, shown, active, validated, folded, insured, isChooser, score, out, fourColor }} />;
   return (
     <div
       className={`flex ${compact ? 'min-w-0 gap-1 px-2 py-1.5' : 'min-w-[9.5rem] gap-1.5 px-3 py-2.5'} flex-col items-center rounded-2xl border text-center transition ${active ? 'border-gold-400 bg-ink-800/95 shadow-gold' : 'border-ivory-100/15 bg-ink-900/80'} ${out || folded ? 'opacity-60' : ''}`}
       data-testid={`seat-${player.id}`}
-      aria-label={`${player.nickname}${isMe ? ' (vous)' : ''}, ${player.position ?? 'sans position'}, ${pointsLabel(score)}`}
+      aria-label={`${player.nickname}${isMe ? ' (vous)' : ''}${player.bot ? ', joueur CPU' : ''}, ${player.position ?? 'sans position'}, ${pointsLabel(score)}`}
     >
       <div className="flex items-center gap-1.5">
         <Avatar nickname={player.nickname} avatar={player.avatar} size={compact ? 26 : 38} dim={!player.connected || out} />
@@ -39,12 +39,13 @@ export function Seat({ player, isMe, target, shown, hiddenCount, active, validat
             {player.nickname}
             {isMe && <span className="ml-1 text-[11px] font-normal text-ivory-300/70">(vous)</span>}
           </p>
-          <p className="text-[10px] tracking-wide text-gold-400">{player.position ?? '—'}</p>
+          <p className="text-xs tracking-wide text-gold-400">{player.position ?? '—'}</p>
         </div>
         {compact && <ScorePips score={score} target={target} />}
       </div>
       {!compact && <ScorePips score={score} target={target} />}
       <div className={`flex ${compact ? 'min-h-[1.1rem]' : 'min-h-[1.25rem]'} flex-wrap justify-center gap-1`}>
+        {player.bot && <Badge tone="neutral">CPU</Badge>}
         {out && <Badge tone="red">Exclu</Badge>}
         {!out && !player.connected && <Badge tone="neutral">Hors ligne</Badge>}
         {folded && <Badge tone="amber">Couché</Badge>}
@@ -59,7 +60,7 @@ export function Seat({ player, isMe, target, shown, hiddenCount, active, validat
             <PlayingCard key={c} code={c} size="xs" fourColor={fourColor} />
           ))}
           {Array.from({ length: hiddenCount }, (_, i) => (
-            <PlayingCard key={`h${i}`} code={null} size="xs" />
+            <PlayingCard key={`h${i}`} code={null} size="xs" back={cardBack} />
           ))}
         </div>
       )}
@@ -79,13 +80,13 @@ function CompactSeat({ player, isMe, target, shown, active, validated, folded, i
     <div
       className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1 transition ${active ? 'border-gold-400 bg-ink-800/95 shadow-gold' : 'border-ivory-100/15 bg-ink-900/80'} ${out || folded ? 'opacity-60' : ''}`}
       data-testid={`seat-${player.id}`}
-      aria-label={`${player.nickname}${isMe ? ' (vous)' : ''}, ${player.position ?? 'sans position'}, ${pointsLabel(score)}`}
+      aria-label={`${player.nickname}${isMe ? ' (vous)' : ''}${player.bot ? ', joueur CPU' : ''}, ${player.position ?? 'sans position'}, ${pointsLabel(score)}`}
     >
       <div className="flex min-w-0 items-center gap-1">
         <Avatar nickname={player.nickname} avatar={player.avatar} size={22} dim={!player.connected || out} />
         <div className="min-w-0 flex-1 text-left leading-tight">
           <p className={`truncate text-xs font-semibold ${isMe ? 'text-gold-300' : 'text-ivory-50'}`}>{player.nickname}</p>
-          <p className="whitespace-nowrap text-[10px] tracking-wide text-gold-400">{player.position ?? '—'}</p>
+          <p className="whitespace-nowrap text-[10px] tracking-wide text-gold-400">{player.position ?? ''}{player.bot ? (player.position ? ' · CPU' : 'CPU') : ''}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-0.5">
           <ScorePips score={score} target={target} small />

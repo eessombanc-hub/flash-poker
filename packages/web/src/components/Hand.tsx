@@ -92,13 +92,13 @@ function fitted(size: CardSize, count: number): CardSize {
 /** Ma main affichée sans interaction (cartes visibles ou non, dans l'ordre de distribution). `code: null` = carte
  * pas encore retournée : ni les adversaires ni le propriétaire n'en connaissent l'identité (6-1, Le 10). */
 export function StaticHand({ cards, size = 'md', label, dimmed }: { cards: { code: string | null; visible?: boolean; next?: boolean }[]; size?: CardSize; label: string; dimmed?: boolean }) {
-  const { fourColor } = useSettings();
+  const { fourColor, cardBack } = useSettings();
   return (
     <div role="group" aria-label={label} className="flex flex-wrap items-end justify-center gap-1.5 sm:gap-2.5">
       {cards.map((c, i) => (
         <div key={c.code ?? `hidden-${i}`} className="flex flex-col items-center gap-1">
-          <PlayingCard code={c.code} size={fitted(size, cards.length)} fourColor={fourColor} highlight={c.next} dimmed={dimmed} dealIndex={i} hint={c.code === null ? 'pas encore retournée' : c.visible ? 'visible de tous' : undefined} />
-          <span className="text-[10px] text-ivory-300/60">{c.next ? 'prochaine' : i + 1}</span>
+          <PlayingCard code={c.code} size={fitted(size, cards.length)} fourColor={fourColor} back={cardBack} highlight={c.next} dimmed={dimmed} dealIndex={i} hint={c.code === null ? 'pas encore retournée' : c.visible ? 'visible de tous' : undefined} />
+          <span className="text-xs text-ivory-300/60">{c.next ? 'prochaine' : i + 1}</span>
         </div>
       ))}
     </div>

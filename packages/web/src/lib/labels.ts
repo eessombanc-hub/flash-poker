@@ -25,13 +25,13 @@ export const VARIANTS: readonly VariantInfo[] = [
   },
   {
     id: 'CLOSED_1',
-    name: 'Poker fermé — 1 change',
+    name: 'Poker fermé (1 change)',
     tagline: '5 cartes, un change',
     description: '5 cartes privées. Un change simultané et secret de 0 à 3 cartes, puis showdown.',
   },
   {
     id: 'CLOSED_2',
-    name: 'Poker fermé — 2 changes',
+    name: 'Poker fermé (2 changes)',
     tagline: '5 cartes, deux changes',
     description: '5 cartes privées. Deux changes simultanés et secrets de 0 à 3 cartes, puis showdown. De 2 à 5 joueurs.',
   },
@@ -102,7 +102,7 @@ export const INSURANCE_LABELS: Record<InsuranceType, { name: string; short: stri
 
 export const VICTORY_LABELS = {
   SCORE: 'Objectif atteint',
-  STRAIGHT_FLUSH_63: 'Quinte flush au 6-3 — victoire immédiate',
+  STRAIGHT_FLUSH_63: 'Quinte flush au 6-3 : victoire immédiate',
 } as const;
 
 /**

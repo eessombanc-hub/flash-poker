@@ -122,7 +122,7 @@ export function MorpionPanel() {
                 >
                   <MiniGrid line={i} active={draft.line === i} />
                   {/* Nom visible sur écran large ; sur téléphone, la mini-grille suffit (le nom reste lu par les lecteurs d'écran). */}
-                  <span className={`hidden text-[10px] font-medium leading-tight sm:block ${draft.line === i ? 'text-gold-300' : 'text-ivory-200'}`}>{label}</span>
+                  <span className={`hidden text-xs font-medium leading-tight sm:block ${draft.line === i ? 'text-gold-300' : 'text-ivory-200'}`}>{label}</span>
                 </button>
               ))}
             </div>
@@ -130,7 +130,7 @@ export function MorpionPanel() {
           <AssistBadge active={game.assistance} category={assistCategory(round)} waiting="Choisissez 2 cartes et un alignement" />
           <div className="mt-2 flex flex-row items-center justify-center gap-2 sm:mt-3 sm:gap-4">
             <p className="text-xs text-ivory-200/80 sm:text-sm" aria-live="polite">
-              {draft.cards.length}/2 carte{draft.cards.length > 1 ? 's' : ''} · {draft.line === null ? 'aucun alignement' : ALIGNMENTS[draft.line]}
+              {draft.cards.length}/2 carte{draft.cards.length > 1 ? 's' : ''}, {draft.line === null ? 'aucun alignement' : ALIGNMENTS[draft.line]}
             </p>
             <Button disabled={validated || !complete} onClick={() => void client.command({ type: 'VALIDATE' })} className="flex-1 px-3 sm:flex-none sm:min-w-[16rem] sm:px-5">
               {validated ? 'Combinaison verrouillée' : 'Valider ma combinaison'}

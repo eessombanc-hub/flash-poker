@@ -7,8 +7,8 @@ export const VARIANT_IDS: readonly VariantId[] = ['V6_3', 'V6_1', 'CLOSED_1', 'C
 export const VARIANT_LABELS: Record<VariantId, string> = {
   V6_3: '6-3',
   V6_1: '6-1',
-  CLOSED_1: 'Poker fermé — 1 change',
-  CLOSED_2: 'Poker fermé — 2 changes',
+  CLOSED_1: 'Poker fermé (1 change)',
+  CLOSED_2: 'Poker fermé (2 changes)',
   AVIATION: 'Aviation',
   AVIA_6: 'Avia 6',
   MORPION: 'Morpion',

@@ -262,7 +262,7 @@ describe('notifications', () => {
   it('avertissement privé à 10 s et assurance disponible : rappelés en notification', () => {
     const { client, last } = ready();
     last().trigger('update', update(1, [ev('WARNING', 'PLAYER', { secondsLeft: 10 }), ev('INSURANCE_AVAILABLE', 'PLAYER')]));
-    expect(client.state.toasts.map((t) => t.text)).toEqual(['Sélection incomplète — il vous reste 10 secondes', 'Assurance disponible : vous êtes à 1 point de la victoire']);
+    expect(client.state.toasts.map((t) => t.text)).toEqual(['Sélection incomplète : il vous reste 10 secondes', 'Assurance disponible : vous êtes à 1 point de la victoire']);
   });
   it('événements publics : pas de notification (ils passent par les annonces)', () => {
     const { client, last } = ready();

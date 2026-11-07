@@ -22,7 +22,7 @@ export function ClosedPanel() {
 
   return (
     <PanelShell
-      eyebrow={`Poker fermé — change ${info.change} / ${info.totalChanges}`}
+      eyebrow={`Poker fermé, change ${info.change} / ${info.totalChanges}`}
       title="Choisissez les cartes à changer"
       hint="De 0 à 3 cartes. Les changes sont simultanés et secrets. Sans action à l’échéance, votre main reste telle quelle."
     >

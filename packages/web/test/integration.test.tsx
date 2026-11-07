@@ -192,7 +192,7 @@ describe('intégration : interface complète dans le DOM, pilotée comme un util
     const chooserIsHost = () => host.client.state.view?.game?.chooser === hostId;
     await until(() => host.client.state.view?.game?.chooser, 'chooser connu');
     if (chooserIsHost()) {
-      await user.click(await screen.findByRole('button', { name: /^Poker fermé — 1 change/ }));
+      await user.click(await screen.findByRole('button', { name: /^Poker fermé \(1 change\)/ }));
     } else {
       expect(await screen.findByRole('heading', { name: /choisit la variante/ })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /^6-3/ })).toBeDisabled(); // pas la main : rien à cliquer
@@ -210,6 +210,41 @@ describe('intégration : interface complète dans le DOM, pilotée comme un util
     const dialog = await screen.findByRole('dialog', { name: 'Résultat de la manche 1' }, { timeout: 5000 });
     expect(within(dialog).getByRole('list', { name: 'Mains dévoilées' }).querySelectorAll('li')).toHaveLength(2);
     expect(within(dialog).getByRole('heading', { level: 2 }).textContent).toMatch(/remporte la manche|Hold’em de départage|Aucun point/);
+  });
+
+  it('entraînement : du bouton de l’accueil à la table, les CPU jouent côté serveur', async () => {
+    const env = await start();
+    const user = userEvent.setup();
+    const host = env.make();
+    render(
+      <ClientProvider client={host.client}>
+        <App />
+      </ClientProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'S’entraîner contre le CPU' }));
+    await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
+    await user.click(within(screen.getByRole('radiogroup', { name: 'Adversaires CPU' })).getByRole('radio', { name: '2' }));
+    await user.click(screen.getByRole('button', { name: 'Lancer l’entraînement' }));
+
+    // aucune salle d'attente : la table est directement en jeu, avec deux CPU repérés par leur pastille
+    await screen.findByRole('navigation', { name: 'Menu de la table' }, { timeout: 5000 });
+    const view = () => host.client.state.view!;
+    await until(() => host.client.state.view?.game, 'partie visible');
+    expect(view().status).toBe('RUNNING');
+    expect(view().players.filter((p) => p.bot)).toHaveLength(2);
+    expect(view().seatsLeft).toBe(0);
+    expect((await screen.findAllByText(/CPU/)).length).toBeGreaterThanOrEqual(2);
+
+    // un CPU choisit la variante (le temps du serveur avance) ou l'hôte la choisit, puis les CPU jouent seuls
+    const me = host.client.state.session!.playerId;
+    if (view().game!.chooser === me) expect(await host.client.command({ type: 'CHOOSE_VARIANT', variant: 'MORPION' })).toBe(true);
+    else env.scheduler.advance(3000);
+    await until(() => view().game?.phase === 'ROUND', 'manche lancée');
+    env.scheduler.advance(8000);
+    await until(() => {
+      const awaiting = view().game?.round?.awaiting ?? [];
+      return awaiting.length === 1 && awaiting[0] === me;
+    }, 'seul l’humain est encore attendu');
   });
 
   it('rechargement de la page : l’interface reprend la partie sans repasser par l’accueil', async () => {

@@ -19,7 +19,7 @@ export function Board({ round, size = 'md' }: { round: RoundView; size?: CardSiz
       {b.map((code, i) => (
         <div key={i} className="flex flex-col items-center gap-1">
           <CardSlot code={code} size={size} fourColor={fourColor} dealIndex={i} label={isAviation ? FIVE_LABELS[i] : undefined} />
-          {isAviation && <span className="text-[10px] uppercase tracking-widest text-ivory-200/60">{i === 0 || i === 3 || i === 4 ? FIVE_LABELS[i] : ''}</span>}
+          {isAviation && <span className="text-xs uppercase tracking-widest text-ivory-200/60">{i === 0 || i === 3 || i === 4 ? FIVE_LABELS[i] : ''}</span>}
         </div>
       ))}
     </div>

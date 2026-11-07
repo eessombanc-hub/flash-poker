@@ -21,6 +21,9 @@ export const createRoomSchema = z.object({
   /** Partie « avec assistance », proposée par l'hôte : doit être approuvée par tous les joueurs de la salle
    * avant le départ, sinon la partie démarre sans assistance (voir `lobby:approveAssistance`). Faux par défaut. */
   assistance: z.boolean().optional(),
+  /** Mode entraînement : nombre d'adversaires CPU (1 à 5). La table est alors privée (complète dès la création,
+   * `maxPlayers` est ramené à CPU + 1) et la partie démarre aussitôt. Absent : partie entre humains. */
+  cpu: z.number().int().min(1).max(5).optional(),
   /** Salle privée : non listée dans « Parties ouvertes », on n'y entre qu'avec le code (ou le lien d'invitation). */
   private: z.boolean().optional(),
   nickname,
@@ -66,6 +69,8 @@ export interface PlayerPublic {
   position: string | null;
   score: number | null;
   excluded: boolean;
+  /** Joueur piloté par le serveur (mode entraînement) : l'interface le signale par une pastille « CPU ». */
+  bot: boolean;
   /** Vote sur l'assistance proposée : true = approuve, false = refuse, null = pas encore répondu (compte comme
    * un refus au départ) ; toujours true si `config.assistance` est faux. */
   assistanceApproved: boolean | null;
