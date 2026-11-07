@@ -46,7 +46,7 @@ export function AccountProvider({ account, children }: { account: AccountClient 
 export function useAccountClient(): AccountClient | null {
   return useContext(AccountContext);
 }
-const NO_ACCOUNT: AccountState = { token: null, account: null, ready: true, passwordRecovery: false };
+const NO_ACCOUNT: AccountState = { token: null, account: null, ready: true, passwordRecovery: false, wallet: null };
 const noStore = { getState: () => NO_ACCOUNT, getInitialState: () => NO_ACCOUNT, subscribe: () => () => undefined, setState: () => undefined };
 export function useAccount<T>(selector: (s: AccountState) => T): T {
   const a = useAccountClient();

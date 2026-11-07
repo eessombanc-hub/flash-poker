@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SeededRng } from '../src/core/rng';
-import { GameManager, MAX_STAKE_CENTS, type GameConfig } from '../src/game/gameManager';
+import { GameManager, MAX_STAKE_CHIPS, type GameConfig } from '../src/game/gameManager';
 import { assignPositions } from '../src/game/positions';
 import { RuleError, VARIANT_IDS, type RoundCommand, type VariantId } from '../src/variants';
 import { dealStack, names, randomCommand } from './helpers';
@@ -34,7 +34,7 @@ const L3_FILLER = ['3d', '4h', '6s', '9c'];
 const stack63 = (rivers: [string, string, string]) =>
   dealStack(H63, [...BASE63, rivers[0]!, ...L2_FILLER, rivers[1]!, ...L3_FILLER, rivers[2]!]);
 
-const cfg = (n: number, target = 3): GameConfig => ({ players: names(n), targetPoints: target, stakeCents: 2000 });
+const cfg = (n: number, target = 3): GameConfig => ({ players: names(n), targetPoints: target, stakeChips: 2000 });
 const choose = (g: GameManager, v: VariantId) => g.apply({ type: 'CHOOSE_VARIANT', player: g.chooser(), variant: v });
 const round = (g: GameManager, command: RoundCommand) => g.apply({ type: 'ROUND', command });
 const TIMEOUT: RoundCommand = { type: 'TIMEOUT' };
@@ -65,13 +65,13 @@ describe('configuration', () => {
     expect(() => new GameManager(cfg(3, 1), new SeededRng(1))).not.toThrow();
     expect(() => new GameManager({ ...cfg(3), maxPlayers: 2 }, new SeededRng(1))).toThrowError(/maximal de joueurs/); // < joueurs présents
     expect(() => new GameManager({ ...cfg(3), maxPlayers: 7 }, new SeededRng(1))).toThrowError(/maximal de joueurs/);
-    expect(() => new GameManager({ ...cfg(3), stakeCents: -1 }, new SeededRng(1))).toThrowError(/Mise/);
-    expect(() => new GameManager({ ...cfg(3), stakeCents: 1_000_001 }, new SeededRng(1))).toThrowError(/10 000 €/);
-    expect(() => new GameManager({ ...cfg(3), stakeCents: MAX_STAKE_CENTS }, new SeededRng(1))).not.toThrow(); // 10 000 € : accepté
-    expect(() => new GameManager({ ...cfg(3), stakeCents: 0 }, new SeededRng(1))).not.toThrow();
-    expect(new GameManager({ ...cfg(6), stakeCents: MAX_STAKE_CENTS }, new SeededRng(1)).view(null).potCents).toBe(6_000_000);
+    expect(() => new GameManager({ ...cfg(3), stakeChips: -1 }, new SeededRng(1))).toThrowError(/Mise/);
+    expect(() => new GameManager({ ...cfg(3), stakeChips: 10_001 }, new SeededRng(1))).toThrowError(/10 000 jetons/);
+    expect(() => new GameManager({ ...cfg(3), stakeChips: MAX_STAKE_CHIPS }, new SeededRng(1))).not.toThrow(); // 10 000 jetons : accepté
+    expect(() => new GameManager({ ...cfg(3), stakeChips: 0 }, new SeededRng(1))).not.toThrow();
+    expect(new GameManager({ ...cfg(6), stakeChips: MAX_STAKE_CHIPS }, new SeededRng(1)).view(null).potChips).toBe(60_000);
     const g = new GameManager(cfg(6, 5), new SeededRng(1));
-    expect(g.view('P0')).toMatchObject({ phase: 'VARIANT_SELECTION', roundNo: 1, targetPoints: 5, potCents: 12000, maxPlayers: 6 });
+    expect(g.view('P0')).toMatchObject({ phase: 'VARIANT_SELECTION', roundNo: 1, targetPoints: 5, potChips: 12000, maxPlayers: 6 });
   });
 });
 
@@ -125,7 +125,7 @@ describe('score, objectif, victoire', () => {
       winner: 'P1',
       victoryType: 'SCORE',
       standings: [{ player: 'P1', position: 'UTG+1', score: 3, rank: 1 }], // vainqueur seul (pas d'assurance)
-      settlement: { potCents: 6000, payouts: { P0: 0, P1: 6000, P2: 0 }, applied: null }, // il récupère tout
+      settlement: { potChips: 6000, payouts: { P0: 0, P1: 6000, P2: 0 }, applied: null }, // il récupère tout
       insurance: null,
     });
     expect(g.view(null).players.map((p) => p.score)).toEqual([0, 3, 1]); // les scores de tous restent consultables
@@ -185,7 +185,7 @@ describe('quinte flush 6-3 : victoire immédiate, indépendante du score et de l
       winner: 'P0',
       victoryType: 'STRAIGHT_FLUSH_63',
       standings: [{ player: 'P0', position: 'UTG', score: 0, rank: 1 }], // le vainqueur, même avec 0 point
-      settlement: { potCents: 6000, payouts: { P0: 6000, P1: 0, P2: 0 }, applied: null },
+      settlement: { potChips: 6000, payouts: { P0: 6000, P1: 0, P2: 0 }, applied: null },
       insurance: null,
     });
     expect(g.history()[1]!.award).toEqual({ kind: 'INSTANT_VICTORY', winner: 'P0', line: 1 });
@@ -490,10 +490,10 @@ describe('arrivée d\'un joueur en cours de partie', () => {
   it('uniquement entre deux manches : dernière position, 0 point, même mise ajoutée à la cagnotte', () => {
     const g = stackedGame(cfg(3, 5), { 1: closedWin(3, 0) });
     const ev = g.apply({ type: 'ADD_PLAYER', player: 'J1' });
-    expect(ev[0]).toMatchObject({ type: 'PLAYER_ADDED', visibility: 'PUBLIC', data: { player: 'J1', position: 'UTG+3', potCents: 8000 } });
+    expect(ev[0]).toMatchObject({ type: 'PLAYER_ADDED', visibility: 'PUBLIC', data: { player: 'J1', position: 'UTG+3', potChips: 8000 } });
     expect(g.players()).toEqual(['P0', 'P1', 'P2', 'J1']);
     expect(g.view(null).players.at(-1)).toEqual({ player: 'J1', position: 'UTG+3', score: 0, excluded: false });
-    expect(g.view(null).potCents).toBe(8000);
+    expect(g.view(null).potChips).toBe(8000);
     choose(g, 'CLOSED_1');
     expect(() => g.apply({ type: 'ADD_PLAYER', player: 'J2' })).toThrowError(/qu'entre deux manches/);
   });
@@ -546,7 +546,7 @@ describe('arrivée d\'un joueur en cours de partie', () => {
     choose(h, 'CLOSED_1');
     round(h, TIMEOUT); // manche 3 : J1 atteint 2
     expect(h.outcome()!.winner).toBe('J1');
-    expect(h.outcome()!.settlement).toMatchObject({ potCents: 8000, payouts: { P0: 0, P1: 0, P2: 0, J1: 8000 } });
+    expect(h.outcome()!.settlement).toMatchObject({ potChips: 8000, payouts: { P0: 0, P1: 0, P2: 0, J1: 8000 } });
     void g;
   });
 
@@ -582,7 +582,7 @@ describe('exclusion par l\'hôte : le joueur garde son siège en absent permanen
     expect(g.players()).toEqual(['P0', 'P1', 'P2']);
     expect(g.scoreOf('P1')).toBe(1);
     expect(g.view(null).players.find((p) => p.player === 'P1')).toMatchObject({ excluded: true, score: 1 });
-    expect(g.view(null).potCents).toBe(6000); // sa mise reste dans la cagnotte
+    expect(g.view(null).potChips).toBe(6000); // sa mise reste dans la cagnotte
     expect(g.excludedPlayers()).toEqual(['P1']);
     expect(() => excl(g, 'P1')).toThrowError(/déjà exclu/);
     expect(() => excl(g, 'X')).toThrowError(/inconnu/);
@@ -708,7 +708,7 @@ describe('exclusion par l\'hôte : le joueur garde son siège en absent permanen
     choose(g, 'CLOSED_1');
     round(g, { type: 'VALIDATE', player: 'P0' });
     round(g, { type: 'VALIDATE', player: 'P1' });
-    expect(g.outcome()!.settlement).toEqual({ potCents: 6000, payouts: { P0: 6000, P1: 0, P2: 0 }, applied: null });
+    expect(g.outcome()!.settlement).toEqual({ potChips: 6000, payouts: { P0: 6000, P1: 0, P2: 0 }, applied: null });
   });
 });
 
@@ -718,7 +718,7 @@ describe('simulation : arrivées et exclusions aléatoires en cours de partie', 
     let excluded = 0;
     for (let seed = 1; seed <= 40; seed++) {
       const n0 = 2 + (seed % 3);
-      const g = new GameManager({ players: names(n0), targetPoints: 3, stakeCents: 700, maxPlayers: 6 }, new SeededRng(seed * 3 + 1));
+      const g = new GameManager({ players: names(n0), targetPoints: 3, stakeChips: 700, maxPlayers: 6 }, new SeededRng(seed * 3 + 1));
       const bot = new SeededRng(seed);
       let steps = 0;
       let extra = 0;
@@ -811,7 +811,7 @@ describe('simulation : parties complètes aléatoires (2 à 6 joueurs)', () => {
     const victories: Record<string, number> = {};
     for (let n = 2; n <= 6; n++) {
       for (let seed = 1; seed <= 12; seed++) {
-        const config: GameConfig = { players: assignPositions(names(n), new SeededRng(seed)).order, targetPoints: 3, stakeCents: 1000 };
+        const config: GameConfig = { players: assignPositions(names(n), new SeededRng(seed)).order, targetPoints: 3, stakeChips: 1000 };
         const g = new GameManager(config, new SeededRng(seed * 13 + n));
         const bot = new SeededRng(seed * 7 + n);
         let steps = 0;
@@ -889,7 +889,7 @@ describe('simulation : parties complètes aléatoires (2 à 6 joueurs)', () => {
         expect(out.standings[0]!.player).toBe(out.winner);
         // règlement : la cagnotte est répartie à l'euro près, sans centime perdu ni négatif
         expect(Object.values(out.settlement.payouts).reduce((x, y) => x + y, 0)).toBe(1000 * n);
-        expect(out.settlement.potCents).toBe(1000 * n);
+        expect(out.settlement.potChips).toBe(1000 * n);
         expect(g.insurancesAccepted().length).toBeLessThanOrEqual(1); // une seule assurance par partie
         const ins = g.insurancesAccepted()[0];
         if (ins && ins.players.includes(out.winner)) {

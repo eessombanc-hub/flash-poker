@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Badge, Button, Eyebrow, Panel } from '../components/ui';
 import { useClient } from '../lib/context';
-import { formatEuros } from '../lib/format';
+import { formatChips } from '../lib/format';
 import { describeInsurance, INSURANCE_GENERAL_NOTE } from '../lib/insurance';
 import { INSURANCE_LABELS } from '../lib/labels';
 import { nick } from '../lib/selectors';
@@ -27,7 +27,7 @@ export function InsurancePanel() {
           <p className="mt-1 text-lg text-ivory-50">
             <strong>{nick(view, p.proposer)}</strong> vous propose une assurance : <strong>{INSURANCE_LABELS[p.type].name}</strong>.
           </p>
-          <p className="mt-2 text-sm text-ivory-200/85">{describeInsurance(p.type, game.potCents, game.stakeCents)}</p>
+          <p className="mt-2 text-sm text-ivory-200/85">{describeInsurance(p.type, game.potChips, game.stakeChips)}</p>
           <p className="mt-1 text-xs text-ivory-300/70">{INSURANCE_GENERAL_NOTE}</p>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <Button onClick={() => void client.command({ type: 'RESPOND_INSURANCE', accept: true })}>Accepter l’assurance</Button>
@@ -77,13 +77,13 @@ export function InsurancePanel() {
                   <input type="radio" name="insurance-type" className="accent-yellow-600" checked={type === t} onChange={() => setType(t)} />
                   {INSURANCE_LABELS[t].name}
                 </span>
-                <span className="mt-1 block text-ivory-200/80">{describeInsurance(t, game.potCents, game.stakeCents)}</span>
+                <span className="mt-1 block text-ivory-200/80">{describeInsurance(t, game.potChips, game.stakeChips)}</span>
               </label>
             ))}
           </div>
         </fieldset>
         <p className="mt-2 text-xs text-ivory-300/70">
-          Cagnotte actuelle : {formatEuros(game.potCents)}. {INSURANCE_GENERAL_NOTE}
+          Cagnotte actuelle : {formatChips(game.potChips)}. {INSURANCE_GENERAL_NOTE}
         </p>
         <Button className="mt-3 w-full sm:w-auto" disabled={!chosen} onClick={() => void client.command({ type: 'PROPOSE_INSURANCE', partner: chosen, insuranceType: type })}>
           Proposer l’assurance

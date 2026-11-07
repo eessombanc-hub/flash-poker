@@ -72,7 +72,7 @@ export function makeManager(stacks: Record<number, string[]> = {}, deps: Partial
 /** Room démarrée : l'hôte + n−1 joueurs, tous connectés. */
 export function setup(n: number, stacks: Record<number, string[]> = {}, cfg: Record<string, unknown> = {}, deps: Partial<RoomManagerDeps> = {}): Env {
   const { m, scheduler, store, out } = makeManager(stacks, deps);
-  const host = m.createRoom({ name: 'Table', maxPlayers: 6, targetPoints: 5, stakeCents: 2000, nickname: 'Host', ...cfg });
+  const host = m.createRoom({ name: 'Table', maxPlayers: 6, targetPoints: 5, stakeChips: 2000, nickname: 'Host', ...cfg });
   const tokens: Record<string, string> = { [host.playerId]: host.token };
   const ids = [host.playerId];
   for (let i = 1; i < n; i++) {

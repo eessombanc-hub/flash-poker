@@ -1,6 +1,6 @@
 /** Mémo des règles : reprend le document de règles v1.1 validé. Aucune règle n'est ajoutée ici. */
 export const COMMON_RULES: { title: string; text: string }[] = [
-  { title: 'La table', text: 'De 2 à 6 joueurs, une mise identique pour tous. La cagnotte est virtuelle : aucun paiement réel.' },
+  { title: 'La table', text: 'De 2 à 6 joueurs, une mise identique pour tous. La cagnotte se joue en jetons, sans valeur monétaire.' },
   { title: 'Positions', text: 'Tirées au sort au démarrage, de UTG à UTG+5, et stables pendant toute la partie.' },
   { title: 'Choix de la variante', text: 'Le choix tourne dans l\u2019ordre des positions. Sans choix en 60 secondes, une variante disponible est tirée au hasard.' },
   { title: 'Points', text: 'Le vainqueur d\u2019une manche marque 1 point (2 points au 6-3 s\u2019il gagne seul les 3 lignes). L\u2019objectif va de 1 à 5 points.' },

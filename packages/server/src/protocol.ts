@@ -14,7 +14,7 @@ export const createRoomSchema = z.object({
   name: z.string().transform((s) => s.trim()).pipe(z.string().min(1).max(40)),
   maxPlayers: z.number().int().min(2).max(6),
   targetPoints: z.number().int().min(1).max(5),
-  stakeCents: z.number().int().min(0).max(1_000_000),
+  stakeChips: z.number().int().min(0).max(10_000), // jetons
   /** Partie « avec assistance », proposée par l'hôte : doit être approuvée par tous les joueurs de la salle
    * avant le départ, sinon la partie démarre sans assistance (voir `lobby:approveAssistance`). Faux par défaut. */
   assistance: z.boolean().optional(),
@@ -80,7 +80,7 @@ export interface RoomSummary {
   maxPlayers: number;
   seatsLeft: number;
   targetPoints: number;
-  stakeCents: number;
+  stakeChips: number;
   assistance: boolean;
 }
 
@@ -89,7 +89,7 @@ export interface RoomView {
   code: string;
   name: string;
   status: RoomStatus;
-  config: { maxPlayers: number; targetPoints: number; stakeCents: number; potCents: number; assistance: boolean; private: boolean };
+  config: { maxPlayers: number; targetPoints: number; stakeChips: number; potChips: number; assistance: boolean; private: boolean };
   seatsLeft: number;
   hostId: string;
   you: { playerId: string; role: 'HOST' | 'PLAYER' | 'QUEUED' };

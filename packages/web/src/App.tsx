@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Avatar, Button, Panel, ToastHost } from './components/ui';
-import { ProfileIcon } from './components/Icons3D';
+import { CoinIcon, ProfileIcon } from './components/Icons3D';
+import { formatChips } from './lib/format';
 import { useAccount, useAccountClient, useClient, useGame } from './lib/context';
 import { SettingsProvider, useSettings } from './lib/settings';
 import { Sound } from './lib/sound';
@@ -11,7 +12,7 @@ import { Home } from './screens/Home';
 import { Lobby } from './screens/Lobby';
 import { Table } from './screens/Table';
 
-type Screen = 'home' | 'create' | 'join' | 'space' | { auth: AuthMode };
+type Screen = 'home' | 'create' | 'join' | 'space' | 'jetons' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -52,17 +53,33 @@ function takeInviteCode(): string {
 }
 
 /** En-tête de l'accueil : accès au compte (connexion, inscription, ou « Mon espace »). */
-function AccountBar({ onAuth, onSpace }: { onAuth: (mode: AuthMode) => void; onSpace: () => void }) {
+function AccountBar({ onAuth, onSpace, onWallet }: { onAuth: (mode: AuthMode) => void; onSpace: () => void; onWallet: () => void }) {
+  const account = useAccountClient();
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
-  if (!useAccountClient() || !ready) return null;
+  const wallet = useAccount((s) => s.wallet);
+  useEffect(() => {
+    if (!account || !me) return;
+    void account.refreshWallet(); // solde à jour au retour d'une partie (gains, remontée à 100)
+    const id = setInterval(() => void account.refreshWallet(), 60_000);
+    return () => clearInterval(id);
+  }, [account, me]);
+  if (!account || !ready) return null;
   if (me)
     return (
+      <div className="flex items-center gap-2">
+      {wallet && (
+        <button type="button" onClick={onWallet} aria-label={`Mes jetons : ${formatChips(wallet.chips)}`} className="flex items-center gap-1.5 rounded-full border border-ivory-100/15 bg-ink-800/70 py-1 pl-1.5 pr-3 text-sm font-semibold tabular-nums text-gold-200 transition hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
+          <CoinIcon size={24} />
+          {wallet.chips.toLocaleString('fr-FR')}
+        </button>
+      )}
       <button type="button" onClick={onSpace} className="flex items-center gap-2 rounded-full border border-gold-500/50 bg-ink-800/70 py-1 pl-1 pr-4 text-sm font-semibold text-ivory-50 transition hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
         <Avatar nickname={me.nickname} avatar={me.avatar} size={32} />
         <span className="max-w-[9rem] truncate">{me.nickname}</span>
         <span className="hidden text-gold-300 sm:inline">· Mon espace</span>
       </button>
+      </div>
     );
   return (
     <div className="flex items-center gap-1 sm:gap-2">
@@ -149,7 +166,7 @@ export function App() {
     } else if (view.status === 'WAITING' || view.status === 'CANCELLED') content = <Lobby />;
     else content = <Table />;
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
-  else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
+  else if ((screen === 'space' || screen === 'jetons') && me) content = <Space onBack={() => setScreen('home')} initialTab={screen === 'jetons' ? 'jetons' : 'profil'} />;
   else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
   else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={joinCode} />;
   else
@@ -160,7 +177,7 @@ export function App() {
           setJoinCode(code ?? '');
           setScreen('join');
         }}
-        account={<AccountBar onAuth={(mode) => setScreen({ auth: mode })} onSpace={() => setScreen('space')} />}
+        account={<AccountBar onAuth={(mode) => setScreen({ auth: mode })} onSpace={() => setScreen('space')} onWallet={() => setScreen('jetons')} />}
         notice={closed === 'KICKED' ? 'Vous avez été retiré de la partie par l’hôte.' : closed === 'INVALID_SESSION' ? 'Votre session n’est plus valide (partie expirée ou supprimée).' : null}
       />
     );

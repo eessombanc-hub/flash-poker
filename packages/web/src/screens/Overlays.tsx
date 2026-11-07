@@ -5,7 +5,7 @@ import { Confetti } from '../components/Confetti';
 import { TrophyIcon } from '../components/Icons3D';
 import { Avatar, Badge, Button, Eyebrow, Modal, ScorePips } from '../components/ui';
 import type { FeedItem } from '../lib/client';
-import { deNom, formatEuros, formatSignedEuros, pointsLabel } from '../lib/format';
+import { deNom, formatChips, formatSignedChips, pointsLabel } from '../lib/format';
 import { categoryLabel, INSURANCE_LABELS, variantName, VICTORY_LABELS, winningCards, winningCombination } from '../lib/labels';
 import { nick } from '../lib/selectors';
 import { useSettings } from '../lib/settings';
@@ -227,13 +227,13 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
         <tbody>
           {game.players.map((p) => {
             const payout = o.settlement.payouts[p.player] ?? 0;
-            const net = payout - game.stakeCents;
+            const net = payout - game.stakeChips;
             return (
               <tr key={p.player} className="border-t border-ivory-100/10">
                 <td className="py-1.5 text-ivory-50">{nick(view, p.player)}</td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-200/80">{formatEuros(game.stakeCents)}</td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-50">{formatEuros(payout)}</td>
-                <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}>{formatSignedEuros(net)}</td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-200/80">{formatChips(game.stakeChips)}</td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-50">{formatChips(payout)}</td>
+                <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}>{formatSignedChips(net)}</td>
               </tr>
             );
           })}
@@ -242,7 +242,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
           <tr className="border-t border-gold-500/40 text-ivory-50">
             <td className="py-1.5 font-semibold">Cagnotte</td>
             <td />
-            <td className="py-1.5 text-right font-semibold tabular-nums">{formatEuros(o.settlement.potCents)}</td>
+            <td className="py-1.5 text-right font-semibold tabular-nums">{formatChips(o.settlement.potChips)}</td>
             <td />
           </tr>
         </tfoot>

@@ -25,7 +25,7 @@ function renderHome(listRooms: () => Promise<RoomSummary[]>, onJoin = vi.fn(), o
   return { ...utils, onJoin, onCreate };
 }
 
-const ROOM: RoomSummary = { code: 'POKER-7K2M', name: 'Vendredi soir', status: 'WAITING', maxPlayers: 4, seatsLeft: 2, targetPoints: 3, stakeCents: 2000, assistance: false };
+const ROOM: RoomSummary = { code: 'POKER-7K2M', name: 'Vendredi soir', status: 'WAITING', maxPlayers: 4, seatsLeft: 2, targetPoints: 3, stakeChips: 2000, assistance: false };
 
 afterEach(() => {
   vi.useRealTimers();
@@ -41,8 +41,8 @@ describe('accueil : parties ouvertes', () => {
   });
 
   it('affiche la mise et le badge assistance quand ils s’appliquent', async () => {
-    renderHome(async () => [{ ...ROOM, assistance: true, stakeCents: 500 }]);
-    expect(await screen.findByText(/5\s*€/u)).toBeInTheDocument();
+    renderHome(async () => [{ ...ROOM, assistance: true, stakeChips: 500 }]);
+    expect(await screen.findByText(/500\s*jetons/u)).toBeInTheDocument();
     expect(screen.getByText('Assistance')).toBeInTheDocument();
   });
 

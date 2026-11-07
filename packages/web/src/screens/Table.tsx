@@ -6,7 +6,7 @@ import { Badge, Button, Modal, Panel } from '../components/ui';
 import { useClient, useGame } from '../lib/context';
 import { useGameAlerts } from '../lib/alerts';
 import { describeEvent, type Announcement } from '../lib/events';
-import { formatEuros } from '../lib/format';
+import { formatChips } from '../lib/format';
 import { variantName } from '../lib/labels';
 import { useMediaQuery } from '../lib/media';
 import { closedInfo, discardInfo, line63Info, reveal61Info } from '../lib/roundInfo';
@@ -74,7 +74,7 @@ function TopBar({ onScores, onRules, onOptions }: { onScores: () => void; onRule
           {view.code}
           {/* Téléphone : l'essentiel des pastilles en une ligne, sous le code. */}
           <span className="font-sans tracking-normal text-ivory-200/80 sm:hidden">
-            {' '}· M{game.roundNo} · {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''} · {formatEuros(game.potCents)}
+            {' '}· M{game.roundNo} · {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''} · {formatChips(game.potChips)}
           </span>
         </p>
       </div>
@@ -82,7 +82,7 @@ function TopBar({ onScores, onRules, onOptions }: { onScores: () => void; onRule
         <Badge tone="neutral">Manche {game.roundNo}</Badge>
         {round && <Badge tone="gold">{variantName(round.variant)}</Badge>}
         <Badge tone="neutral">Objectif {game.targetPoints} pt{game.targetPoints > 1 ? 's' : ''}</Badge>
-        <Badge tone="green">Cagnotte {formatEuros(game.potCents)}</Badge>
+        <Badge tone="green">Cagnotte {formatChips(game.potChips)}</Badge>
       </div>
       <nav className="flex shrink-0 gap-0 sm:gap-1" aria-label="Menu de la table">
         <Button variant="ghost" className="min-h-[40px] px-1.5 text-xs sm:px-3 sm:text-sm" onClick={onScores}>
@@ -153,7 +153,7 @@ function TableCenter() {
         <p className="font-display text-base text-ivory-50 sm:text-2xl">{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo} — choix de la variante`}</p>
       )}
       <p className="hidden text-xs text-ivory-100/85 sm:block sm:text-sm">
-        Cagnotte <strong className="text-gold-300">{formatEuros(game.potCents)}</strong>
+        Cagnotte <strong className="text-gold-300">{formatChips(game.potChips)}</strong>
       </p>
     </div>
   );

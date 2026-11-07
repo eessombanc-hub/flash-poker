@@ -30,7 +30,7 @@ async function start() {
   };
   return { url, scheduler, make };
 }
-const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 3, stakeCents: 2000 };
+const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 3, stakeChips: 2000 };
 const until = (cond: () => unknown, label: string) => waitFor(() => expect(cond(), label).toBeTruthy(), { timeout: 5000, interval: 20 });
 
 /** Table de 3 joueurs, partie démarrée, sur de vrais sockets. */

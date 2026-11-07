@@ -1,7 +1,7 @@
 const EUR_WHOLE = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const EUR_CENTS = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** Centimes → « 20 € » ou « 12,50 € » (jamais « 12,5 € »). Les montants sont des entiers en centimes partout ailleurs. */
+/** Prix réel (boutique de jetons uniquement) : centimes → « 1,99 € » ou « 20 € ». */
 export function formatEuros(cents: number): string {
   return (cents % 100 === 0 ? EUR_WHOLE : EUR_CENTS).format(cents / 100);
 }
@@ -36,4 +36,14 @@ export function clockText(seconds: number): string {
 /** « de » + nom avec élision : « d’Emeric », « d’Alice », « de Bob ». */
 export function deNom(name: string): string {
   return /^[aeiouhàâäéèêëîïôöùûüœæ]/i.test(name.trim()) ? `d’${name}` : `de ${name}`;
+}
+
+const CHIPS = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+/** Jetons (mises, cagnottes, gains) : « 1 jeton », « 1 250 jetons ». Sans valeur monétaire. */
+export function formatChips(n: number): string {
+  return `${CHIPS.format(n)} jeton${Math.abs(n) > 1 ? 's' : ''}`;
+}
+export function formatSignedChips(n: number): string {
+  if (n === 0) return formatChips(0);
+  return `${n > 0 ? '+' : '−'}${formatChips(Math.abs(n))}`;
 }

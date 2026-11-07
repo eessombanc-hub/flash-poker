@@ -60,30 +60,30 @@ export function insuredPartner(winner: PlayerId, insurances: readonly Insurance[
 export interface SettlementInput {
   /** Tous les joueurs ayant versé leur mise. */
   players: readonly PlayerId[];
-  /** Mise de chaque joueur, en centimes. */
-  stakeCents: number;
+  /** Mise de chaque joueur, en jetons. */
+  stakeChips: number;
   winner: PlayerId;
   insurances: readonly Insurance[];
 }
 
 export interface Settlement {
-  potCents: number;
-  /** Somme exacte de la cagnotte (en centimes) ; jamais de montant négatif. */
+  potChips: number;
+  /** Somme exacte de la cagnotte (en jetons) ; jamais de montant négatif. */
   payouts: Record<PlayerId, number>;
   /** Assurance appliquée (celle qui contient le vainqueur), sinon null. */
   applied: Insurance | null;
 }
 
 /**
- * Répartition de la cagnotte (virtuelle en MVP), en centimes entiers.
+ * Répartition de la cagnotte, en jetons entiers.
  * Sans assurance du vainqueur : il reçoit tout. « Le perdant ne paye pas » : vainqueur = cagnotte − mise du
- * partenaire, partenaire = sa mise. « 50/50 » : moitié chacun ; HYPOTHÈSE (à confirmer) : le centime impair
+ * partenaire, partenaire = sa mise. « 50/50 » : moitié chacun ; HYPOTHÈSE (à confirmer) : le jeton impair
  * éventuel revient au vainqueur.
  */
 export function settle(input: SettlementInput): Settlement {
-  const { players, stakeCents, winner, insurances } = input;
+  const { players, stakeChips, winner, insurances } = input;
   if (!players.includes(winner)) throw new RuleError('UNKNOWN_PLAYER', `Vainqueur inconnu : ${winner}`);
-  if (!Number.isInteger(stakeCents) || stakeCents < 0) throw new RuleError('BAD_CONFIG', 'Mise invalide');
+  if (!Number.isInteger(stakeChips) || stakeChips < 0) throw new RuleError('BAD_CONFIG', 'Mise invalide');
   const seen = new Set<PlayerId>();
   for (const ins of insurances) {
     const [a, b] = ins.players;
@@ -95,22 +95,22 @@ export function settle(input: SettlementInput): Settlement {
     }
   }
 
-  const potCents = stakeCents * players.length;
+  const potChips = stakeChips * players.length;
   const payouts: Record<PlayerId, number> = {};
   for (const p of players) payouts[p] = 0;
 
   const applied = insurances.find((i) => i.players.includes(winner)) ?? null;
   const partner = insuredPartner(winner, insurances);
   if (!applied || partner === null) {
-    payouts[winner] = potCents;
-    return { potCents, payouts, applied: null };
+    payouts[winner] = potChips;
+    return { potChips, payouts, applied: null };
   }
   if (applied.type === 'LOSER_NOT_PAYING') {
-    payouts[partner] = stakeCents;
-    payouts[winner] = potCents - stakeCents;
+    payouts[partner] = stakeChips;
+    payouts[winner] = potChips - stakeChips;
   } else {
-    payouts[partner] = Math.floor(potCents / 2);
-    payouts[winner] = potCents - payouts[partner]!;
+    payouts[partner] = Math.floor(potChips / 2);
+    payouts[winner] = potChips - payouts[partner]!;
   }
-  return { potCents, payouts, applied };
+  return { potChips, payouts, applied };
 }

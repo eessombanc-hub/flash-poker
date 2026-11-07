@@ -9,7 +9,7 @@ import { closedWin, makeManager, setup } from './helpers';
 // attente ou en cours, avec un siège libre) et ce qui ne doit jamais y figurer (complètes, terminées,
 // annulées) — et qu'aucune donnée privée (pseudo, jeton) n'y fuit.
 
-const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 5, stakeCents: 2000, nickname: 'Host' };
+const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 5, stakeChips: 2000, nickname: 'Host' };
 
 describe('RoomManager.listOpen', () => {
   it('une room en attente avec des sièges libres apparaît, avec les bons champs publics', () => {
@@ -24,7 +24,7 @@ describe('RoomManager.listOpen', () => {
       maxPlayers: 4,
       seatsLeft: 3,
       targetPoints: 5,
-      stakeCents: 2000,
+      stakeChips: 2000,
       assistance: false,
     });
   });

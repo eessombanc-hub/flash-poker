@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
-import { BellIcon, ChipsIcon, JoinIcon, ProfileIcon, StarIcon, StatsIcon, TrophyIcon } from '../components/Icons3D';
+import { BellIcon, ChipsIcon, CoinIcon, JoinIcon, ProfileIcon, StarIcon, StatsIcon, TrophyIcon } from '../components/Icons3D';
 import { Avatar, AvatarPicker, Badge, Button, Eyebrow, Field, inputClass, Panel, Segmented } from '../components/ui';
 import { ApiError } from '../lib/api';
 import { useAccount, useAccountClient } from '../lib/context';
-import { formatEuros, formatSignedEuros } from '../lib/format';
+import { formatChips, formatEuros, formatSignedChips } from '../lib/format';
 import { variantName } from '../lib/labels';
-import type { AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats } from '../lib/types';
+import type { AccountPublic, Bankroll, InviteOverview, LedgerEntry, ShopOffer, ShopView, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats } from '../lib/types';
 import { RoundList } from './Overlays';
 
-export type SpaceTab = 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter';
+export type SpaceTab = 'jetons' | 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter';
 const TABS: { id: SpaceTab; label: string; icon: (size: number) => ReactNode }[] = [
   { id: 'profil', label: 'Profil', icon: (s) => <ProfileIcon size={s} /> },
+  { id: 'jetons', label: 'Jetons', icon: (s) => <CoinIcon size={s} /> },
   { id: 'historique', label: 'Historique', icon: (s) => <TrophyIcon size={s} /> },
   { id: 'statistiques', label: 'Statistiques', icon: (s) => <StatsIcon size={s} /> },
   { id: 'manches', label: 'Manches favorites', icon: (s) => <StarIcon size={s} /> },
@@ -114,6 +115,7 @@ export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; i
           </div>
           <Panel className="min-w-0 p-5 sm:p-6" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`}>
             {tab === 'profil' && <ProfileTab />}
+            {tab === 'jetons' && <ChipsTab />}
             {tab === 'historique' && <HistoryTab />}
             {tab === 'statistiques' && <StatsTab />}
             {tab === 'manches' && <FavoriteRoundsTab />}
@@ -275,7 +277,7 @@ function GameRow({ game, open, onToggle }: { game: GameSummary; open: boolean; o
             {DATE.format(game.endedAt)} · {game.rounds} manche{game.rounds > 1 ? 's' : ''} · avec {game.opponents.join(', ') || '—'}
           </span>
         </span>
-        <span className={`font-display text-lg ${game.netCents > 0 ? 'text-jade-300' : game.netCents < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}>{formatSignedEuros(game.netCents)}</span>
+        <span className={`font-display text-lg ${game.netChips > 0 ? 'text-jade-300' : game.netChips < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}>{formatSignedChips(game.netChips)}</span>
       </button>
       {open && <GameDetailView id={game.id} />}
     </div>
@@ -318,7 +320,7 @@ function Standings({ game, nameOf, favPlayers, onFavorite }: { game: GameDetail;
   return (
     <div className="space-y-2 text-sm">
       <p className="text-ivory-100">
-        <TrophyIcon size={22} className="mr-1 inline align-[-5px]" /> Vainqueur : <strong className="text-gold-200">{nameOf(winner)}</strong> · cagnotte {formatEuros(game.outcome.settlement.potCents)}
+        <TrophyIcon size={22} className="mr-1 inline align-[-5px]" /> Vainqueur : <strong className="text-gold-200">{nameOf(winner)}</strong> · cagnotte {formatChips(game.outcome.settlement.potChips)}
       </p>
       {others.length > 0 && (
         <p className="flex flex-wrap items-center gap-2 text-ivory-300/80">
@@ -450,7 +452,7 @@ function BankrollTab() {
   return (
     <div>
       <H2>Bankroll</H2>
-      <p className="mt-1 text-sm text-ivory-300/80">Bilan de vos parties : gains moins mises, assurances comprises. Cagnotte virtuelle, aucun paiement réel.</p>
+      <p className="mt-1 text-sm text-ivory-300/80">Bilan de vos parties en jetons : gains moins mises, assurances comprises.</p>
       {data === null && !error ? (
         <Loading />
       ) : (
@@ -458,9 +460,9 @@ function BankrollTab() {
           {data && (
             <>
               <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <Kpi label="Bilan total" value={formatSignedEuros(data.totalCents)} />
+                <Kpi label="Bilan total" value={formatSignedChips(data.totalChips)} />
                 <Kpi label="Parties" value={String(data.games)} />
-                <Kpi label="Meilleure partie" value={formatSignedEuros(Math.max(...data.series.map((s) => s.netCents)))} />
+                <Kpi label="Meilleure partie" value={formatSignedChips(Math.max(...data.series.map((s) => s.netChips)))} />
               </dl>
               <BankrollChart bankroll={data} />
             </>
@@ -473,23 +475,23 @@ function BankrollTab() {
 
 /** Courbe du bilan cumulé, partie après partie (ligne zéro marquée). */
 export function BankrollChart({ bankroll }: { bankroll: Bankroll }) {
-  const pts = [{ cumulativeCents: 0, endedAt: 0, name: 'Départ', netCents: 0 }, ...bankroll.series];
+  const pts = [{ cumulativeChips: 0, endedAt: 0, name: 'Départ', netChips: 0 }, ...bankroll.series];
   const W = 640;
   const H = 220;
   const P = { l: 56, r: 12, t: 12, b: 28 };
-  const vals = pts.map((p) => p.cumulativeCents);
+  const vals = pts.map((p) => p.cumulativeChips);
   const min = Math.min(0, ...vals);
   const max = Math.max(0, ...vals);
   const span = max - min || 100;
   const x = (i: number) => P.l + (i / Math.max(1, pts.length - 1)) * (W - P.l - P.r);
   const y = (v: number) => P.t + (1 - (v - min) / span) * (H - P.t - P.b);
-  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.cumulativeCents).toFixed(1)}`).join(' ');
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.cumulativeChips).toFixed(1)}`).join(' ');
   const area = `${line} L${x(pts.length - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
-  const last = bankroll.totalCents;
+  const last = bankroll.totalChips;
   const color = last >= 0 ? '#5bc79f' : '#ef6a73';
   return (
     <figure className="mt-5">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`Bilan cumulé sur ${bankroll.games} partie${bankroll.games > 1 ? 's' : ''} : ${formatSignedEuros(last)}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`Bilan cumulé sur ${bankroll.games} partie${bankroll.games > 1 ? 's' : ''} : ${formatSignedChips(last)}`}>
         <defs>
           <linearGradient id="bk-area" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0" stopColor={color} stopOpacity="0.35" />
@@ -500,14 +502,14 @@ export function BankrollChart({ bankroll }: { bankroll: Bankroll }) {
           <g key={v}>
             <line x1={P.l} x2={W - P.r} y1={y(v)} y2={y(v)} stroke="#ffffff" strokeOpacity="0.07" />
             <text x={P.l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="#c9c2b2">
-              {formatEuros(Math.round(v))}
+              {formatChips(Math.round(v))}
             </text>
           </g>
         ))}
         <line x1={P.l} x2={W - P.r} y1={y(0)} y2={y(0)} stroke="#c9a25a" strokeOpacity="0.6" strokeDasharray="4 4" />
         <path d={area} fill="url(#bk-area)" />
         <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-        {pts.map((p, i) => (i === 0 ? null : <circle key={i} cx={x(i)} cy={y(p.cumulativeCents)} r="3.5" fill={color} />))}
+        {pts.map((p, i) => (i === 0 ? null : <circle key={i} cx={x(i)} cy={y(p.cumulativeChips)} r="3.5" fill={color} />))}
         <text x={P.l} y={H - 8} fontSize="11" fill="#c9c2b2">
           Départ
         </text>
@@ -522,8 +524,8 @@ export function BankrollChart({ bankroll }: { bankroll: Bankroll }) {
             {bankroll.series.map((s, i) => (
               <tr key={i}>
                 <td>{s.name}</td>
-                <td>{formatSignedEuros(s.netCents)}</td>
-                <td>{formatSignedEuros(s.cumulativeCents)}</td>
+                <td>{formatSignedChips(s.netChips)}</td>
+                <td>{formatSignedChips(s.cumulativeChips)}</td>
               </tr>
             ))}
           </tbody>
@@ -751,6 +753,146 @@ function InviteTab() {
           </section>
         </>
       )}
+    </div>
+  );
+}
+
+// ---------- Jetons : solde, remontée, boutique, mouvements ----------
+function untilText(ms: number): string {
+  const min = Math.max(1, Math.ceil(ms / 60_000));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
+}
+
+function ChipsTab() {
+  const account = useAccountClient()!;
+  const wallet = useAccount((s) => s.wallet);
+  const [ledger, setLedger] = useState<LedgerEntry[] | null>(null);
+  const shop = useLoad(account.shop);
+  const [now, setNow] = useState(() => Date.now());
+  const [adult, setAdult] = useState(false);
+  const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    account.refreshWallet().then((w) => setLedger(w?.ledger ?? []), () => setLedger([]));
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [account]);
+  useEffect(() => {
+    if (wallet?.nextRefillAt && now >= wallet.nextRefillAt) account.refreshWallet().then((w) => w && setLedger(w.ledger), () => undefined);
+  }, [now, wallet, account]);
+
+  const buy = async (offer: ShopOffer) => {
+    setNotice(null);
+    try {
+      await account.purchase(offer.id, adult);
+    } catch (e) {
+      setNotice({ tone: 'error', text: message(e) });
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <H2>Mes jetons</H2>
+        <div className="mt-4 flex flex-wrap items-center gap-4 rounded-2xl border border-gold-500/30 bg-gradient-to-br from-gold-500/15 to-ink-900/40 px-5 py-4">
+          <CoinIcon size={56} />
+          <div className="min-w-0">
+            <p className="font-display text-4xl tabular-nums text-ivory-50">{wallet ? wallet.chips.toLocaleString('fr-FR') : '…'}</p>
+            <p className="text-sm text-ivory-200/85">
+              {!wallet
+                ? 'Chargement du solde…'
+                : wallet.nextRefillAt
+                  ? `Votre solde remonte à ${wallet.refillLevel} jetons dans ${untilText(wallet.nextRefillAt - now)}.`
+                  : `À partir de ${wallet.refillLevel} jetons, pas de remontée : elle revient dès que vous passez en dessous.`}
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-ivory-300/80">
+          Chaque nouveau compte reçoit 100 jetons. Toutes les 3 heures, un solde inférieur à 100 jetons remonte à 100. Les jetons servent de mise aux tables ; ils n’ont aucune valeur monétaire et ne se retirent pas.
+        </p>
+      </div>
+
+      <section aria-label="Boutique de jetons" className="space-y-3 border-t border-ivory-100/10 pt-6">
+        <H3>Boutique</H3>
+        {shop.data === null && !shop.error ? (
+          <Loading />
+        ) : (
+          <State error={shop.error}>
+            {shop.data && <ShopGrid shop={shop.data} adult={adult} onAdult={setAdult} onBuy={(o) => void buy(o)} />}
+          </State>
+        )}
+        {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
+      </section>
+
+      <section aria-label="Derniers mouvements" className="space-y-3 border-t border-ivory-100/10 pt-6">
+        <H3>Derniers mouvements</H3>
+        {ledger === null ? (
+          <Loading />
+        ) : ledger.length === 0 ? (
+          <p className="text-sm text-ivory-300/75">Aucun mouvement.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[26rem] text-sm">
+              <caption className="sr-only">Derniers mouvements de jetons</caption>
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-ivory-300/70">
+                  <th className="py-2 font-medium">Date</th>
+                  <th className="py-2 font-medium">Motif</th>
+                  <th className="py-2 text-right font-medium">Jetons</th>
+                  <th className="py-2 text-right font-medium">Solde</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.map((e, i) => (
+                  <tr key={i} className="border-t border-ivory-100/10">
+                    <td className="py-2 text-ivory-300/80">{DATE.format(e.at)}</td>
+                    <td className="py-2 text-ivory-100">{e.reason}</td>
+                    <td className={`py-2 text-right tabular-nums ${e.delta > 0 ? 'text-jade-300' : 'text-ruby-300'}`}>{e.delta > 0 ? `+${e.delta.toLocaleString('fr-FR')}` : `−${Math.abs(e.delta).toLocaleString('fr-FR')}`}</td>
+                    <td className="py-2 text-right tabular-nums text-ivory-200">{e.balance.toLocaleString('fr-FR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+/** Packs de jetons : prix TTC et nombre de jetons. */
+function ShopGrid({ shop, adult, onAdult, onBuy }: { shop: ShopView; adult: boolean; onAdult: (v: boolean) => void; onBuy: (o: ShopOffer) => void }) {
+  const left = shop.weeklyCapCents - shop.spentThisWeekCents;
+  return (
+    <div className="space-y-4">
+      {!shop.paymentEnabled && (
+        <p className="rounded-xl border border-dashed border-gold-500/40 px-4 py-3 text-sm text-gold-100">La boutique ouvrira prochainement : le paiement en ligne n’est pas encore activé. Les offres ci-dessous sont celles qui seront proposées.</p>
+      )}
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {shop.offers.map((o) => {
+          return (
+            <li key={o.id} className={`relative flex flex-col rounded-2xl border p-4 ${o.highlight ? 'border-gold-400/80 bg-gold-500/10 shadow-gold' : o.oncePerAccount ? 'border-jade-500/60 bg-jade-950/40' : 'border-ivory-100/12 bg-ink-900/50'}`}>
+              {o.highlight && <span className="absolute -top-2.5 right-3 rounded-full bg-gold-400 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-ink-950">Recommandé</span>}
+              <p className="text-xs font-semibold uppercase tracking-widest text-gold-400">{o.name}</p>
+              <p className="mt-1 font-display text-3xl tabular-nums text-ivory-50">{o.chips.toLocaleString('fr-FR')}</p>
+              <p className="text-sm text-ivory-300/80">jetons · {o.tagline}</p>
+              <Button className="mt-4" variant={o.highlight ? 'primary' : 'secondary'} disabled={!shop.paymentEnabled || !adult || o.priceCents > left} onClick={() => onBuy(o)} aria-label={`Acheter ${o.name} : ${o.chips} jetons pour ${formatEuros(o.priceCents)}`}>
+                {formatEuros(o.priceCents)}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+      <label className="flex items-start gap-3 text-sm text-ivory-200">
+        <input type="checkbox" className="mt-0.5 h-5 w-5 accent-gold-500" checked={adult} onChange={(e) => onAdult(e.target.checked)} />
+        <span>J’atteste être majeur. J’ai compris que les jetons n’ont aucune valeur monétaire, ne se revendent pas et ne se transfèrent pas.</span>
+      </label>
+      <p className="text-xs text-ivory-300/70">
+        Prix TTC. Achats limités à {formatEuros(shop.weeklyCapCents)} par période de 7 jours ; il vous reste {formatEuros(Math.max(0, left))} cette semaine.
+      </p>
     </div>
   );
 }

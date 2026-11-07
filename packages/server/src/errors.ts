@@ -11,7 +11,9 @@ export type ServerErrorCode =
   | 'EMAIL_TAKEN'
   | 'NICKNAME_RESERVED'
   | 'NOT_FOUND'
-  | 'UNAVAILABLE';
+  | 'UNAVAILABLE'
+  | 'INSUFFICIENT_CHIPS'
+  | 'ACCOUNT_REQUIRED';
 
 const STATUS: Record<ServerErrorCode, number> = {
   BAD_REQUEST: 400,
@@ -27,6 +29,8 @@ const STATUS: Record<ServerErrorCode, number> = {
   NICKNAME_RESERVED: 409,
   NOT_FOUND: 404,
   UNAVAILABLE: 503,
+  INSUFFICIENT_CHIPS: 409,
+  ACCOUNT_REQUIRED: 401,
 };
 
 export class ServerError extends Error {

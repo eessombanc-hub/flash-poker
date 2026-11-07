@@ -55,7 +55,7 @@ async function main(): Promise<void> {
   const done: Promise<void>[] = [];
 
   for (let t = 0; t < TABLES; t++) {
-    const host = await post('/rooms', { name: `Charge ${t}`, maxPlayers: PLAYERS, targetPoints: TARGET, stakeCents: 1000, nickname: 'Hote' });
+    const host = await post('/rooms', { name: `Charge ${t}`, maxPlayers: PLAYERS, targetPoints: TARGET, stakeChips: 1000, nickname: 'Hote' });
     const seats = [host];
     for (let i = 1; i < PLAYERS; i++) seats.push({ ...(await post(`/rooms/${host.code}/join`, { nickname: `Robot${i}` })), code: host.code });
 

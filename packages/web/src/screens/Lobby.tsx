@@ -1,7 +1,7 @@
 import { LockIcon } from '../components/Icons3D';
 import { useState } from 'react';
 import { useClient, useGame } from '../lib/context';
-import { formatEuros } from '../lib/format';
+import { formatChips } from '../lib/format';
 import { Avatar, Badge, Button, Eyebrow, Panel, Title } from '../components/ui';
 
 export function Lobby() {
@@ -70,7 +70,7 @@ export function Lobby() {
             ['Joueurs', `${n} / ${view.config.maxPlayers}`],
             ['Places restantes', String(view.seatsLeft)],
             ['Objectif', `${view.config.targetPoints} point${view.config.targetPoints > 1 ? 's' : ''}`],
-            ['Mise', formatEuros(view.config.stakeCents)],
+            ['Mise', formatChips(view.config.stakeChips)],
           ].map(([k, v]) => (
             <div key={k} className="rounded-xl border border-ivory-100/10 bg-ink-900/50 px-2 py-3">
               <dt className="text-[11px] uppercase tracking-widest text-ivory-300/70">{k}</dt>
@@ -79,7 +79,7 @@ export function Lobby() {
           ))}
         </dl>
         <p className="mt-3 text-center text-sm text-ivory-200/80">
-          Cagnotte actuelle : <strong className="text-gold-300">{formatEuros(view.config.potCents)}</strong> · virtuelle, aucun paiement réel
+          Cagnotte actuelle : <strong className="text-gold-300">{formatChips(view.config.potChips)}</strong>
         </p>
 
         {view.config.assistance ? (

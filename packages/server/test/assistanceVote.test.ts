@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { expectErr, makeManager } from './helpers';
 
-const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 3, stakeCents: 2000, nickname: 'Host' };
+const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 3, stakeChips: 2000, nickname: 'Host' };
 
 /** Salle d'attente : l'hôte + `guests` invités (aucun vote, aucun départ). */
 function lobby(cfg: Record<string, unknown> = {}, guests = 1) {

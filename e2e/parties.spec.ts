@@ -102,6 +102,7 @@ test('salle privée : absente des parties ouvertes, accessible par le code', asy
   await host.page.fill('#nick', 'Alice');
   await host.page.getByRole('button', { name: /^Créer/i }).last().click();
   await expect(host.page.getByText(/Salle privée/)).toBeVisible();
+  await expect(host.page.getByText(/POKER-[A-Z0-9]{4}/).first()).toBeVisible(); // salle d'attente affichée
   const code = (await host.page.locator('body').innerText()).match(/POKER-[A-Z0-9]{4}/)![0];
   await guest.page.goto('/');
   await expect(guest.page.getByText('Recherche de tables…')).toHaveCount(0);   // liste chargée

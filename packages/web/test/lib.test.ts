@@ -4,7 +4,7 @@ import { isCardCode, parseCode, sortHand } from '../src/lib/cards';
 import { dealDelay } from '../src/components/Card';
 const cardName = (c: string) => parseCode(c).name;
 import { CATEGORY_LABELS, INSURANCE_LABELS, NEXT_REASON_TEXT, VARIANTS, winningCards, winningCombination } from '../src/lib/labels';
-import { clockText, deNom, formatEuros, formatLinePoints, formatSignedEuros, initials } from '../src/lib/format';
+import { clockText, deNom, formatChips, formatEuros, formatLinePoints, formatSignedChips, initials } from '../src/lib/format';
 import { describeInsurance } from '../src/lib/insurance';
 import { describeEvent } from '../src/lib/events';
 import { LocalSessionStore, MemorySessionStore } from '../src/lib/session';
@@ -39,14 +39,14 @@ describe('cartes', () => {
 });
 
 describe('formats', () => {
-  it('euros en centimes', () => {
+  it('jetons (mises et gains), euros (prix de la boutique seulement)', () => {
+    expect(flat(formatChips(2000))).toBe('2 000 jetons');
+    expect(flat(formatChips(1))).toBe('1 jeton');
+    expect(flat(formatChips(0))).toBe('0 jeton');
+    expect(flat(formatSignedChips(-1000))).toBe('−1 000 jetons');
+    expect(flat(formatSignedChips(500))).toBe('+500 jetons');
+    expect(flat(formatEuros(199))).toBe('1,99 €');
     expect(flat(formatEuros(2000))).toBe('20 €');
-    expect(flat(formatEuros(1250))).toBe('12,50 €');
-    expect(flat(formatEuros(1205))).toBe('12,05 €');
-    expect(flat(formatEuros(5))).toBe('0,05 €');
-    expect(flat(formatEuros(0))).toBe('0 €');
-    expect(flat(formatSignedEuros(-1000))).toBe('−10 €');
-    expect(flat(formatSignedEuros(500))).toBe('+5 €');
   });
   it('points de ligne du 6-3 en fractions', () => {
     expect(['60', '30', '20', '15', '12', '10'].map((u) => formatLinePoints(Number(u)))).toEqual(['1', '½', '⅓', '¼', '⅕', '⅙']);
@@ -83,13 +83,13 @@ describe('cohérence avec le moteur (mêmes libellés, mêmes identifiants)', ()
 
 describe('assurance : texte chiffré', () => {
   it('« le perdant ne paye pas » : cagnotte moins la mise du partenaire', () => {
-    const t = flat(describeInsurance('LOSER_NOT_PAYING', 6000, 2000));
-    expect(t).toContain('40 €');
-    expect(t).toContain('20 €');
+    const t = flat(describeInsurance('LOSER_NOT_PAYING', 60, 20));
+    expect(t).toContain('40 jetons');
+    expect(t).toContain('20 jetons');
   });
-  it('50 / 50 : moitié chacun, centime impair au vainqueur', () => {
-    expect(flat(describeInsurance('SPLIT_50_50', 6000, 2000))).toContain('30 € chacun');
-    expect(flat(describeInsurance('SPLIT_50_50', 6001, 2000))).toContain('centime impair');
+  it('50 / 50 : moitié chacun, jeton impair au vainqueur', () => {
+    expect(flat(describeInsurance('SPLIT_50_50', 60, 20))).toContain('30 jetons chacun');
+    expect(flat(describeInsurance('SPLIT_50_50', 61, 20))).toContain('jeton impair');
   });
 });
 

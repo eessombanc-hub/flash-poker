@@ -13,13 +13,13 @@ import { game, players, renderWith, roomView, round } from './fixtures';
 const flat = (s: string | null) => (s ?? '').replace(/[\u202f\u00a0]/g, ' ');
 
 describe('salle d’attente', () => {
-  const lobby = (n: number, role: 'HOST' | 'PLAYER' = 'HOST', over = {}) => roomView({ status: 'WAITING', players: players(n).map((p) => ({ ...p, state: 'LOBBY' as const, position: null })), you: { playerId: role === 'HOST' ? 'p1' : 'p2', role }, seatsLeft: 6 - n, config: { maxPlayers: 6, targetPoints: 3, stakeCents: 2000, potCents: 2000 * n, assistance: false, private: false }, ...over }, null);
+  const lobby = (n: number, role: 'HOST' | 'PLAYER' = 'HOST', over = {}) => roomView({ status: 'WAITING', players: players(n).map((p) => ({ ...p, state: 'LOBBY' as const, position: null })), you: { playerId: role === 'HOST' ? 'p1' : 'p2', role }, seatsLeft: 6 - n, config: { maxPlayers: 6, targetPoints: 3, stakeChips: 20, potChips: 20 * n, assistance: false, private: false }, ...over }, null);
   it('affiche le code, les places et la cagnotte', () => {
     renderWith(<Lobby />, lobby(2));
     expect(screen.getByTestId('room-code')).toHaveTextContent('POKER-ABCD');
     expect(screen.getByRole('list', { name: 'Joueurs' })).toBeInTheDocument();
     expect(screen.getAllByText('Place libre')).toHaveLength(4);
-    expect(flat(screen.getByText(/Cagnotte actuelle/).textContent)).toContain('40 €');
+    expect(flat(screen.getByText(/Cagnotte actuelle/).textContent)).toContain('40 jetons');
   });
   it('hôte : démarrer impossible seul, possible à deux', async () => {
     const user = userEvent.setup();
@@ -51,7 +51,7 @@ describe('salle d’attente', () => {
   describe('assistance : vote en salle d’attente', () => {
     const withAssist = (n: number, votes: Record<string, boolean | null>, role: 'HOST' | 'PLAYER' = 'PLAYER') =>
       lobby(n, role, {
-        config: { maxPlayers: 6, targetPoints: 3, stakeCents: 2000, potCents: 2000 * n, assistance: true },
+        config: { maxPlayers: 6, targetPoints: 3, stakeChips: 20, potChips: 20 * n, assistance: true },
         players: players(n).map((p) => ({ ...p, state: 'LOBBY' as const, position: null, assistanceApproved: votes[p.id] ?? null })),
       });
 
@@ -128,7 +128,7 @@ describe('salle d’attente', () => {
 });
 
 describe('formulaires', () => {
-  it('création : validation, puis envoi avec la mise en centimes', async () => {
+  it('création sans compte : validation, puis envoi d’une partie sans jetons', async () => {
     const user = userEvent.setup();
     const { client } = renderWith(<CreateRoom onBack={() => undefined} />, null);
     const created = vi.fn(async () => undefined);
@@ -138,11 +138,11 @@ describe('formulaires', () => {
     await user.type(screen.getByLabelText('Nom de la table'), 'Vendredi');
     await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
     await user.click(within(screen.getByRole('radiogroup', { name: 'Objectif en points' })).getByRole('radio', { name: '5' }));
-    await user.clear(screen.getByLabelText(/Mise par joueur/));
-    await user.type(screen.getByLabelText(/Mise par joueur/), '12,50');
+    expect(screen.getByText(/Sans compte, la partie se joue sans jetons/)).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Mise par joueur' })).toBeNull();
     expect(submit).toBeEnabled();
     await user.click(submit);
-    expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeCents: 1250, assistance: false, private: false, nickname: 'Emeric', avatar: 'or' });
+    expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeChips: 0, assistance: false, private: false, nickname: 'Emeric', avatar: 'or' });
   });
   it('création : le niveau « avec assistance » est proposé et transmis au serveur', async () => {
     const user = userEvent.setup();
@@ -157,20 +157,15 @@ describe('formulaires', () => {
     await user.click(screen.getByRole('button', { name: 'Créer la table' }));
     expect(created).toHaveBeenCalledWith(expect.objectContaining({ assistance: true }));
   });
-  it('création : mise hors bornes ou pseudo invalide refusés', async () => {
+  it('création : pseudo invalide refusé', async () => {
     const user = userEvent.setup();
     renderWith(<CreateRoom onBack={() => undefined} />, null);
     await user.type(screen.getByLabelText('Nom de la table'), 'T');
+    await user.type(screen.getByLabelText('Votre pseudo'), 'E<>');
+    expect(screen.getByRole('button', { name: 'Créer la table' })).toBeDisabled();
+    await user.clear(screen.getByLabelText('Votre pseudo'));
     await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
-    for (const bad of ['-5', '10001', 'abc']) {
-      await user.clear(screen.getByLabelText(/Mise par joueur/));
-      await user.type(screen.getByLabelText(/Mise par joueur/), bad);
-      expect(screen.getByRole('button', { name: 'Créer la table' })).toBeDisabled();
-      expect(screen.getByRole('alert')).toHaveTextContent('Mise de 0 à 10 000 €');
-    }
-    await user.clear(screen.getByLabelText(/Mise par joueur/));
-    await user.type(screen.getByLabelText(/Mise par joueur/), '0');
-    expect(screen.getByRole('button', { name: 'Créer la table' })).toBeEnabled(); // mise à 0 autorisée
+    expect(screen.getByRole('button', { name: 'Créer la table' })).toBeEnabled();
   });
   it('création : l’erreur du serveur est affichée', async () => {
     const user = userEvent.setup();
@@ -211,7 +206,7 @@ describe('fin de partie', () => {
     winner: 'p1',
     victoryType: 'SCORE',
     standings: [{ player: 'p1', position: 'UTG', score: 3, rank: 1 }, { player: 'p2', position: 'UTG+1', score: 2, rank: 2 }, { player: 'p3', position: 'UTG+2', score: 0, rank: 3 }],
-    settlement: { potCents: 6000, payouts: { p1: 4000, p2: 2000, p3: 0 }, applied: { players: ['p1', 'p2'], type: 'LOSER_NOT_PAYING' } },
+    settlement: { potChips: 6000, payouts: { p1: 4000, p2: 2000, p3: 0 }, applied: { players: ['p1', 'p2'], type: 'LOSER_NOT_PAYING' } },
     insurance: { players: ['p1', 'p2'], type: 'LOSER_NOT_PAYING' },
     ...over,
   });
@@ -222,24 +217,24 @@ describe('fin de partie', () => {
     expect(screen.getByRole('heading', { name: 'Victoire d’Emeric' })).toBeInTheDocument();
     expect(screen.getByText('Objectif atteint')).toBeInTheDocument();
     const row = (n: string) => flat(screen.getByRole('row', { name: new RegExp(n) }).textContent);
-    expect(row('Emeric')).toContain('40 €');
-    expect(row('Emeric')).toContain('+20 €');
-    expect(row('Alice')).toContain('20 €');
-    expect(row('Bob')).toContain('−20 €');
-    expect(flat(screen.getByRole('row', { name: /Cagnotte/ }).textContent)).toContain('60 €');
+    expect(row('Emeric')).toContain('4 000 jetons');
+    expect(row('Emeric')).toContain('+2 000 jetons');
+    expect(row('Alice')).toContain('2 000 jetons');
+    expect(row('Bob')).toContain('−2 000 jetons');
+    expect(flat(screen.getByRole('row', { name: /Cagnotte/ }).textContent)).toContain('6 000 jetons');
     expect(screen.getByText(/Assurance appliquée : Emeric et Alice — Le perdant ne paye pas/)).toBeInTheDocument();
   });
   it('quinte flush au 6-3 : victoire immédiate, sans assurance', () => {
-    const o = outcome({ victoryType: 'STRAIGHT_FLUSH_63', insurance: null, settlement: { potCents: 6000, payouts: { p1: 6000, p2: 0, p3: 0 }, applied: null } });
+    const o = outcome({ victoryType: 'STRAIGHT_FLUSH_63', insurance: null, settlement: { potChips: 6000, payouts: { p1: 6000, p2: 0, p3: 0 }, applied: null } });
     renderWith(<GameOverModal view={over(o)} onClose={() => undefined} onLeave={() => undefined} />, over(o));
     expect(screen.getByText('Quinte flush au 6-3 — victoire immédiate')).toBeInTheDocument();
     expect(screen.queryByText(/Assurance appliquée/)).toBeNull();
-    expect(flat(screen.getByRole('row', { name: /Emeric/ }).textContent)).toContain('+40 €');
+    expect(flat(screen.getByRole('row', { name: /Emeric/ }).textContent)).toContain('+4 000 jetons');
   });
   it('la somme des gains égale la cagnotte, quel que soit le cas', () => {
     const o = outcome();
     const total = Object.values(o.settlement.payouts).reduce((a, b) => a + b, 0);
-    expect(total).toBe(o.settlement.potCents);
+    expect(total).toBe(o.settlement.potChips);
   });
   it('boutons : revoir la table / retour à l’accueil', async () => {
     const user = userEvent.setup();
@@ -315,7 +310,7 @@ describe('table : résultat de manche et routage des panneaux', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
   it('partie terminée à l’ouverture : écran de fin de partie', () => {
-    const o: GameOutcome = { winner: 'p2', victoryType: 'SCORE', standings: [{ player: 'p2', position: 'UTG+1', score: 3, rank: 1 }], settlement: { potCents: 6000, payouts: { p1: 0, p2: 6000, p3: 0 }, applied: null }, insurance: null };
+    const o: GameOutcome = { winner: 'p2', victoryType: 'SCORE', standings: [{ player: 'p2', position: 'UTG+1', score: 3, rank: 1 }], settlement: { potChips: 6000, payouts: { p1: 0, p2: 6000, p3: 0 }, applied: null }, insurance: null };
     renderWith(<Table />, roomView({ status: 'FINISHED' }, game({ phase: 'GAME_OVER', round: null, outcome: o, history: [record] })));
     expect(screen.getByRole('heading', { name: 'Victoire d’Alice' })).toBeInTheDocument();
   });
@@ -394,7 +389,7 @@ describe('table : résultat de manche et routage des panneaux', () => {
   });
 
   it('fin de partie : des confettis accompagnent la victoire', () => {
-    const o: GameOutcome = { winner: 'p1', victoryType: 'SCORE', standings: [{ player: 'p1', position: 'UTG', score: 3, rank: 1 }], settlement: { potCents: 6000, payouts: { p1: 6000 }, applied: null }, insurance: null };
+    const o: GameOutcome = { winner: 'p1', victoryType: 'SCORE', standings: [{ player: 'p1', position: 'UTG', score: 3, rank: 1 }], settlement: { potChips: 6000, payouts: { p1: 6000 }, applied: null }, insurance: null };
     const { container } = renderWith(<GameOverModal view={roomView({ status: 'FINISHED' }, game({ phase: 'GAME_OVER', round: null, outcome: o }))} onClose={() => undefined} onLeave={() => undefined} />, roomView({}, game({ outcome: o })));
     expect(container.querySelectorAll('span[style*="background-color"]').length).toBeGreaterThan(0);
   });

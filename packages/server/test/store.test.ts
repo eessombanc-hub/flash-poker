@@ -9,7 +9,7 @@ import { InMemoryRoomStore, SqliteRoomStore, resolveStore, type RoomSnapshot, ty
 
 const SNAP = (code: string, extra: Partial<RoomSnapshot> = {}): RoomSnapshot => ({
   code,
-  config: { name: 'T', maxPlayers: 4, targetPoints: 3, stakeCents: 2000, assistance: false },
+  config: { name: 'T', maxPlayers: 4, targetPoints: 3, stakeChips: 2000, assistance: false },
   status: 'WAITING',
   hostId: 'p1',
   players: [{ id: 'p1', nickname: 'Host', avatar: null, tokenHash: 'x', state: 'LOBBY', lastSeenAt: 0, assistanceApproved: true }],
@@ -130,7 +130,7 @@ describe('Persistance de bout en bout : RoomManager + SqliteRoomStore, vrai red√
     const scheduler1 = new ManualScheduler();
     const m1 = new RoomManager({ rng: new SeededRng(7), scheduler: scheduler1, store: store1 });
 
-    const host = m1.createRoom({ name: 'Table', maxPlayers: 2, targetPoints: 3, stakeCents: 2000, nickname: 'Host' });
+    const host = m1.createRoom({ name: 'Table', maxPlayers: 2, targetPoints: 3, stakeChips: 2000, nickname: 'Host' });
     const guest = m1.joinRoom(host.code, { nickname: 'Alice' });
     m1.connect(host.code, host.playerId);
     m1.connect(host.code, guest.playerId);
@@ -156,7 +156,7 @@ describe('Persistance de bout en bout : RoomManager + SqliteRoomStore, vrai red√
     const path = tmpDbPath();
     const store1 = new SqliteRoomStore(path);
     const m1 = new RoomManager({ rng: new SeededRng(1), scheduler: new ManualScheduler(), store: store1 });
-    const host = m1.createRoom({ name: 'T', maxPlayers: 2, targetPoints: 3, stakeCents: 2000, nickname: 'Host' });
+    const host = m1.createRoom({ name: 'T', maxPlayers: 2, targetPoints: 3, stakeChips: 2000, nickname: 'Host' });
     m1.connect(host.code, host.playerId);
     m1.cancelRoom(host.code, host.playerId);
     expect(m1.view(host.code, host.playerId).status).toBe('CANCELLED');

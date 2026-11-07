@@ -13,7 +13,7 @@ export interface CreateRoomInput {
   name: string;
   maxPlayers: number;
   targetPoints: number;
-  stakeCents: number;
+  stakeChips: number;
   /** Partie « avec assistance », proposée aux joueurs (ils doivent tous l'approuver en salle d'attente). */
   assistance?: boolean;
   /** Salle privée : absente de la liste publique, entrée par code ou lien d'invitation uniquement. */
@@ -37,7 +37,7 @@ export interface RoomSummary {
   maxPlayers: number;
   seatsLeft: number;
   targetPoints: number;
-  stakeCents: number;
+  stakeChips: number;
   assistance: boolean;
 }
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RateLimiter } from '../src/rateLimiter';
 import { closedWin, expectErr, makeManager, setup } from './helpers';
 
-const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 5, stakeCents: 2000, nickname: 'Host' };
+const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 5, stakeChips: 2000, nickname: 'Host' };
 
 describe('création de room', () => {
   it('code POKER-XXXX sans caractères ambigus ; l\'hôte est créé ; le lobby s\'affiche', () => {
@@ -22,7 +22,7 @@ describe('création de room', () => {
       hostId: r.playerId,
       seatsLeft: 3,
       you: { role: 'HOST' },
-      config: { maxPlayers: 4, targetPoints: 5, stakeCents: 2000, potCents: 2000 },
+      config: { maxPlayers: 4, targetPoints: 5, stakeChips: 2000, potChips: 2000 },
       game: null,
       deadline: null,
     });
@@ -35,8 +35,8 @@ describe('création de room', () => {
     bad({ targetPoints: 6 });
     bad({ targetPoints: 0 });
     bad({ targetPoints: 2.5 });
-    bad({ stakeCents: 1_000_001 });
-    bad({ stakeCents: -1 });
+    bad({ stakeChips: 1_000_001 });
+    bad({ stakeChips: -1 });
     bad({ maxPlayers: 1 });
     bad({ maxPlayers: 7 });
     bad({ name: '   ' });
@@ -46,8 +46,8 @@ describe('création de room', () => {
     bad({ avatar: 'https://evil.example/x.png' });
     bad({ maxPlayers: '4' });
     expectErr(() => m.createRoom(null), 'BAD_REQUEST');
-    expect(() => m.createRoom({ ...CFG, targetPoints: 5, stakeCents: 1_000_000, maxPlayers: 6, avatar: 'lion_2' })).not.toThrow();
-    expect(() => m.createRoom({ ...CFG, targetPoints: 1, stakeCents: 0, maxPlayers: 2, nickname: '  Élodie-Rose  ' })).not.toThrow();
+    expect(() => m.createRoom({ ...CFG, targetPoints: 5, stakeChips: 10_000, maxPlayers: 6, avatar: 'lion_2' })).not.toThrow();
+    expect(() => m.createRoom({ ...CFG, targetPoints: 1, stakeChips: 0, maxPlayers: 2, nickname: '  Élodie-Rose  ' })).not.toThrow();
   });
 });
 

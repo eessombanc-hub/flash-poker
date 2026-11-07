@@ -1,3 +1,40 @@
+# Flash Poker : jetons à la place des euros
+
+## Règles des jetons
+
+- **Plus aucun euro en jeu.** Les mises, la cagnotte, les gains et la bankroll sont en jetons. Les jetons n'ont aucune valeur monétaire : ils ne se retirent pas, ne se revendent pas et ne se transfèrent pas d'un joueur à l'autre.
+- **Bienvenue** : chaque nouveau compte reçoit 100 jetons.
+- **Remontée** : toutes les 3 heures, un solde inférieur à 100 jetons remonte à 100. À 100 jetons ou plus, rien n'est ajouté. Le délai part du moment où le solde passe sous 100.
+- **Mise** : elle est retenue à l'arrivée à la table et rendue si le joueur part avant de jouer, si l'hôte le retire, ou si la partie est annulée ou expire. En fin de partie, la cagnotte est versée selon le règlement du jeu, assurances comprises.
+- **Tables avec mise** : réservées aux joueurs inscrits. Sans compte, on joue à une table sans jetons, avec une mise à 0.
+- **Journal** : chaque mouvement (bienvenue, remontée, mise, gain, remboursement, achat) est inscrit avec le solde qui en résulte, visible dans Mon espace, onglet Jetons.
+
+## Offre commerciale (boutique prête, paiement à brancher)
+
+| Pack | Jetons | Prix TTC | Jetons par euro | Bonus par rapport à la Pile |
+|---|---|---|---|---|
+| Offre de bienvenue (une fois par compte) | 1 000 | 0,99 € | 1 010 | offre d'accueil |
+| Pile | 500 | 1,99 € | 251 | référence |
+| Rouleau | 1 400 | 4,99 € | 281 | +12 % |
+| Coffret (recommandé) | 3 000 | 9,99 € | 300 | +20 % |
+| Mallette | 6 500 | 19,99 € | 325 | +30 % |
+| Réserve du club | 17 500 | 49,99 € | 350 | +40 % |
+
+Garde-fous :
+
+- les achats sont réservés aux majeurs, sur attestation ;
+- ils sont plafonnés à 50 € par période de 7 jours ;
+- pas de compte à rebours, de coffre aléatoire ni d'offre surprise ;
+- un même paiement ne crédite jamais deux fois.
+
+La remontée gratuite à 100 jetons garantit que l'on peut toujours jouer sans payer : l'achat sert à jouer plus gros ou plus souvent, jamais à pouvoir jouer.
+
+**Pour ouvrir la boutique** : il reste à choisir un prestataire de paiement (Stripe, par exemple) et à créer le compte marchand. Le crédit des jetons après paiement confirmé est déjà écrit et testé. D'ici là, la boutique affiche ses offres avec la mention « ouvrira prochainement ».
+
+**À faire valider par un avocat avant l'ouverture de la boutique** : la vente de jetons utilisés comme mise dans un jeu de cartes, au regard de la réglementation française des jeux d'argent (ANJ), et les conditions générales de vente.
+
+---
+
 # Flash Poker — dossier de livraison, phase 9 : comptes joueurs
 
 ## Ce qui a été ajouté

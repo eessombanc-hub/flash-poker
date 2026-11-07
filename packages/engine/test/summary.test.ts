@@ -12,7 +12,7 @@ const TIE_HANDS = [
   ['As', 'Ad', 'Kc', 'Qd', '2h'],
   ['Ah', 'Ac', 'Ks', 'Qh', '2d'],
 ];
-const cfg = (n: number): GameConfig => ({ players: names(n), targetPoints: 3, stakeCents: 2000 });
+const cfg = (n: number): GameConfig => ({ players: names(n), targetPoints: 3, stakeChips: 2000 });
 const choose = (g: GameManager, v: VariantId) => g.apply({ type: 'CHOOSE_VARIANT', player: g.chooser(), variant: v });
 const round = (g: GameManager, command: RoundCommand) => g.apply({ type: 'ROUND', command });
 

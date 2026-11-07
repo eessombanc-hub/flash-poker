@@ -61,7 +61,7 @@ const okFetch = (body: unknown, status = 200): typeof fetch => (async () => new 
 describe('accès HTTP', () => {
   it('création : session enregistrée, socket ouvert avec code et jeton', async () => {
     const { client, storage, last } = setup({ fetchFn: okFetch({ code: 'POKER-ABCD', playerId: 'p1', token: 'tok' }, 201) });
-    await client.createRoom({ name: 'T', maxPlayers: 4, targetPoints: 3, stakeCents: 2000, nickname: 'Emeric' });
+    await client.createRoom({ name: 'T', maxPlayers: 4, targetPoints: 3, stakeChips: 2000, nickname: 'Emeric' });
     expect(storage.load()).toEqual({ code: 'POKER-ABCD', token: 'tok', playerId: 'p1', nickname: 'Emeric' });
     expect(last().opts.auth).toEqual({ code: 'POKER-ABCD', token: 'tok' });
     expect(last().opts.transports).toEqual(['websocket']);
@@ -79,8 +79,8 @@ describe('accès HTTP', () => {
   });
   it('réseau coupé : erreur explicite', async () => {
     const { client } = setup({ fetchFn: (async () => { throw new TypeError('fetch failed'); }) as typeof fetch });
-    await expect(client.createRoom({ name: 'T', maxPlayers: 4, targetPoints: 3, stakeCents: 0, nickname: 'E' })).rejects.toBeInstanceOf(ApiError);
-    await expect(client.createRoom({ name: 'T', maxPlayers: 4, targetPoints: 3, stakeCents: 0, nickname: 'E' })).rejects.toMatchObject({ code: 'NETWORK' });
+    await expect(client.createRoom({ name: 'T', maxPlayers: 4, targetPoints: 3, stakeChips: 0, nickname: 'E' })).rejects.toBeInstanceOf(ApiError);
+    await expect(client.createRoom({ name: 'T', maxPlayers: 4, targetPoints: 3, stakeChips: 0, nickname: 'E' })).rejects.toMatchObject({ code: 'NETWORK' });
   });
 });
 

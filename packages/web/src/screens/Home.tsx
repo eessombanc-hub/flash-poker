@@ -1,7 +1,7 @@
 import { COMMON_RULES } from '../lib/rulesText';
 import { VARIANTS } from '../lib/labels';
 import { useClient } from '../lib/context';
-import { formatEuros } from '../lib/format';
+import { formatChips } from '../lib/format';
 import { ApiError, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { PlayingCard } from '../components/Card';
@@ -76,7 +76,7 @@ export function Home({ onCreate, onJoin, notice, account }: { onCreate: () => vo
         </ul>
 
         <OpenRooms onSelect={onJoin} />
-        <p className="mt-10 text-center text-xs text-ivory-300/60">Cagnotte virtuelle — aucun paiement réel.</p>
+        <p className="mt-10 text-center text-xs text-ivory-300/60">Jetons sans valeur monétaire : rien à gagner en argent.</p>
       </main>
       {rules && <RulesModal onClose={() => setRules(false)} />}
     </div>
@@ -161,10 +161,10 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
                 </span>
                 <span aria-hidden="true">·</span>
                 <span>Objectif {r.targetPoints} pt{r.targetPoints > 1 ? 's' : ''}</span>
-                {r.stakeCents > 0 && (
+                {r.stakeChips > 0 && (
                   <>
                     <span aria-hidden="true">·</span>
-                    <span>{formatEuros(r.stakeCents)} / joueur</span>
+                    <span>{formatChips(r.stakeChips)} / joueur</span>
                   </>
                 )}
                 {r.assistance && <Badge tone="gold">Assistance</Badge>}

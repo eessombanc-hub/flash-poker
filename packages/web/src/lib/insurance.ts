@@ -1,4 +1,4 @@
-import { formatEuros } from './format';
+import { formatChips } from './format';
 import type { InsuranceType } from './types';
 
 /**
@@ -7,12 +7,12 @@ import type { InsuranceType } from './types';
  * - « 50 / 50 » : moitié chacun, le centime impair revenant au vainqueur ;
  * dans les deux cas, si le vainqueur n'est pas assuré, il empoche toute la cagnotte.
  */
-export function describeInsurance(type: InsuranceType, potCents: number, stakeCents: number): string {
+export function describeInsurance(type: InsuranceType, potChips: number, stakeChips: number): string {
   if (type === 'LOSER_NOT_PAYING') {
-    return `Si l’un de vous deux gagne, il reçoit ${formatEuros(potCents - stakeCents)} (la cagnotte moins la mise de son partenaire) ; son partenaire récupère sa mise de ${formatEuros(stakeCents)}.`;
+    return `Si l’un de vous deux gagne, il reçoit ${formatChips(potChips - stakeChips)} (la cagnotte moins la mise de son partenaire) ; son partenaire récupère sa mise de ${formatChips(stakeChips)}.`;
   }
-  const half = Math.floor(potCents / 2);
-  return `Si l’un de vous deux gagne, vous vous partagez la cagnotte à parts égales : ${formatEuros(half)} chacun${potCents % 2 === 1 ? ' (le centime impair revient au vainqueur)' : ''}.`;
+  const half = Math.floor(potChips / 2);
+  return `Si l’un de vous deux gagne, vous vous partagez la cagnotte à parts égales : ${formatChips(half)} chacun${potChips % 2 === 1 ? ' (le jeton impair revient au vainqueur)' : ''}.`;
 }
 
 export const INSURANCE_GENERAL_NOTE =

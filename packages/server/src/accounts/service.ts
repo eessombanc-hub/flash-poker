@@ -6,6 +6,7 @@ import type { AccountDb } from './db';
 import { mail, type Mailer } from './mailer';
 import { hashPassword, newToken, tokenHash, verifyPassword } from './password';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
+import { Wallet } from './wallet';
 
 // ---------- Validation des entrées ----------
 const nickname = z
@@ -31,7 +32,7 @@ function parse<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, input: unknown): 
   return r.data;
 }
 
-export type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, SentInvite, VariantStats } from './types';
+export type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LedgerEntry, SentInvite, ShopOffer, ShopView, VariantStats, WalletView } from './types';
 
 const SESSION_MS = 30 * 24 * 3_600_000;
 /** Invitations par e-mail : 10 par jour et par joueur, et pas deux fois la même adresse en 7 jours (anti-abus). */
@@ -54,7 +55,12 @@ export class AccountService {
     private readonly store: AccountDb,
     private readonly mailer: Mailer,
     private readonly opts: { appUrl?: string; now?: () => number; log?: (s: string) => void } = {},
-  ) {}
+  ) {
+    this.wallet = new Wallet(store.db, () => this.now());
+  }
+
+  /** Jetons : solde, remontée à 100, mises, gains, boutique. */
+  readonly wallet: Wallet;
 
   private get db() {
     return this.store.db;
@@ -76,6 +82,7 @@ export class AccountService {
     this.db
       .prepare('INSERT INTO users (id, nickname, email, pass_hash, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(id, data.nickname, data.email, await hashPassword(data.password), data.avatar ?? null, this.now());
+    this.wallet.open(id);
     if (data.invite) this.acceptInvite(data.invite, id, data.email);
     return { token: this.openSession(id), account: this.account(id)! };
   }
@@ -211,7 +218,7 @@ export class AccountService {
     this.db.prepare('INSERT OR IGNORE INTO games (id, ended_at, data) VALUES (?, ?, ?)').run(id, g.endedAt, JSON.stringify(g));
     for (const m of members) {
       if (!this.account(m.accountId!)) continue;
-      const net = (g.outcome.settlement.payouts[m.playerId] ?? 0) - g.stakeCents;
+      const net = (g.outcome.settlement.payouts[m.playerId] ?? 0) - g.stakeChips;
       this.db
         .prepare('INSERT OR IGNORE INTO user_games (user_id, game_id, player_id, net_cents, won, ended_at) VALUES (?, ?, ?, ?, ?, ?)')
         .run(m.accountId!, id, m.playerId, net, g.outcome.winner === m.playerId ? 1 : 0, g.endedAt);
@@ -231,7 +238,7 @@ export class AccountService {
       name: game.name,
       endedAt: game.endedAt,
       won,
-      netCents: net,
+      netChips: net,
       rounds: game.history.length,
       opponents: game.players.filter((p) => p.playerId !== playerId && game.seated.includes(p.playerId)).map((p) => p.nickname),
       winnerNickname: game.players.find((p) => p.playerId === game.outcome.winner)?.nickname ?? '—',
@@ -272,9 +279,9 @@ export class AccountService {
     let cumulative = 0;
     const series = rows.map((r) => {
       cumulative += r.net_cents as number;
-      return { endedAt: r.ended_at as number, netCents: r.net_cents as number, cumulativeCents: cumulative, name: (JSON.parse(r.data as string) as FinishedGame).name };
+      return { endedAt: r.ended_at as number, netChips: r.net_cents as number, cumulativeChips: cumulative, name: (JSON.parse(r.data as string) as FinishedGame).name };
     });
-    return { totalCents: cumulative, games: rows.length, series };
+    return { totalChips: cumulative, games: rows.length, series };
   }
 
   // ---------- Manches favorites ----------
@@ -339,7 +346,7 @@ export class AccountService {
         'Bonjour,',
         `${me.nickname} vous invite à le rejoindre sur Flash Poker : le poker entre amis en temps réel, huit variantes, de 2 à 6 joueurs, sur ordinateur comme sur téléphone.`,
         'Créez votre compte gratuit en un instant : vous retrouverez ensuite vos parties, vos statistiques et vos joueurs favoris.',
-        'Cagnotte virtuelle, aucun paiement réel. Si vous ne connaissez pas cette personne, ignorez simplement cet e-mail : vous n’en recevrez pas d’autre.',
+        'Jetons sans valeur monétaire, rien à gagner en argent. Si vous ne connaissez pas cette personne, ignorez simplement cet e-mail : vous n’en recevrez pas d’autre.',
       ], { label: 'Créer mon compte', url: `${this.opts.appUrl ?? ''}/?invitation=${encodeURIComponent(code)}` }),
     );
     return this.invites(userId);

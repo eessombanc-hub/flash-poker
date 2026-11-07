@@ -389,13 +389,13 @@ describe('choix de la variante', () => {
 });
 
 describe('assurance', () => {
-  const ins = (over = {}) => roomView({}, game({ phase: 'VARIANT_SELECTION', round: null, potCents: 6000, stakeCents: 2000, insurance: { eligible: ['p1', 'p2'], canPropose: true, blockedPartners: [], pending: null, accepted: [], ...over } }));
+  const ins = (over = {}) => roomView({}, game({ phase: 'VARIANT_SELECTION', round: null, potChips: 60, stakeChips: 20, insurance: { eligible: ['p1', 'p2'], canPropose: true, blockedPartners: [], pending: null, accepted: [], ...over } }));
   it('proposition : partenaire unique présélectionné, formule au choix, texte chiffré', async () => {
     const user = userEvent.setup();
     const { sent } = renderWith(<InsurancePanel />, ins());
     expect(screen.getByText('Vous êtes à 1 point de la victoire')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Alice' })).toBeChecked();
-    expect(flat(screen.getByText(/parts égales/).textContent)).toContain('30 € chacun');
+    expect(flat(screen.getByText(/parts égales/).textContent)).toContain('30 jetons chacun');
     await user.click(screen.getByRole('button', { name: 'Proposer l’assurance' }));
     expect(sent.at(-1)).toEqual({ type: 'PROPOSE_INSURANCE', partner: 'p2', insuranceType: 'SPLIT_50_50' });
     await user.click(screen.getByRole('radio', { name: /Le perdant ne paye pas/ }));

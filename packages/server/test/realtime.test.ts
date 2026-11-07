@@ -7,7 +7,7 @@ import { RoomManager } from '../src/roomManager';
 import { ManualScheduler } from '../src/scheduler';
 import { closedWin, codesIn, LOSERS, WIN } from './helpers';
 
-const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 5, stakeCents: 2000, nickname: 'Host' };
+const CFG = { name: 'Table', maxPlayers: 4, targetPoints: 5, stakeChips: 2000, nickname: 'Host' };
 
 interface Client {
   socket: Socket;
@@ -103,7 +103,7 @@ describe('API HTTP', () => {
     expect((await env.post(`/rooms/${created.body.code}/join`, { nickname: 'alice' })).status).toBe(409);
     expect((await env.post('/rooms/POKER-ZZZZ/join', { nickname: 'X' })).body.error.code).toBe('ROOM_NOT_FOUND');
     expect((await env.post('/rooms', { ...CFG, targetPoints: 6 })).status).toBe(400);
-    expect((await env.post('/rooms', { ...CFG, stakeCents: 1_000_001 })).body.error.code).toBe('BAD_REQUEST');
+    expect((await env.post('/rooms', { ...CFG, stakeChips: 1_000_001 })).body.error.code).toBe('BAD_REQUEST');
     expect((await env.post('/rooms', '{pas du json', true)).status).toBe(400);
     expect((await env.post('/rooms', 'x'.repeat(20_000), true)).status).toBeGreaterThanOrEqual(400); // corps trop gros
   });

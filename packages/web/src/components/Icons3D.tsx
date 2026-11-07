@@ -203,3 +203,18 @@ export function BellIcon(props: IconProps) {
     </Frame>
   );
 }
+
+/** Jeton seul, vu de face : solde et boutique de jetons. */
+export function CoinIcon(props: IconProps) {
+  const id = useId();
+  return (
+    <Frame {...props} defs={<Gradients id={id} />}>
+      <circle cx="32" cy="32" r="22" fill="#5a3d10" />
+      <circle cx="32" cy="30" r="22" fill={`url(#${id}-gold)`} />
+      <circle cx="32" cy="30" r="15" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeDasharray="4 3" />
+      <circle cx="32" cy="30" r="9" fill={`url(#${id}-sapphire)`} />
+      <path d="M32 24l2 4 4 .6-3 3 .8 4-3.8-2-3.8 2 .8-4-3-3 4-.6z" fill="#fff1c4" />
+      <circle cx="32" cy="30" r="22" fill={`url(#${id}-shine)`} opacity="0.5" />
+    </Frame>
+  );
+}

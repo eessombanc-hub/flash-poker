@@ -18,28 +18,28 @@ const pair = (a: string, b: string, type: InsuranceType): Insurance => ({ player
 
 describe('règlement — exemples du cahier des charges (cagnotte 120 €)', () => {
   it('« Le perdant ne paye pas » : A gagne → A reçoit 100 €, B récupère sa mise de 20 €', () => {
-    const s = settle({ players: P6, stakeCents: STAKE, winner: 'P0', insurances: [pair('P0', 'P1', 'LOSER_NOT_PAYING')] });
-    expect(s.potCents).toBe(12000);
+    const s = settle({ players: P6, stakeChips: STAKE, winner: 'P0', insurances: [pair('P0', 'P1', 'LOSER_NOT_PAYING')] });
+    expect(s.potChips).toBe(12000);
     expect(s.payouts).toEqual({ P0: 10000, P1: 2000, P2: 0, P3: 0, P4: 0, P5: 0 });
     expect(s.applied).toEqual(pair('P0', 'P1', 'LOSER_NOT_PAYING'));
   });
 
   it('« 50 / 50 » : A gagne → A reçoit 60 €, B reçoit 60 €', () => {
-    const s = settle({ players: P6, stakeCents: STAKE, winner: 'P0', insurances: [pair('P0', 'P1', 'SPLIT_50_50')] });
+    const s = settle({ players: P6, stakeChips: STAKE, winner: 'P0', insurances: [pair('P0', 'P1', 'SPLIT_50_50')] });
     expect(s.payouts).toEqual({ P0: 6000, P1: 6000, P2: 0, P3: 0, P4: 0, P5: 0 });
   });
 
   it('symétrique : si c\'est B (l\'autre assuré) qui gagne, les montants sont les mêmes rôles inversés', () => {
-    const a = settle({ players: P6, stakeCents: STAKE, winner: 'P1', insurances: [pair('P0', 'P1', 'LOSER_NOT_PAYING')] });
+    const a = settle({ players: P6, stakeChips: STAKE, winner: 'P1', insurances: [pair('P0', 'P1', 'LOSER_NOT_PAYING')] });
     expect(a.payouts).toMatchObject({ P1: 10000, P0: 2000 });
-    const b = settle({ players: P6, stakeCents: STAKE, winner: 'P1', insurances: [pair('P0', 'P1', 'SPLIT_50_50')] });
+    const b = settle({ players: P6, stakeChips: STAKE, winner: 'P1', insurances: [pair('P0', 'P1', 'SPLIT_50_50')] });
     expect(b.payouts).toMatchObject({ P1: 6000, P0: 6000 });
   });
 });
 
 describe('règlement — vainqueur hors assurance', () => {
   it('sans aucune assurance : le vainqueur récupère toute la cagnotte', () => {
-    const s = settle({ players: P6, stakeCents: STAKE, winner: 'P3', insurances: [] });
+    const s = settle({ players: P6, stakeChips: STAKE, winner: 'P3', insurances: [] });
     expect(s.payouts.P3).toBe(12000);
     expect(sum(s.payouts)).toBe(12000);
     expect(s.applied).toBeNull();
@@ -47,7 +47,7 @@ describe('règlement — vainqueur hors assurance', () => {
 
   it('vainqueur non assuré : il récupère tout, quelle que soit l\'assurance des autres (les deux types)', () => {
     for (const type of ['LOSER_NOT_PAYING', 'SPLIT_50_50'] as const) {
-      const s = settle({ players: P6, stakeCents: STAKE, winner: 'P3', insurances: [pair('P0', 'P1', type)] });
+      const s = settle({ players: P6, stakeChips: STAKE, winner: 'P3', insurances: [pair('P0', 'P1', type)] });
       expect(s.payouts).toEqual({ P0: 0, P1: 0, P2: 0, P3: 12000, P4: 0, P5: 0 });
       expect(s.applied).toBeNull();
     }
@@ -55,26 +55,26 @@ describe('règlement — vainqueur hors assurance', () => {
 
   it('plusieurs paires : seule l\'assurance qui contient le vainqueur s\'applique', () => {
     const ins = [pair('P0', 'P1', 'SPLIT_50_50'), pair('P2', 'P3', 'LOSER_NOT_PAYING')];
-    const s = settle({ players: P6, stakeCents: STAKE, winner: 'P2', insurances: ins });
+    const s = settle({ players: P6, stakeChips: STAKE, winner: 'P2', insurances: ins });
     expect(s.payouts).toEqual({ P0: 0, P1: 0, P2: 10000, P3: 2000, P4: 0, P5: 0 });
     expect(s.applied).toEqual(ins[1]);
   });
 
   it('2 joueurs assurés entre eux : « perdant ne paye pas » = chacun retrouve sa mise', () => {
-    const s = settle({ players: ['A', 'B'], stakeCents: 500, winner: 'A', insurances: [pair('A', 'B', 'LOSER_NOT_PAYING')] });
+    const s = settle({ players: ['A', 'B'], stakeChips: 500, winner: 'A', insurances: [pair('A', 'B', 'LOSER_NOT_PAYING')] });
     expect(s.payouts).toEqual({ A: 500, B: 500 });
   });
 });
 
 describe('règlement — centimes et invariants', () => {
   it('cagnotte impaire en 50/50 : aucun centime perdu ; le centime impair revient au vainqueur (hypothèse)', () => {
-    const s = settle({ players: names(3), stakeCents: 333, winner: 'P0', insurances: [pair('P0', 'P1', 'SPLIT_50_50')] });
-    expect(s.potCents).toBe(999);
+    const s = settle({ players: names(3), stakeChips: 333, winner: 'P0', insurances: [pair('P0', 'P1', 'SPLIT_50_50')] });
+    expect(s.potChips).toBe(999);
     expect(s.payouts).toEqual({ P0: 500, P1: 499, P2: 0 });
   });
 
   it('mise à 0 : tout est à 0', () => {
-    const s = settle({ players: names(3), stakeCents: 0, winner: 'P1', insurances: [pair('P1', 'P2', 'SPLIT_50_50')] });
+    const s = settle({ players: names(3), stakeChips: 0, winner: 'P1', insurances: [pair('P1', 'P2', 'SPLIT_50_50')] });
     expect(sum(s.payouts)).toBe(0);
   });
 
@@ -83,14 +83,14 @@ describe('règlement — centimes et invariants', () => {
     for (let i = 0; i < 2000; i++) {
       const n = 2 + rng.int(5);
       const players = names(n);
-      const stakeCents = rng.int(1_000_001);
+      const stakeChips = rng.int(1_000_001);
       const winner = players[rng.int(n)]!;
       const others = players.filter((p) => p !== winner);
       const partner = others[rng.int(others.length)]!;
       const type: InsuranceType = rng.int(2) === 0 ? 'LOSER_NOT_PAYING' : 'SPLIT_50_50';
       const withIns = rng.int(3) > 0;
-      const s = settle({ players, stakeCents, winner, insurances: withIns ? [pair(winner, partner, type)] : [] });
-      expect(sum(s.payouts)).toBe(stakeCents * n);
+      const s = settle({ players, stakeChips, winner, insurances: withIns ? [pair(winner, partner, type)] : [] });
+      expect(sum(s.payouts)).toBe(stakeChips * n);
       for (const v of Object.values(s.payouts)) expect(v).toBeGreaterThanOrEqual(0);
       expect(s.payouts[winner]!).toBeGreaterThanOrEqual(withIns ? s.payouts[partner]! : 0);
       for (const p of others) if (p !== partner || !withIns) expect(s.payouts[p]).toBe(0);
@@ -98,12 +98,12 @@ describe('règlement — centimes et invariants', () => {
   });
 
   it('entrées invalides refusées : vainqueur inconnu, joueur assuré hors table, joueur dans deux assurances, assurance à soi-même', () => {
-    const base = { players: names(4), stakeCents: 100 };
+    const base = { players: names(4), stakeChips: 100 };
     expect(() => settle({ ...base, winner: 'X', insurances: [] })).toThrowError(RuleError);
     expect(() => settle({ ...base, winner: 'P0', insurances: [pair('P0', 'Z', 'SPLIT_50_50')] })).toThrowError(/inconnu/);
     expect(() => settle({ ...base, winner: 'P0', insurances: [pair('P0', 'P1', 'SPLIT_50_50'), pair('P1', 'P2', 'SPLIT_50_50')] })).toThrowError(/deux assurances/);
     expect(() => settle({ ...base, winner: 'P0', insurances: [pair('P0', 'P0', 'SPLIT_50_50')] })).toThrowError(/exactement 2/);
-    expect(() => settle({ ...base, stakeCents: -1, winner: 'P0', insurances: [] })).toThrowError(RuleError);
+    expect(() => settle({ ...base, stakeChips: -1, winner: 'P0', insurances: [] })).toThrowError(RuleError);
   });
 
   it('insuredPartner', () => {

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../lib/api';
 import { useAccount, useClient } from '../lib/context';
-import { formatEuros } from '../lib/format';
+import { formatChips } from '../lib/format';
 import { Avatar, AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Segmented, Title } from '../components/ui';
 import type { AccountPrivate } from '../lib/types';
 
@@ -31,7 +31,8 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   const [name, setName] = useState('');
   const [maxPlayers, setMax] = useState(4);
   const [target, setTarget] = useState(3);
-  const [stake, setStake] = useState('20');
+  const wallet = useAccount((s) => s.wallet);
+  const [stakeChoice, setStake] = useState(10);
   const [nickname, setNick] = useState('');
   const [avatar, setAvatar] = useState('or');
   const [assistance, setAssistance] = useState(false);
@@ -39,12 +40,12 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const stakeNumber = Number(stake.replace(',', '.'));
-  const stakeCents = Math.round(stakeNumber * 100);
+  // Sans compte, la table se joue sans jetons (les mises exigent un portefeuille).
+  const stakeChips = me ? stakeChoice : 0;
   const errors = {
     name: name.trim() ? '' : 'Donnez un nom à la table.',
     nickname: me || NICK_RE.test(nickname.trim()) ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).',
-    stake: stake.trim() !== '' && Number.isFinite(stakeNumber) && stakeCents >= 0 && stakeCents <= 1_000_000 ? '' : 'Mise de 0 à 10 000 €.',
+    stake: !wallet || stakeChips <= wallet.chips ? '' : `Vous avez ${formatChips(wallet.chips)} : choisissez une mise plus petite.`,
   };
   const invalid = Object.values(errors).some(Boolean);
 
@@ -54,7 +55,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await client.createRoom({ name: name.trim(), maxPlayers, targetPoints: target, stakeCents, assistance, private: privateRoom, nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? avatar });
+      await client.createRoom({ name: name.trim(), maxPlayers, targetPoints: target, stakeChips, assistance, private: privateRoom, nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? avatar });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Création impossible.');
       setBusy(false);
@@ -79,9 +80,19 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
           <Field label="Objectif en points" hint="Le premier à atteindre l’objectif remporte la cagnotte.">
             <Segmented label="Objectif en points" value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
           </Field>
-          <Field label="Mise par joueur (€)" htmlFor="stake" hint={errors.stake ? undefined : `Cagnotte virtuelle : ${formatEuros(stakeCents * maxPlayers)} à ${maxPlayers} joueurs. Aucun paiement réel.`} error={errors.stake}>
-            <input id="stake" className={inputClass} inputMode="decimal" value={stake} onChange={(e) => setStake(e.target.value)} />
-          </Field>
+          {me ? (
+            <Field
+              label="Mise par joueur (jetons)"
+              hint={errors.stake ? undefined : stakeChips === 0 ? 'Partie amicale, sans jetons : ouverte aussi aux joueurs sans compte.' : `Cagnotte : ${formatChips(stakeChips * maxPlayers)} à ${maxPlayers} joueurs. Chaque joueur doit avoir un compte.${wallet ? ` Votre solde : ${formatChips(wallet.chips)}.` : ''}`}
+              error={errors.stake}
+            >
+              <Segmented label="Mise par joueur" value={stakeChoice} options={[0, 10, 25, 50, 100, 250]} onChange={setStake} format={(v) => (v === 0 ? 'Sans' : String(v))} />
+            </Field>
+          ) : (
+            <p className="rounded-xl border border-gold-500/30 bg-gold-500/5 px-3 py-2.5 text-sm text-ivory-200">
+              Sans compte, la partie se joue sans jetons. Créez un compte gratuit pour recevoir 100 jetons et jouer avec des mises.
+            </p>
+          )}
           <Field label="Niveau de la partie" hint={assistance ? 'Chaque joueur devra approuver l’assistance dans la salle d’attente ; sans l’accord de tous, la partie se jouera sans assistance.' : 'Aucune indication : chacun juge seul la force de sa main.'}>
             <Segmented label="Niveau de la partie" value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? 'Avec assistance' : 'Sans assistance')} />
           </Field>

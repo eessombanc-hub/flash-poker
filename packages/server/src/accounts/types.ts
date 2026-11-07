@@ -17,7 +17,7 @@ export interface FinishedGame {
   code: string;
   name: string;
   endedAt: number;
-  stakeCents: number;
+  stakeChips: number;
   targetPoints: number;
   /** Tous les joueurs de la salle (assis ou non) ; `accountId` nul pour un invité. */
   players: { playerId: string; accountId: string | null; nickname: string; avatar: string | null }[];
@@ -31,7 +31,7 @@ export interface GameSummary {
   name: string;
   endedAt: number;
   won: boolean;
-  netCents: number;
+  netChips: number;
   rounds: number;
   opponents: string[];
   winnerNickname: string;
@@ -43,9 +43,9 @@ export interface VariantStats {
   points: number;
 }
 export interface Bankroll {
-  totalCents: number;
+  totalChips: number;
   games: number;
-  series: { endedAt: number; netCents: number; cumulativeCents: number; name: string }[];
+  series: { endedAt: number; netChips: number; cumulativeChips: number; name: string }[];
 }
 export interface FavoritePlayer extends AccountPublic {
   online: boolean;
@@ -82,4 +82,35 @@ export interface InviteOverview {
   /** Invitations par e-mail encore possibles aujourd'hui. */
   remainingToday: number;
   mailEnabled: boolean;
+}
+
+/** Solde de jetons (sans valeur monétaire) et prochaine remontée à 100 jetons. */
+export interface WalletView {
+  chips: number;
+  refillLevel: number;
+  refillEveryMs: number;
+  /** Heure de la prochaine remontée (si le solde est sous le seuil), sinon null. */
+  nextRefillAt: number | null;
+}
+export interface LedgerEntry {
+  at: number;
+  delta: number;
+  balance: number;
+  reason: string;
+}
+export interface ShopOffer {
+  id: string;
+  name: string;
+  chips: number;
+  /** Prix TTC en centimes d'euro (argent réel, pour l'achat de jetons uniquement). */
+  priceCents: number;
+  oncePerAccount: boolean;
+  tagline: string;
+  highlight?: boolean;
+}
+export interface ShopView {
+  offers: ShopOffer[];
+  spentThisWeekCents: number;
+  weeklyCapCents: number;
+  paymentEnabled: boolean;
 }

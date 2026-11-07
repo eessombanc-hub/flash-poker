@@ -63,6 +63,6 @@ export function mail(to: string, subject: string, paragraphs: string[], action?:
 <h1 style="font-family:Georgia,serif;color:#a9843f;font-weight:normal">Flash Poker</h1>
 ${paragraphs.map((p) => `<p style="font-size:15px;line-height:1.5">${escapeHtml(p)}</p>`).join('\n')}
 ${action ? `<p style="margin:28px 0"><a href="${escapeHtml(action.url)}" style="background:#c9a25a;color:#081a3d;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:bold">${escapeHtml(action.label)}</a></p>` : ''}
-<p style="font-size:12px;color:#6b7280">Cagnotte virtuelle — aucun paiement réel.</p></div>`;
+<p style="font-size:12px;color:#6b7280">Jetons sans valeur monétaire : rien à gagner en argent.</p></div>`;
   return { to, subject, text, html };
 }

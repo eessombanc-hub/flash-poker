@@ -70,6 +70,13 @@ export interface AccountHooks {
   isReservedNickname(nickname: string): boolean;
   /** Partie terminée normalement (jamais pour une partie annulée). */
   onGameFinished(game: FinishedGame): void;
+  /**
+   * Jetons (facultatif ; absent, les mises restent symboliques comme avant les comptes). Une table avec mise
+   * exige alors un compte : la mise est retirée du solde dès l'arrivée à la table, rendue si le joueur part
+   * avant d'être assis ou si la partie est annulée, et la cagnotte est versée aux gagnants à la fin.
+   */
+  debit?(accountId: string, amount: number, reason: string): void;
+  credit?(accountId: string, amount: number, reason: string): void;
 }
 
 interface PlayerRec {
@@ -77,6 +84,8 @@ interface PlayerRec {
   nickname: string;
   avatar: string | null;
   accountId: string | null;
+  /** Jetons retenus pour cette table (la mise), en attente d'être rendus ou versés à la cagnotte. */
+  held: number;
   tokenHash: string;
   connected: boolean;
   lastSeenAt: number;
@@ -136,10 +145,13 @@ export class RoomManager {
     const cfg = this.parse(createRoomSchema, input);
     const now = this.deps.scheduler.now();
     const who = this.identity(cfg.nickname, cfg.avatar ?? null, account);
+    const code = this.newCode();
+    const held = this.holdStake(who.accountId, cfg.stakeChips, `Mise : ${cfg.name} (${code})`);
     const host = this.newPlayer(who, 'LOBBY', true); // propose l'assistance : l'approuve de fait
+    host.rec.held = held;
     const room: Room = {
-      code: this.newCode(),
-      config: { name: cfg.name, maxPlayers: cfg.maxPlayers, targetPoints: cfg.targetPoints, stakeCents: cfg.stakeCents, assistance: cfg.assistance ?? false, private: cfg.private ?? false },
+      code,
+      config: { name: cfg.name, maxPlayers: cfg.maxPlayers, targetPoints: cfg.targetPoints, stakeChips: cfg.stakeChips, assistance: cfg.assistance ?? false, private: cfg.private ?? false },
       status: 'WAITING',
       hostId: host.rec.id,
       players: [host.rec],
@@ -173,7 +185,9 @@ export class RoomManager {
     }
     // Les places sont limitées par le nombre de joueurs fixé à la création (sièges des exclus et file d'attente compris)
     if (room.players.length >= room.config.maxPlayers) throw new ServerError('ROOM_FULL', 'La partie est complète');
+    const held = this.holdStake(who.accountId, room.config.stakeChips, `Mise : ${room.config.name} (${room.code})`);
     const { rec, token } = this.newPlayer(who, room.status === 'WAITING' ? 'LOBBY' : 'QUEUED', room.config.assistance ? null : true);
+    rec.held = held;
     room.players.push(rec);
     const events = [pub('PLAYER_JOINED', { player: rec.id, nickname: rec.nickname, queued: rec.state === 'QUEUED' })];
     if (room.status === 'RUNNING') this.afterTransition(room, events);
@@ -236,7 +250,7 @@ export class RoomManager {
     // Positions tirées au sort, stables pendant toute la partie ; paramètres verrouillés
     const seating = assignPositions(room.players.map((p) => p.id), this.deps.rng);
     room.game = new GameManager(
-      { players: seating.order, targetPoints: room.config.targetPoints, stakeCents: room.config.stakeCents, maxPlayers: room.config.maxPlayers, assistance },
+      { players: seating.order, targetPoints: room.config.targetPoints, stakeChips: room.config.stakeChips, maxPlayers: room.config.maxPlayers, assistance },
       this.deps.rng,
       this.deps.gameHooks ?? {},
     );
@@ -258,6 +272,7 @@ export class RoomManager {
     this.player(room, playerId);
     if (room.status !== 'WAITING') throw new ServerError('WRONG_STATE', 'On ne quitte le lobby qu\'avant le démarrage');
     if (playerId === room.hostId) throw new ServerError('FORBIDDEN', 'L\'hôte annule la partie au lieu de la quitter');
+    this.release(room, this.player(room, playerId), 'Mise rendue : table quittée');
     room.players = room.players.filter((p) => p.id !== playerId);
     this.broadcast(room, [pub('PLAYER_LEFT', { player: playerId })]);
   }
@@ -274,6 +289,7 @@ export class RoomManager {
     if (room.status === 'FINISHED' || room.status === 'CANCELLED') throw new ServerError('WRONG_STATE', 'La partie est terminée');
     if (room.status === 'WAITING' || target.state === 'QUEUED') {
       this.emit({ playerId: targetId, message: { type: 'kicked', roomCode: room.code } });
+      this.release(room, target, 'Mise rendue : retiré de la table');
       room.players = room.players.filter((p) => p.id !== targetId);
       this.broadcast(room, [pub('PLAYER_REMOVED', { player: targetId })]);
       return;
@@ -315,7 +331,7 @@ export class RoomManager {
         maxPlayers: r.config.maxPlayers,
         seatsLeft: r.config.maxPlayers - r.players.length,
         targetPoints: r.config.targetPoints,
-        stakeCents: r.config.stakeCents,
+        stakeChips: r.config.stakeChips,
         assistance: r.config.assistance,
       }));
   }
@@ -376,8 +392,44 @@ export class RoomManager {
     room.timerKey = room.timerKind = room.deadlineAt = null;
     room.status = status;
     room.finishedAt = this.deps.scheduler.now();
+    this.settleChips(room, status);
     this.broadcast(room, events);
     if (status === 'FINISHED') this.archive(room);
+  }
+
+  // ---------- Jetons ----------
+
+  /** Retient la mise d'un joueur à son arrivée (table avec mise et comptes activés). */
+  private holdStake(accountId: string | null, stake: number, reason: string): number {
+    const hooks = this.deps.accounts;
+    if (!hooks?.debit || stake <= 0) return 0;
+    if (!accountId) throw new ServerError('ACCOUNT_REQUIRED', 'Cette table se joue avec des jetons : créez un compte gratuit (100 jetons offerts) ou connectez-vous');
+    hooks.debit(accountId, stake, reason);
+    return stake;
+  }
+
+  /** Rend la mise retenue d'un joueur qui n'a pas joué. */
+  private release(room: Room, rec: PlayerRec, reason: string): void {
+    if (rec.held > 0 && rec.accountId) this.guard(() => this.deps.accounts?.credit?.(rec.accountId!, rec.held, `${reason} (${room.config.name})`));
+    rec.held = 0;
+  }
+
+  /**
+   * Fin de table. Partie terminée : la cagnotte est versée selon le règlement du moteur (assurances comprises) ;
+   * les joueurs restés en file d'attente, jamais assis, récupèrent leur mise. Partie annulée ou abandonnée :
+   * chacun récupère sa mise.
+   */
+  private settleChips(room: Room, status: 'FINISHED' | 'CANCELLED'): void {
+    const outcome = status === 'FINISHED' ? room.game?.outcome() : null;
+    for (const rec of room.players) {
+      if (outcome && rec.id in outcome.settlement.payouts) {
+        const won = outcome.settlement.payouts[rec.id] ?? 0;
+        if (rec.accountId && won > 0) this.guard(() => this.deps.accounts?.credit?.(rec.accountId!, won, `Gain : ${room.config.name}`));
+        rec.held = 0;
+      } else {
+        this.release(room, rec, status === 'FINISHED' ? 'Mise rendue : jamais assis' : 'Mise rendue : partie annulée');
+      }
+    }
   }
 
   /** Archive la partie terminée pour l'historique des joueurs inscrits (sans effet sur la partie). */
@@ -390,7 +442,7 @@ export class RoomManager {
         code: room.code,
         name: room.config.name,
         endedAt: room.finishedAt ?? this.deps.scheduler.now(),
-        stakeCents: room.config.stakeCents,
+        stakeChips: room.config.stakeChips,
         targetPoints: room.config.targetPoints,
         players: room.players.map((p) => ({ playerId: p.id, accountId: p.accountId, nickname: p.nickname, avatar: p.avatar })),
         seated: Object.keys(outcome.settlement.payouts),
@@ -480,7 +532,9 @@ export class RoomManager {
       }
     }
     for (const code of removed) {
-      this.clearTimers(this.rooms.get(code)!);
+      const r = this.rooms.get(code)!;
+      if (r.status === 'WAITING') for (const rec of r.players) this.release(r, rec, 'Mise rendue : table expirée');
+      this.clearTimers(r);
       this.rooms.delete(code);
       this.guard(() => void Promise.resolve(this.store.delete(code)).catch((e) => this.deps.onError?.(e)));
     }
@@ -496,7 +550,7 @@ export class RoomManager {
       config: { ...r.config },
       status: r.status,
       hostId: r.hostId,
-      players: r.players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, accountId: p.accountId, tokenHash: p.tokenHash, state: p.state, lastSeenAt: p.lastSeenAt, assistanceApproved: p.assistanceApproved })),
+      players: r.players.map((p) => ({ id: p.id, nickname: p.nickname, avatar: p.avatar, accountId: p.accountId, held: p.held, tokenHash: p.tokenHash, state: p.state, lastSeenAt: p.lastSeenAt, assistanceApproved: p.assistanceApproved })),
       game: r.game ? r.game.snapshot() : null,
       version: r.version,
       createdAt: r.createdAt,
@@ -522,7 +576,7 @@ export class RoomManager {
       config: { ...s.config },
       status: s.status,
       hostId: s.hostId,
-      players: s.players.map((p) => ({ ...p, accountId: p.accountId ?? null, connected: false })),
+      players: s.players.map((p) => ({ ...p, accountId: p.accountId ?? null, held: p.held ?? 0, connected: false })),
       game: s.game ? GameManager.restore(s.game, this.deps.rng, this.deps.gameHooks ?? {}) : null,
       version: s.version,
       createdAt: s.createdAt,
@@ -575,8 +629,8 @@ export class RoomManager {
       config: {
         maxPlayers: room.config.maxPlayers,
         targetPoints: room.config.targetPoints,
-        stakeCents: room.config.stakeCents,
-        potCents: gv ? gv.potCents : room.config.stakeCents * room.players.length,
+        stakeChips: room.config.stakeChips,
+        potChips: gv ? gv.potChips : room.config.stakeChips * room.players.length,
         assistance: room.config.assistance,
         private: room.config.private ?? false,
       },
@@ -654,7 +708,7 @@ export class RoomManager {
     const id = this.deps.idFactory ? this.deps.idFactory() : `p_${randomBytes(5).toString('hex')}`;
     return {
       token,
-      rec: { id, nickname: who.nickname, avatar: who.avatar, accountId: who.accountId, tokenHash: hashToken(token), connected: false, lastSeenAt: this.deps.scheduler.now(), state, assistanceApproved },
+      rec: { id, nickname: who.nickname, avatar: who.avatar, accountId: who.accountId, held: 0, tokenHash: hashToken(token), connected: false, lastSeenAt: this.deps.scheduler.now(), state, assistanceApproved },
     };
   }
   private newCode(): string {

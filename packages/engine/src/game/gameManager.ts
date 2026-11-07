@@ -31,8 +31,8 @@ import {
 } from './insurance';
 import { POSITION_LABELS } from './positions';
 
-/** Mise maximale par joueur : 10 000 € (en centimes). */
-export const MAX_STAKE_CENTS = 1_000_000;
+/** Mise maximale par joueur : 10 000 jetons. */
+export const MAX_STAKE_CHIPS = 10_000;
 /** Objectif maximal : 5 points. */
 export const MAX_TARGET_POINTS = 5;
 
@@ -41,8 +41,8 @@ export interface GameConfig {
   players: readonly PlayerId[];
   /** Points nécessaires pour gagner : de 1 à 5. */
   targetPoints: number;
-  /** Mise par joueur, définie par le créateur : de 0 à 10 000 €, en centimes (cagnotte virtuelle). */
-  stakeCents: number;
+  /** Mise par joueur, définie par le créateur : de 0 à 10 000 jetons (jetons sans valeur monétaire). */
+  stakeChips: number;
   /** Nombre maximal de joueurs fixé à la création (2 à 6, défaut 6) : limite les arrivées en cours de partie. */
   maxPlayers?: number;
   /** Partie « avec assistance » (fixé pour toute la partie, décidé en salle d'attente) : simple indicateur
@@ -97,7 +97,7 @@ export interface GameOutcome {
   winner: PlayerId;
   victoryType: VictoryType;
   standings: Standing[];
-  /** Répartition de la cagnotte (virtuelle), en centimes. */
+  /** Répartition de la cagnotte, en jetons. */
   settlement: Settlement;
   /** Assurance appliquée (celle qui contient le vainqueur), sinon null. */
   insurance: Insurance | null;
@@ -134,8 +134,8 @@ export interface GameView {
   chooser: PlayerId;
   awaiting: PlayerId[];
   targetPoints: number;
-  stakeCents: number;
-  potCents: number;
+  stakeChips: number;
+  potChips: number;
   /** Partie « avec assistance » (fixé pour toute la partie) : indicateur du nom de la combinaison affiché aux
    * joueurs, jamais de suggestion. */
   assistance: boolean;
@@ -188,7 +188,7 @@ export interface GameHooks {
 interface LiveConfig {
   players: PlayerId[];
   targetPoints: number;
-  stakeCents: number;
+  stakeChips: number;
   maxPlayers: number;
   assistance: boolean;
 }
@@ -218,7 +218,7 @@ export class GameManager {
     private readonly hooks: GameHooks = {},
     snapshot?: GameSnapshot,
   ) {
-    const { players, targetPoints, stakeCents } = config;
+    const { players, targetPoints, stakeChips } = config;
     const maxPlayers = config.maxPlayers ?? 6;
     if (players.length < 2 || players.length > 6 || new Set(players).size !== players.length) {
       throw new RuleError('BAD_CONFIG', 'Une partie réunit de 2 à 6 joueurs distincts');
@@ -229,10 +229,10 @@ export class GameManager {
     if (!Number.isInteger(targetPoints) || targetPoints < 1 || targetPoints > MAX_TARGET_POINTS) {
       throw new RuleError('BAD_CONFIG', `Objectif : entier de 1 à ${MAX_TARGET_POINTS} points`);
     }
-    if (!Number.isInteger(stakeCents) || stakeCents < 0 || stakeCents > MAX_STAKE_CENTS) {
-      throw new RuleError('BAD_CONFIG', 'Mise : de 0 à 10 000 € (centimes entiers)');
+    if (!Number.isInteger(stakeChips) || stakeChips < 0 || stakeChips > MAX_STAKE_CHIPS) {
+      throw new RuleError('BAD_CONFIG', 'Mise : de 0 à 10 000 jetons (nombre entier)');
     }
-    this.config = { players: [...players], targetPoints, stakeCents, maxPlayers, assistance: config.assistance ?? false };
+    this.config = { players: [...players], targetPoints, stakeChips, maxPlayers, assistance: config.assistance ?? false };
     for (const p of players) this.scores[p] = 0;
     if (snapshot) {
       this.phase_ = snapshot.phase;
@@ -441,7 +441,7 @@ export class GameManager {
           this.publicEvent('PLAYER_ADDED', {
             player: cmd.player,
             position: POSITION_LABELS[this.config.players.length - 1],
-            potCents: this.config.stakeCents * this.config.players.length,
+            potChips: this.config.stakeChips * this.config.players.length,
           }),
         );
         return events;
@@ -587,7 +587,7 @@ export class GameManager {
     // Tous les joueurs assis ont versé leur mise (y compris les exclus et les arrivés en cours de partie)
     const settlement = settle({
       players: order,
-      stakeCents: this.config.stakeCents,
+      stakeChips: this.config.stakeChips,
       winner,
       insurances: this.insurances,
     });
@@ -622,8 +622,8 @@ export class GameManager {
       chooser: this.chooser(),
       awaiting: this.awaiting(),
       targetPoints: this.config.targetPoints,
-      stakeCents: this.config.stakeCents,
-      potCents: this.config.stakeCents * order.length,
+      stakeChips: this.config.stakeChips,
+      potChips: this.config.stakeChips * order.length,
       assistance: this.config.assistance ?? false,
       players: order.map((player, i) => ({
         player,

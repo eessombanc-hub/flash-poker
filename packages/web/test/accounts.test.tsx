@@ -33,7 +33,12 @@ async function start() {
     rng: new SeededRng(11),
     scheduler,
     gameHooks: { stackedDeck: (r) => (r === 1 ? closedWin(2, 0) : undefined) },
-    accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g) },
+    accounts: {
+      isReservedNickname: (n) => accounts.isReservedNickname(n),
+      onGameFinished: (g) => accounts.recordGame(g),
+      debit: (i, a, r) => accounts.wallet.debit(i, a, r),
+      credit: (i, a, r) => accounts.wallet.credit(i, a, r),
+    },
   });
   const server = await buildServer({ manager, accounts, now: () => scheduler.now(), onError: () => undefined, httpRateLimit: { max: 1000, windowMs: 60_000 } });
   await server.app.listen({ port: 0, host: '127.0.0.1' });
@@ -125,13 +130,14 @@ describe('comptes joueurs dans l’interface', () => {
     await until(() => seen.includes('Bea'), 'notification reçue');
   });
 
-  it('Mon espace : historique, manche favorite, statistiques, bankroll', async () => {
+  it('Mon espace : historique, manche favorite, statistiques, bankroll, jetons', async () => {
     const env = await start();
     const ana = env.make();
     const guest = env.make();
     await ana.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1', avatar: 'rubis' });
-    await ana.client.createRoom({ name: 'Mardi soir', maxPlayers: 2, targetPoints: 1, stakeCents: 2000, nickname: 'Ana' });
-    await guest.client.joinRoom(ana.client.state.session!.code, { nickname: 'Invité' });
+    await guest.account.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    await ana.client.createRoom({ name: 'Mardi soir', maxPlayers: 2, targetPoints: 1, stakeChips: 20, nickname: 'Ana' });
+    await guest.client.joinRoom(ana.client.state.session!.code, { nickname: 'Bea' });
     await until(() => ana.client.state.view?.players.length === 2, 'deux joueurs');
     await ana.client.startGame();
     await until(() => ana.client.state.view?.game?.phase === 'VARIANT_SELECTION', 'partie démarrée');
@@ -149,7 +155,7 @@ describe('comptes joueurs dans l’interface', () => {
     await user.click(await screen.findByRole('button', { name: /Ana/ }));
     await user.click(screen.getByRole('tab', { name: /Historique/ }));
     const row = await screen.findByRole('button', { name: /Mardi soir/ });
-    expect(row.textContent).toContain(won ? '+20' : '−20');
+    expect(row.textContent?.replace(/[\u202f\u00a0]/g, ' ')).toContain(won ? '+20 jetons' : '−20 jetons');
     await user.click(row);
     await user.click(await screen.findByRole('button', { name: 'Manche 1 favorite' }));
     await until(() => screen.getByRole('button', { name: 'Manche 1 favorite' }).getAttribute('aria-pressed') === 'true', 'étoile allumée');
@@ -163,5 +169,10 @@ describe('comptes joueurs dans l’interface', () => {
 
     await user.click(screen.getByRole('tab', { name: /Bankroll/ }));
     expect(await screen.findByRole('img', { name: /Bilan cumulé sur 1 partie/ })).toBeTruthy();
+
+    await user.click(screen.getByRole('tab', { name: /Jetons/ }));
+    expect((await screen.findAllByText(won ? '120' : '80')).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('button', { name: /Acheter Coffret : 3000 jetons/ })).toBeDisabled(); // paiement pas encore activé
+    expect(screen.getAllByText(/Mise : Mardi soir/).length).toBe(1);
   });
 });
