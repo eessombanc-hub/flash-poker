@@ -59,8 +59,8 @@ export class AccountClient {
     this.opts.onFavoriteOnline = fn;
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const headers: Record<string, string> = {};
+  private async request<T>(method: string, path: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
+    const headers: Record<string, string> = { ...extra };
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (this.token) headers.authorization = `Bearer ${this.token}`;
     let res: Response;
@@ -162,11 +162,33 @@ export class AccountClient {
   wallet = () => this.request<Wallet>('GET', '/me/wallet');
   bankroll = () => this.request<Bankroll>('GET', '/me/bankroll');
   // ----- Blackjack -----
-  blackjack = () => this.request<BjOverview>('GET', '/me/blackjack');
-  blackjackHistory = () => this.request<{ history: BjHistoryItem[] }>('GET', '/me/blackjack/history').then((r) => r.history);
-  blackjackStart = (input: { table: string; bet: number; rules?: TableRules }) => this.request<{ active: BjActive; result: BjResult | null }>('POST', '/me/blackjack/round', input);
-  blackjackAct = (action: BjAction) => this.request<{ active: BjActive; result: BjResult | null }>('POST', '/me/blackjack/action', { action });
-  blackjackHelp = () => this.request<{ advice: Advice | null; odds: Odds }>('GET', '/me/blackjack/help');
+  /** Code d'invité : aléatoire, créé une fois et conservé dans ce navigateur (le Blackjack se joue sans compte). */
+  guestId(): string {
+    const KEY_G = 'poker.bj.guest.v1';
+    try {
+      const cur = this.storage?.getItem(KEY_G);
+      if (cur && /^[a-f0-9]{32}$/.test(cur)) return cur;
+    } catch {
+      /* stockage indisponible */
+    }
+    const bytes = new Uint8Array(16);
+    (globalThis.crypto ?? { getRandomValues: (a: Uint8Array) => a.map(() => Math.floor(Math.random() * 256)) }).getRandomValues(bytes);
+    const id = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+    try {
+      this.storage?.setItem(KEY_G, id);
+    } catch {
+      /* ignoré : l'invité recommencera avec un nouveau profil */
+    }
+    return id;
+  }
+  private bj<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return this.request<T>(method, path, body, { 'x-bj-guest': this.guestId() });
+  }
+  blackjack = () => this.bj<BjOverview>('GET', '/me/blackjack');
+  blackjackHistory = () => this.bj<{ history: BjHistoryItem[] }>('GET', '/me/blackjack/history').then((r) => r.history);
+  blackjackStart = (input: { table: string; bet: number; rules?: TableRules }) => this.bj<{ active: BjActive; result: BjResult | null }>('POST', '/me/blackjack/round', input);
+  blackjackAct = (action: BjAction) => this.bj<{ active: BjActive; result: BjResult | null }>('POST', '/me/blackjack/action', { action });
+  blackjackHelp = () => this.bj<{ advice: Advice | null; odds: Odds }>('GET', '/me/blackjack/help');
   blackjackLeaderboard = (by: BjLeaderboardKind) => this.request<{ entries: BjLeaderboardEntry[] }>('GET', `/blackjack/leaderboard?by=${by}`).then((r) => r.entries);
   favoriteRounds = () => this.request<{ rounds: FavoriteRound[] }>('GET', '/me/favorite-rounds').then((r) => r.rounds);
   addFavoriteRound = (gameId: string, roundNo: number) => this.request('POST', '/me/favorite-rounds', { gameId, roundNo });

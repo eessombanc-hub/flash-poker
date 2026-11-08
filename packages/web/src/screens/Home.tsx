@@ -72,7 +72,7 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, notice, account }
                     </button>
                   </h2>
                   <p id="bj-tile-d" className="mt-0.5 max-w-xl text-sm text-ivory-200/85">
-                    Seul face au croupier : six tables, défis quotidiens, niveaux et classement. Un compte est nécessaire.
+                    Seul face au croupier : six tables, défis quotidiens, niveaux et classement. Aucun compte nécessaire.
                   </p>
                 </div>
               </div>

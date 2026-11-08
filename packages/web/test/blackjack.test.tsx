@@ -206,16 +206,28 @@ async function serverAndAccount() {
 }
 
 describe('Blackjack : de bout en bout', () => {
-  it('sans compte : invitation à se connecter', async () => {
+  it('sans compte : on joue en invité, avec un rappel discret pour se connecter', async () => {
     const { account } = await serverAndAccount();
     const onLogin = vi.fn();
+    const user = userEvent.setup();
     render(
       <AccountProvider account={account}>
         <Blackjack onBack={noop} onLogin={onLogin} />
       </AccountProvider>,
     );
-    await userEvent.setup().click(await screen.findByRole('button', { name: 'Se connecter' }));
+    expect((await screen.findByTestId('bj-chips')).textContent).toMatch(/1\s?000/);
+    expect(screen.getByTestId('bj-guest-note')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Distribuer/ }));
+    await waitFor(() => expect(screen.queryByRole('group', { name: 'Actions' }) ?? screen.queryByTestId('round-net')).toBeTruthy(), { timeout: 4000 });
+    await user.click(screen.getByRole('button', { name: 'Se connecter' }));
     expect(onLogin).toHaveBeenCalled();
+  });
+
+  it('le code d’invité est créé une fois, puis conservé', async () => {
+    const { account } = await serverAndAccount();
+    const id = account.guestId();
+    expect(id).toMatch(/^[a-f0-9]{32}$/);
+    expect(account.guestId()).toBe(id);
   });
 
   it('distribution, tirage ou arrêt, résumé, classement et historique', async () => {
@@ -249,7 +261,7 @@ describe('Blackjack : de bout en bout', () => {
     await user.click(await screen.findByRole('tab', { name: 'Historique' }));
     await waitFor(() => expect(within(screen.getByTestId('bj-history')).getAllByRole('listitem').length).toBe(1), { timeout: 4000 });
     await user.click(screen.getByRole('tab', { name: 'Progression' }));
-    expect(screen.getByTestId('bj-stats').textContent).toMatch(/Mains jouées1/);
+    expect(screen.getByTestId('bj-stats').textContent).toMatch(/^1Mains jouées/);
     await user.click(screen.getByRole('tab', { name: 'Classement' }));
     expect(await within(await screen.findByTestId('bj-leaderboard')).findByText('Croupier')).toBeInTheDocument();
   });

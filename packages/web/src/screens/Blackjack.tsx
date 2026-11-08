@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Eyebrow, Field, Panel, Segmented, inputClass } from '../components/ui';
 import { CoinIcon } from '../components/Icons3D';
 import { BjTable, ChipStack, type HelpData } from '../components/blackjack/BjTable';
-import { ChallengesPanel, HistoryPanel, LeaderboardPanel, LevelBar, LoginPrompt, StatsPanel } from '../components/blackjack/Panels';
+import { ChallengesPanel, HistoryPanel, LeaderboardPanel, LevelBar, StatsPanel } from '../components/blackjack/Panels';
 import { ApiError } from '../lib/api';
 import { useAccount, useAccountClient } from '../lib/context';
 import { formatChips } from '../lib/format';
@@ -20,7 +20,7 @@ const FREE_LIMITS = { minBet: 1, maxBet: 1000 };
 const rulesLine = (r: TableRules): string =>
   `${r.decks} jeu${r.decks > 1 ? 'x' : ''} · croupier ${r.dealerHitsSoft17 ? 'tire' : 'reste'} sur 17 soft · Blackjack ${r.blackjackPays === '3:2' ? '3 contre 2' : '6 contre 5'} · doublement ${DOUBLE_LABEL[r.doubleOn].toLowerCase()} · ${r.surrender ? 'abandon' : 'sans abandon'}`;
 
-/** Point d'entrée : réservé aux comptes (jetons, niveau et manche en cours sont enregistrés côté serveur). */
+/** Point d'entrée : ouvert à tous. Invité ou connecté, jetons, niveau et manche en cours sont enregistrés côté serveur. */
 export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
@@ -37,7 +37,21 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
         <span className="w-16" aria-hidden="true" />
       </header>
       <main className="mx-auto max-w-4xl px-4 pb-12">
-        {!ready ? <p className="py-10 text-center text-sm text-ivory-300/70">Chargement…</p> : !me ? <LoginPrompt onLogin={onLogin} onBack={onBack} /> : <Game />}
+        {!ready ? (
+          <p className="py-10 text-center text-sm text-ivory-300/70">Chargement…</p>
+        ) : (
+          <>
+            {!me && (
+              <p className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gold-500/30 bg-gold-500/10 px-4 py-2.5 text-xs text-ivory-100" data-testid="bj-guest-note">
+                <span>Vous jouez en invité : jetons et progression restent sur cet appareil. Avec un compte, ils vous suivent partout et vous apparaissez au classement.</span>
+                <button type="button" onClick={onLogin} className="font-semibold text-gold-300 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
+                  Se connecter
+                </button>
+              </p>
+            )}
+            <Game />
+          </>
+        )}
       </main>
     </div>
   );

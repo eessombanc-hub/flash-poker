@@ -238,18 +238,3 @@ export function HistoryPanel({ items }: { items: BjHistoryItem[] }) {
     </Panel>
   );
 }
-
-export function LoginPrompt({ onLogin, onBack }: { onLogin: () => void; onBack: () => void }) {
-  return (
-    <Panel className="mx-auto max-w-lg p-8 text-center">
-      <h2 className="font-display text-2xl text-ivory-50">Le Blackjack se joue avec un compte</h2>
-      <p className="mt-2 text-sm text-ivory-200/85">Vos jetons, votre niveau, vos défis et votre manche en cours sont enregistrés sur votre compte : vous les retrouvez sur n’importe quel appareil. Jetons virtuels uniquement, sans valeur monétaire.</p>
-      <div className="mt-5 flex justify-center gap-2">
-        <Button onClick={onLogin}>Se connecter</Button>
-        <Button variant="ghost" onClick={onBack}>
-          Retour
-        </Button>
-      </div>
-    </Panel>
-  );
-}

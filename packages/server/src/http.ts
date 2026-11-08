@@ -157,7 +157,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   if (opts.corsOrigin) {
     app.addHook('onRequest', async (req, reply) => {
       reply.header('Access-Control-Allow-Origin', opts.corsOrigin!);
-      reply.header('Access-Control-Allow-Headers', 'content-type, authorization');
+      reply.header('Access-Control-Allow-Headers', 'content-type, authorization, x-bj-guest');
       reply.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
       if (req.method === 'OPTIONS') return reply.status(204).send();
     });

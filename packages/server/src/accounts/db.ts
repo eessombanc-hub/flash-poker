@@ -7,6 +7,72 @@ import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite';
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 
 /**
+ * Tables du Blackjack. `user_id` désigne un compte ou un invité (« guest:… ») : volontairement SANS clé étrangère
+ * vers `users`, puisque le Blackjack se joue aussi sans compte.
+ */
+const BJ_SCHEMA = `
+      CREATE TABLE IF NOT EXISTS bj_profile (
+        user_id TEXT PRIMARY KEY,
+        chips INTEGER NOT NULL,
+        xp INTEGER NOT NULL DEFAULT 0,
+        rounds INTEGER NOT NULL DEFAULT 0,
+        hands INTEGER NOT NULL DEFAULT 0,
+        hands_won INTEGER NOT NULL DEFAULT 0,
+        hands_lost INTEGER NOT NULL DEFAULT 0,
+        hands_pushed INTEGER NOT NULL DEFAULT 0,
+        blackjacks INTEGER NOT NULL DEFAULT 0,
+        doubles_won INTEGER NOT NULL DEFAULT 0,
+        splits_won INTEGER NOT NULL DEFAULT 0,
+        net_chips INTEGER NOT NULL DEFAULT 0,
+        streak INTEGER NOT NULL DEFAULT 0,
+        best_streak INTEGER NOT NULL DEFAULT 0,
+        max_chips INTEGER NOT NULL,
+        last_refill_at INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS bj_active (
+        user_id TEXT PRIMARY KEY,
+        table_id TEXT NOT NULL,
+        rules TEXT NOT NULL,
+        bet INTEGER NOT NULL,
+        seed TEXT NOT NULL,
+        commitment TEXT NOT NULL,
+        start_chips INTEGER NOT NULL,
+        actions TEXT NOT NULL,
+        started_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS bj_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL,
+        ended_at INTEGER NOT NULL,
+        table_id TEXT NOT NULL,
+        bet INTEGER NOT NULL,
+        net INTEGER NOT NULL,
+        wagered INTEGER NOT NULL,
+        seed TEXT NOT NULL,
+        commitment TEXT NOT NULL,
+        rules TEXT NOT NULL,
+        actions TEXT NOT NULL,
+        summary TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS bj_history_by_user ON bj_history (user_id, ended_at);
+      CREATE TABLE IF NOT EXISTS bj_challenges (
+        user_id TEXT NOT NULL,
+        day TEXT NOT NULL,
+        challenge_id TEXT NOT NULL,
+        progress INTEGER NOT NULL DEFAULT 0,
+        done INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day, challenge_id)
+      );
+      CREATE TABLE IF NOT EXISTS bj_achievements (
+        user_id TEXT NOT NULL,
+        achievement_id TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, achievement_id)
+      );
+`;
+const BJ_TABLES = ['bj_profile', 'bj_active', 'bj_history', 'bj_challenges', 'bj_achievements'] as const;
+
+/**
  * Base des comptes joueurs (fichier SQLite, ou `:memory:` en test) : comptes, sessions, jetons de
  * réinitialisation, parties terminées, favoris. Aucune donnée de carte d'une partie en cours n'y figure :
  * seules les parties terminées (faits devenus publics) y sont archivées.
@@ -87,64 +153,6 @@ export class AccountDb {
         amount INTEGER NOT NULL,
         PRIMARY KEY (user_id, at)
       );
-      CREATE TABLE IF NOT EXISTS bj_profile (
-        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-        chips INTEGER NOT NULL,
-        xp INTEGER NOT NULL DEFAULT 0,
-        rounds INTEGER NOT NULL DEFAULT 0,
-        hands INTEGER NOT NULL DEFAULT 0,
-        hands_won INTEGER NOT NULL DEFAULT 0,
-        hands_lost INTEGER NOT NULL DEFAULT 0,
-        hands_pushed INTEGER NOT NULL DEFAULT 0,
-        blackjacks INTEGER NOT NULL DEFAULT 0,
-        doubles_won INTEGER NOT NULL DEFAULT 0,
-        splits_won INTEGER NOT NULL DEFAULT 0,
-        net_chips INTEGER NOT NULL DEFAULT 0,
-        streak INTEGER NOT NULL DEFAULT 0,
-        best_streak INTEGER NOT NULL DEFAULT 0,
-        max_chips INTEGER NOT NULL,
-        last_refill_at INTEGER NOT NULL DEFAULT 0
-      );
-      CREATE TABLE IF NOT EXISTS bj_active (
-        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-        table_id TEXT NOT NULL,
-        rules TEXT NOT NULL,
-        bet INTEGER NOT NULL,
-        seed TEXT NOT NULL,
-        commitment TEXT NOT NULL,
-        start_chips INTEGER NOT NULL,
-        actions TEXT NOT NULL,
-        started_at INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS bj_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        ended_at INTEGER NOT NULL,
-        table_id TEXT NOT NULL,
-        bet INTEGER NOT NULL,
-        net INTEGER NOT NULL,
-        wagered INTEGER NOT NULL,
-        seed TEXT NOT NULL,
-        commitment TEXT NOT NULL,
-        rules TEXT NOT NULL,
-        actions TEXT NOT NULL,
-        summary TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS bj_history_by_user ON bj_history (user_id, ended_at);
-      CREATE TABLE IF NOT EXISTS bj_challenges (
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        day TEXT NOT NULL,
-        challenge_id TEXT NOT NULL,
-        progress INTEGER NOT NULL DEFAULT 0,
-        done INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (user_id, day, challenge_id)
-      );
-      CREATE TABLE IF NOT EXISTS bj_achievements (
-        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        achievement_id TEXT NOT NULL,
-        at INTEGER NOT NULL,
-        PRIMARY KEY (user_id, achievement_id)
-      );
       CREATE TABLE IF NOT EXISTS notify_log (
         user_id TEXT NOT NULL,
         fav_id TEXT NOT NULL,
@@ -152,9 +160,29 @@ export class AccountDb {
         PRIMARY KEY (user_id, fav_id, day)
       );
     `);
+    this.migrateBlackjack();
   }
 
   close(): void {
     this.db.close();
+  }
+
+  /** Crée les tables du Blackjack ; retire d'anciennes clés étrangères vers `users` (incompatibles avec les invités). */
+  private migrateBlackjack(): void {
+    this.db.exec(BJ_SCHEMA);
+    const legacy = BJ_TABLES.filter((t) => this.db.prepare(`PRAGMA foreign_key_list(${t})`).all().length > 0);
+    if (legacy.length === 0) return;
+    this.db.exec('PRAGMA foreign_keys = OFF');
+    try {
+      for (const t of legacy) this.db.exec(`ALTER TABLE ${t} RENAME TO ${t}_old`);
+      this.db.exec(BJ_SCHEMA.replace(/CREATE INDEX IF NOT EXISTS/g, '-- '));
+      for (const t of legacy) {
+        this.db.exec(`INSERT INTO ${t} SELECT * FROM ${t}_old`);
+        this.db.exec(`DROP TABLE ${t}_old`);
+      }
+      this.db.exec(BJ_SCHEMA);
+    } finally {
+      this.db.exec('PRAGMA foreign_keys = ON');
+    }
   }
 }

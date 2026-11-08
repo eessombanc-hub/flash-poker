@@ -4,7 +4,7 @@ import { FREE_TABLE_ID } from '@poker/engine';
 import { ServerError } from '../errors';
 import { bearer } from '../accounts/routes';
 import { RateLimiter } from '../rateLimiter';
-import type { AccountPrivate, AccountService } from '../accounts/service';
+import type { AccountService } from '../accounts/service';
 import type { BlackjackService } from './service';
 
 const rulesSchema = z.object({
@@ -20,14 +20,23 @@ const rulesSchema = z.object({
 const startSchema = z.object({ table: z.string().min(1).max(40), rules: rulesSchema.optional(), bet: z.number().int().min(1).max(1_000_000) });
 const actionSchema = z.object({ action: z.enum(['HIT', 'STAND', 'DOUBLE', 'SPLIT', 'SURRENDER']) });
 
-/** Routes du Blackjack : toutes réservées aux comptes connectés, sauf le classement et la liste des tables. */
+/** Routes du Blackjack : comptes connectés et invités (le classement ne liste que les comptes). */
 export function registerBlackjackRoutes(app: FastifyInstance, bj: BlackjackService, accounts: AccountService, opts: { now?: () => number } = {}): void {
   const perUser = new RateLimiter(240, 60_000, opts.now ?? Date.now);
-  const me = (req: FastifyRequest): AccountPrivate => {
+  const perIp = new RateLimiter(600, 60_000, opts.now ?? Date.now);
+  /**
+   * Joueur de la requête : compte connecté, sinon invité identifié par un code aléatoire généré par son navigateur
+   * (en-tête `x-bj-guest`). Un invité a ses propres jetons, niveau et statistiques, conservés sur son appareil ;
+   * il n'apparaît pas au classement et ne partage pas l'expérience du poker.
+   */
+  const me = (req: FastifyRequest): { id: string } => {
+    if (!perIp.hit(req.ip)) throw new ServerError('RATE_LIMITED', 'Trop de requêtes, ralentissez');
     const account = accounts.userBySession(bearer(req));
-    if (!account) throw new ServerError('UNAUTHORIZED', 'Connectez-vous pour jouer au Blackjack');
-    if (!perUser.hit(account.id)) throw new ServerError('RATE_LIMITED', 'Trop de requêtes, ralentissez');
-    return account;
+    const guest = req.headers['x-bj-guest'];
+    const who: { id: string } | null = account ? { id: account.id } : typeof guest === 'string' && /^[a-f0-9]{32}$/.test(guest) ? { id: `guest:${guest}` } : null;
+    if (!who) throw new ServerError('BAD_REQUEST', 'Identifiant de joueur manquant');
+    if (!perUser.hit(who.id)) throw new ServerError('RATE_LIMITED', 'Trop de requêtes, ralentissez');
+    return who;
   };
 
   app.get('/me/blackjack', async (req) => bj.overview(me(req).id));

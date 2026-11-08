@@ -273,11 +273,21 @@ describe('Blackjack : classement et accès', () => {
     return server;
   }
 
-  it('API : réservée aux comptes ; manche complète via HTTP ; classement public', async () => {
+  it('API : manche complète via HTTP ; invités acceptés ; classement public', async () => {
     const server = await boot();
     const inj = (method: 'GET' | 'POST', url: string, token?: string, payload?: unknown) => server.app.inject({ method, url, payload: payload as object, headers: token ? { authorization: `Bearer ${token}` } : {} });
-    expect((await inj('GET', '/me/blackjack')).statusCode).toBe(401);
-    expect((await inj('POST', '/me/blackjack/round', undefined, { table: 'decouverte', bet: 10 })).statusCode).toBe(401);
+    // Ni compte ni code d'invité valide : refusé
+    expect((await inj('GET', '/me/blackjack')).statusCode).toBe(400);
+    const guestReq = (id: string, method: 'GET' | 'POST', url: string, payload?: unknown) => server.app.inject({ method, url, payload: payload as object, headers: { 'x-bj-guest': id } });
+    expect((await guestReq('pas-un-code', 'GET', '/me/blackjack')).statusCode).toBe(400);
+    // Invité : profil à part, manche jouable, absent du classement
+    const g1 = 'a1'.repeat(16);
+    const g2 = 'b2'.repeat(16);
+    expect((await guestReq(g1, 'GET', '/me/blackjack')).json()).toMatchObject({ profile: { chips: 1000 } });
+    expect((await guestReq(g1, 'POST', '/me/blackjack/round', { table: 'decouverte', bet: 100 })).statusCode).toBe(201);
+    expect((await guestReq(g2, 'GET', '/me/blackjack')).json()).toMatchObject({ profile: { chips: 1000, rounds: 0 }, active: null });
+    expect(((await guestReq(g1, 'GET', '/me/blackjack')).json() as { active: unknown; profile: { rounds: number } }).active !== null || ((await guestReq(g1, 'GET', '/me/blackjack')).json() as { profile: { rounds: number } }).profile.rounds === 1).toBe(true);
+    expect((await inj('GET', '/blackjack/leaderboard?by=xp')).json()).toMatchObject({ entries: [] });
     const { token } = (await inj('POST', '/auth/register', undefined, { nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' })).json() as { token: string };
     expect((await inj('GET', '/me/blackjack', token)).json()).toMatchObject({ profile: { chips: 1000 } });
     expect((await inj('POST', '/me/blackjack/round', token, { table: 'decouverte', bet: 'beaucoup' })).statusCode).toBe(400);

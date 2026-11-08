@@ -49,7 +49,7 @@ packages/web/               React 19 + Vite + Tailwind + Framer Motion + Zustand
 
 ## Blackjack (module indépendant du poker)
 
-Rubrique « Casino » de l'accueil, séparée des huit variantes. Un joueur contre le croupier, avec un compte (jetons, niveau, défis et manche en cours sont enregistrés côté serveur).
+Rubrique « Casino » de l'accueil, séparée des huit variantes. Un joueur contre le croupier, avec ou sans compte. Jetons, niveau, défis et manche en cours sont enregistrés côté serveur. Un invité est identifié par un code aléatoire propre à son navigateur (en-tête `x-bj-guest`) : sa progression reste sur cet appareil, il n'apparaît pas au classement et ne partage pas l'expérience du poker. Se connecter donne un profil qui suit le joueur partout (la progression d'invité n'est pas transférée).
 
 **Séparation des couches**
 
