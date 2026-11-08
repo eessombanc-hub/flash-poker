@@ -3,7 +3,7 @@ import type { PlayerId } from '../core/cardEngine';
 import type { Rng } from '../core/rng';
 import { categoryOf } from '../evaluation/handEvaluator';
 import { evaluateHoldem } from '../evaluation/holdemEvaluator';
-import { Round63, type LineResult } from '../variants/round63';
+import { MAX_TEATS, Round63, type LineResult, type SideBetResult } from '../variants/round63';
 import {
   createRound,
   isVariantAvailable,
@@ -30,6 +30,9 @@ import {
   type Settlement,
 } from './insurance';
 import { POSITION_LABELS } from './positions';
+
+/** Cave : jetons reçus par chaque joueur au début d'une partie (même valeur que dans le protocole du serveur). */
+export const STARTING_CHIPS = 1_000;
 
 /** Mise maximale par joueur : 10 000 jetons. */
 export const MAX_STAKE_CHIPS = 10_000;
@@ -76,6 +79,10 @@ export interface RoundSummary {
   hands?: Record<PlayerId, { cards: string[]; category: number }>;
   /** 6-3 : résultat de chaque ligne. */
   lines?: LineResult[];
+  /** 6-3 : nombre de tétines jouées (absent = 0). */
+  teats?: number;
+  /** 6-3 : paris extérieurs résolus pendant la manche. */
+  sideBets?: SideBetResult[];
   /** Hold'em de départage : meilleure combinaison du vainqueur (catégorie et 5 cartes). */
   tiebreak?: { category: number; cards: string[] };
   /** Gagnée sans abattage, tous les autres joueurs étant couchés (Aviation, Avia 6). */
@@ -101,6 +108,8 @@ export interface GameOutcome {
   settlement: Settlement;
   /** Assurance appliquée (celle qui contient le vainqueur), sinon null. */
   insurance: Insurance | null;
+  /** Variation de jetons de chaque joueur due aux paris extérieurs du 6-3 sur toute la partie (absent = aucun). */
+  sideBets?: Record<PlayerId, number>;
 }
 
 export interface PendingInsurance {
@@ -110,7 +119,8 @@ export interface PendingInsurance {
 }
 
 export type GameCommand =
-  | { type: 'CHOOSE_VARIANT'; player: PlayerId; variant: VariantId }
+  /** `options` ne concerne que le 6-3 : nombre de tétines (0 à 2) et ouverture des paris extérieurs. */
+  | { type: 'CHOOSE_VARIANT'; player: PlayerId; variant: VariantId; options?: { teats?: number; sideBets?: boolean } }
   | { type: 'ROUND'; command: RoundCommand }
   /** Entre deux manches uniquement : proposer une assurance à un joueur, lui aussi à 1 point de la fin. */
   | { type: 'PROPOSE_INSURANCE'; player: PlayerId; partner: PlayerId; insuranceType: InsuranceType }
@@ -140,6 +150,9 @@ export interface GameView {
    * joueurs, jamais de suggestion. */
   assistance: boolean;
   players: { player: PlayerId; position: string; score: number; excluded: boolean }[];
+  /** Jetons de chaque joueur en cours de partie : cave − mise + gains et pertes des paris extérieurs du 6-3 (la
+   * cagnotte de la partie n'est réglée qu'à la fin). Les mises engagées dans un pari non résolu sont déduites. */
+  wallets: Record<PlayerId, number>;
   maxPlayers: number;
   /** Minuteur de 60 s en cours (le serveur le relance quand `key` change), ou null. */
   timer: { kind: 'VARIANT' | 'INSURANCE' | 'ROUND'; key: string } | null;
@@ -177,6 +190,8 @@ export interface GameSnapshot {
   lastChooser: PlayerId | null;
   excluded: PlayerId[];
   outcome: GameOutcome | null;
+  /** Gains et pertes de paris extérieurs déjà réglés (manches terminées). Absent des anciennes parties. */
+  sideNet?: Record<PlayerId, number>;
 }
 
 export interface GameHooks {
@@ -211,6 +226,8 @@ export class GameManager {
   private lastChooser: PlayerId | null = null;
   private excluded: PlayerId[] = [];
   private outcome_: GameOutcome | null = null;
+  /** Gains et pertes de paris extérieurs des manches terminées, par joueur. */
+  private sideNet: Record<PlayerId, number> = {};
 
   constructor(
     config: GameConfig,
@@ -234,6 +251,7 @@ export class GameManager {
     }
     this.config = { players: [...players], targetPoints, stakeChips, maxPlayers, assistance: config.assistance ?? false };
     for (const p of players) this.scores[p] = 0;
+    for (const p of players) this.sideNet[p] = 0;
     if (snapshot) {
       this.phase_ = snapshot.phase;
       this.roundNo_ = snapshot.roundNo;
@@ -246,6 +264,7 @@ export class GameManager {
       this.lastChooser = snapshot.lastChooser;
       this.excluded = [...snapshot.excluded];
       this.outcome_ = snapshot.outcome ? JSON.parse(JSON.stringify(snapshot.outcome)) : null;
+      this.sideNet = { ...this.sideNet, ...(snapshot.sideNet ?? {}) };
     }
   }
 
@@ -367,7 +386,16 @@ export class GameManager {
         if (!isVariantAvailable(cmd.variant, this.config.players.length)) {
           throw new RuleError('VARIANT_UNAVAILABLE', `${cmd.variant} n'est pas jouable à ${this.config.players.length} joueurs`);
         }
-        this.startRound(cmd.variant, cmd.player, events, false);
+        const options = cmd.options ?? {};
+        const teats = options.teats ?? 0;
+        const sideBets = options.sideBets === true;
+        if (cmd.variant !== 'V6_3' && (teats !== 0 || sideBets)) {
+          throw new RuleError('BAD_CONFIG', 'Les tétines et les paris extérieurs ne concernent que le 6-3');
+        }
+        if (!Number.isInteger(teats) || teats < 0 || teats > MAX_TEATS) {
+          throw new RuleError('BAD_CONFIG', `Nombre de tétines invalide : de 0 à ${MAX_TEATS}`);
+        }
+        this.startRound(cmd.variant, cmd.player, events, false, { teats, sideBets });
         return events;
       }
       case 'ROUND': {
@@ -437,6 +465,7 @@ export class GameManager {
         // dernière position libre, 0 point, même mise ajoutée à la cagnotte
         this.config.players.push(cmd.player);
         this.scores[cmd.player] = 0;
+        this.sideNet[cmd.player] = 0;
         events.push(
           this.publicEvent('PLAYER_ADDED', {
             player: cmd.player,
@@ -466,16 +495,24 @@ export class GameManager {
     if (this.isExcluded(player)) throw new RuleError('EXCLUDED', `${player} a été exclu de la partie`);
   }
 
-  private startRound(variant: VariantId, chooser: PlayerId, events: RoundEvent[], auto: boolean): void {
+  /** Jetons de chaque joueur : cave − mise + variation due aux paris extérieurs réglés. */
+  private baseWallets(): Record<PlayerId, number> {
+    const out: Record<PlayerId, number> = {};
+    for (const p of this.config.players) out[p] = Math.max(0, STARTING_CHIPS - this.config.stakeChips + (this.sideNet[p] ?? 0));
+    return out;
+  }
+
+  private startRound(variant: VariantId, chooser: PlayerId, events: RoundEvent[], auto: boolean, options: { teats: number; sideBets: boolean } = { teats: 0, sideBets: false }): void {
     this.round = createRound(variant, {
       players: this.config.players,
       rng: this.rng,
       stackedDeck: this.hooks.stackedDeck?.(this.roundNo_, variant),
       assistance: this.config.assistance,
+      ...(variant === 'V6_3' ? { teats: options.teats, sideBets: options.sideBets, budgets: this.baseWallets() } : {}),
     });
     this.lastChooser = chooser;
     this.phase_ = 'ROUND';
-    events.push(this.publicEvent('VARIANT_CHOSEN', { roundNo: this.roundNo_, variant, chooser, auto }));
+    events.push(this.publicEvent('VARIANT_CHOSEN', { roundNo: this.roundNo_, variant, chooser, auto, ...(variant === 'V6_3' ? { teats: options.teats, sideBets: options.sideBets } : {}) }));
   }
 
   private autoChooseVariant(events: RoundEvent[]): void {
@@ -537,6 +574,10 @@ export class GameManager {
   private finishRound(events: RoundEvent[]): void {
     const round = this.round!;
     const result = round.result()!;
+    if (round instanceof Round63) {
+      const net = round.sideBetNet();
+      for (const p of this.config.players) this.sideNet[p] = (this.sideNet[p] ?? 0) + (net[p] ?? 0);
+    }
     const award = resolveRoundResult(result, this.rng); // Hold'em de départage si TIE
     const points: Record<PlayerId, number> = {};
     for (const p of this.config.players) points[p] = 0;
@@ -600,7 +641,8 @@ export class GameManager {
     });
     // Classement final : uniquement le vainqueur et, s'il est assuré, son partenaire
     const standings = [entry(winner, 1), ...(partner ? [entry(partner, 2)] : [])];
-    this.outcome_ = { winner, victoryType, standings, settlement, insurance: settlement.applied };
+    const anySide = this.config.players.some((p) => (this.sideNet[p] ?? 0) !== 0);
+    this.outcome_ = { winner, victoryType, standings, settlement, insurance: settlement.applied, ...(anySide ? { sideBets: { ...this.sideNet } } : {}) };
     this.phase_ = 'GAME_OVER';
     events.push(this.publicEvent('GAME_OVER', { outcome: this.outcome_ }));
   }
@@ -610,6 +652,17 @@ export class GameManager {
   }
 
   // ---------- Vue et persistance ----------
+
+  /** Jetons en cours de partie : paris déjà réglés ajoutés, mises engagées dans un pari à venir déduites. */
+  private walletsNow(): Record<PlayerId, number> {
+    const out = this.baseWallets();
+    if (this.round instanceof Round63) {
+      const net = this.round.sideBetNet();
+      const locked = this.round.sideBetLocked();
+      for (const p of this.config.players) out[p] = Math.max(0, (out[p] ?? 0) + (net[p] ?? 0) - (locked[p] ?? 0));
+    }
+    return out;
+  }
 
   view(viewer: PlayerId | null): GameView {
     const order = this.config.players;
@@ -631,6 +684,7 @@ export class GameManager {
         score: this.scores[player]!,
         excluded: this.isExcluded(player),
       })),
+      wallets: this.walletsNow(),
       maxPlayers: this.config.maxPlayers,
       timer: this.timer(),
       warnings: this.warnings(),
@@ -666,6 +720,7 @@ export class GameManager {
         lastChooser: this.lastChooser,
         excluded: this.excluded,
         outcome: this.outcome_,
+        sideNet: this.sideNet,
       }),
     );
   }
@@ -676,7 +731,11 @@ function summarizeRound(round: Round, result: RoundResult, award: RoundAward, ev
   const summary: RoundSummary = {};
   const showdown = [...events].reverse().find((e) => e.type === 'SHOWDOWN');
   if (showdown) summary.hands = structuredClone(showdown.data.hands as RoundSummary['hands']);
-  if (round instanceof Round63) summary.lines = structuredClone([...round.lineResults()]);
+  if (round instanceof Round63) {
+    summary.lines = structuredClone([...round.lineResults()]);
+    if (round.teatCount() > 0) summary.teats = round.teatCount();
+    if (round.sideBetResults().length > 0) summary.sideBets = structuredClone([...round.sideBetResults()]);
+  }
   if (result.kind === 'WINNER' && result.detail?.byFold) summary.byFold = true;
   if (award.kind === 'POINTS' && award.tiebreak) {
     const last = award.tiebreak.rounds.at(-1);

@@ -4,7 +4,7 @@ import { useClient } from '../lib/context';
 import { formatChips } from '../lib/format';
 import { ApiError, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
-import { PlayingCard } from '../components/Card';
+import { HeroScene } from '../components/Scene3D';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { CardsIcon, ChipsIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 import { SettingsBody } from '../components/SettingsBody';
@@ -47,17 +47,7 @@ export function Home({ onCreate, onJoin, onTrain, notice, account }: { onCreate:
               </p>
             )}
           </div>
-          <div className="relative mx-auto h-48 w-full max-w-md sm:h-56" aria-hidden="true">
-            <div className="absolute inset-x-0 bottom-4 flex items-end justify-center">
-              {['As', 'Ks', 'Qh', 'Jd', 'Tc'].map((c, i) => (
-                <div key={c} className="-mx-3 origin-bottom drop-shadow-[0_12px_18px_rgba(0,0,0,0.5)]" style={{ transform: `rotate(${(i - 2) * 9}deg) translateY(${Math.abs(i - 2) * 6}px)` }}>
-                  <PlayingCard code={c} size="lg" />
-                </div>
-              ))}
-            </div>
-            <ChipsIcon size={74} className="absolute bottom-0 left-2 -rotate-12 sm:left-6" />
-            <TrophyIcon size={64} className="absolute right-2 top-0 rotate-6 sm:right-8" />
-          </div>
+          <HeroScene />
         </section>
 
         {/* Actions principales */}

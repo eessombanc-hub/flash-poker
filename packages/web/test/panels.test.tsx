@@ -365,7 +365,17 @@ describe('choix de la variante', () => {
     const { sent } = renderWith(<VariantPicker />, pick());
     expect(screen.getByRole('heading', { name: 'Choisissez la variante' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /^6-3/ }));
-    expect(sent.at(-1)).toEqual({ type: 'CHOOSE_VARIANT', variant: 'V6_3' });
+    await user.click(screen.getByRole('button', { name: 'Lancer le 6-3' }));
+    expect(sent.at(-1)).toEqual({ type: 'CHOOSE_VARIANT', variant: 'V6_3', teats: 0, sideBets: false });
+  });
+  it('6-3 : le joueur choisit 2 tétines et les paris extérieurs avant de lancer', async () => {
+    const user = userEvent.setup();
+    const { sent } = renderWith(<VariantPicker />, pick());
+    await user.click(screen.getByRole('button', { name: /^6-3/ }));
+    await user.click(screen.getByLabelText('2 tétines'));
+    await user.click(screen.getByLabelText(/Paris extérieurs/));
+    await user.click(screen.getByRole('button', { name: 'Lancer le 6-3' }));
+    expect(sent.at(-1)).toEqual({ type: 'CHOOSE_VARIANT', variant: 'V6_3', teats: 2, sideBets: true });
   });
   it('les autres joueurs ne peuvent rien choisir', () => {
     renderWith(<VariantPicker />, pick({}, 'p2'));
@@ -525,5 +535,38 @@ describe('sièges : secret des cartes et statuts', () => {
     renderWith(<Seat {...base} active isMe />, null);
     expect(screen.getByText('À jouer')).toBeInTheDocument();
     expect(screen.queryByText('réfléchit…')).toBeNull();
+  });
+});
+
+describe('6-3 : paris extérieurs et tétines', () => {
+  const HAND = ['As', 'Ad', 'Kc', '7h', '4d', '2s'];
+  const betsView = (info: Record<string, unknown> = {}) =>
+    roomView({}, game({ round: round('V6_3', [], { stage: 'BETS', sideBets: true, teats: 1, validated: [], yourBets: [], budget: 800, pools: [], ...info }, { phase: 'BETS' }) }));
+
+  it('phase de paris : montants envoyés, puis validation', async () => {
+    const user = userEvent.setup();
+    const { sent } = renderWith(<Line63Panel />, betsView());
+    expect(screen.getByRole('heading', { name: 'Pariez avant la distribution' })).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Ligne 2'), '50');
+    expect(sent.at(-1)).toEqual({ type: 'BET', bets: [{ line: 2, amount: 50 }] });
+    await user.click(screen.getByRole('button', { name: 'Valider mes paris' }));
+    expect(sent.at(-1)).toEqual({ type: 'VALIDATE' });
+  });
+  it('un total supérieur aux jetons disponibles bloque la validation', async () => {
+    const user = userEvent.setup();
+    renderWith(<Line63Panel />, betsView());
+    await user.type(screen.getByLabelText('Ligne 1'), '900');
+    expect(screen.getByRole('button', { name: 'Valider mes paris' })).toBeDisabled();
+    expect(screen.getByText(/supérieur à vos jetons/)).toBeInTheDocument();
+  });
+  it('sans pari, le bouton propose de ne pas parier', () => {
+    renderWith(<Line63Panel />, betsView());
+    expect(screen.getByRole('button', { name: 'Ne pas parier' })).toBeEnabled();
+  });
+  it('lignes : cagnottes affichées et tétine posée sur la ligne en cours', () => {
+    const v = roomView({}, game({ round: round('V6_3', HAND, { line: 1, stage: 'LINES', teats: 1, teatCards: ['Qs'], validated: [], yourDraft: [], lines: [], unitsScale: 60, pools: [{ line: 1, amount: 50, members: ['p1', 'p2'] }], sideResults: [] }, { phase: 'LINE_1', board: ['Ah', 'Ks', 'Kd', '9c', '2c', null, null, null, null, null, null, null, null, null, null, 'Qs'] }) }));
+    renderWith(<><Board round={v.game!.round!} /><Line63Panel /></>, v);
+    expect(screen.getAllByTestId('tetine')).toHaveLength(1);
+    expect(screen.getByLabelText('Paris extérieurs')).toHaveTextContent('Ligne 1');
   });
 });

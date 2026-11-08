@@ -365,7 +365,9 @@ export class RoomManager {
   private toGameCommand(player: string, c: ClientCommand): GameCommand {
     switch (c.type) {
       case 'CHOOSE_VARIANT':
-        return { type: 'CHOOSE_VARIANT', player, variant: c.variant };
+        return { type: 'CHOOSE_VARIANT', player, variant: c.variant, options: { teats: c.teats ?? 0, sideBets: c.sideBets ?? false } };
+      case 'BET':
+        return { type: 'ROUND', command: { type: 'BET', player, bets: c.bets } };
       case 'SELECT':
         return { type: 'ROUND', command: { type: 'SELECT', player, cards: c.cards, line: c.line } };
       case 'VALIDATE':

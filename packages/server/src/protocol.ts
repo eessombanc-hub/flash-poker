@@ -36,7 +36,15 @@ export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
 
 const cardCode = z.string().regex(/^[2-9TJQKA][cdhs]$/);
 export const clientCommandSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('CHOOSE_VARIANT'), variant: z.enum(['V6_3', 'V6_1', 'CLOSED_1', 'CLOSED_2', 'AVIATION', 'AVIA_6', 'MORPION', 'LE10']) }),
+  z.object({
+    type: z.literal('CHOOSE_VARIANT'),
+    variant: z.enum(['V6_3', 'V6_1', 'CLOSED_1', 'CLOSED_2', 'AVIATION', 'AVIA_6', 'MORPION', 'LE10']),
+    /** 6-3 uniquement : nombre de tétines (0 à 2) et ouverture des paris extérieurs. */
+    teats: z.number().int().min(0).max(2).optional(),
+    sideBets: z.boolean().optional(),
+  }),
+  /** 6-3, phase de paris extérieurs : remplace les paris du joueur (liste vide = aucun pari). */
+  z.object({ type: z.literal('BET'), bets: z.array(z.object({ line: z.union([z.literal(1), z.literal(2), z.literal(3)]), amount: z.number().int().min(1).max(STARTING_CHIPS) })).max(3) }),
   z.object({ type: z.literal('SELECT'), cards: z.array(cardCode).max(3), line: z.number().int().min(0).max(7).nullable().optional() }),
   z.object({ type: z.literal('VALIDATE') }),
   z.object({ type: z.literal('REVEAL') }),

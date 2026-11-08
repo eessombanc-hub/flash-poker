@@ -1,4 +1,4 @@
-import type { LineResult, NextReason, NextReason10, RevealStep, RevealStep10, RoundView } from './types';
+import type { LineResult, NextReason, NextReason10, RevealStep, RevealStep10, RoundView, SideBet, SideBetPool, SideBetResult } from './types';
 
 /** `RoundView.info` est un objet libre côté moteur : on le lit ici avec des valeurs par défaut sûres. */
 const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -39,10 +39,34 @@ export interface Line63Info {
   yourDraft: string[];
   lines: LineResult[];
   unitsScale: number;
+  /** Nombre de tétines (0 à 2) et leurs cartes, posées sur la ligne en cours. */
+  teats: number;
+  teatCards: string[];
+  /** Paris extérieurs : option activée, phase en cours, vos paris en saisie, jetons disponibles, paris engagés et résolus. */
+  sideBets: boolean;
+  stage: 'BETS' | 'LINES';
+  yourBets: SideBet[];
+  budget: number;
+  pools: SideBetPool[];
+  sideResults: SideBetResult[];
 }
 export function line63Info(round: RoundView): Line63Info {
   const i = round.info;
-  return { line: num(i.line, 1), validated: arr(i.validated), yourDraft: arr(i.yourDraft), lines: arr(i.lines), unitsScale: num(i.unitsScale, 60) };
+  return {
+    line: num(i.line, 1),
+    validated: arr(i.validated),
+    yourDraft: arr(i.yourDraft),
+    lines: arr(i.lines),
+    unitsScale: num(i.unitsScale, 60),
+    teats: num(i.teats, 0),
+    teatCards: arr(i.teatCards),
+    sideBets: i.sideBets === true,
+    stage: i.stage === 'BETS' ? 'BETS' : 'LINES',
+    yourBets: arr(i.yourBets),
+    budget: num(i.budget, 0),
+    pools: arr(i.pools),
+    sideResults: arr(i.sideResults),
+  };
 }
 
 export interface Reveal61Info {

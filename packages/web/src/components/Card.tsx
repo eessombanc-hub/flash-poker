@@ -87,7 +87,7 @@ function BackPattern({ id, back }: { id: string; back: CardBackId }) {
   if (back === 'etoile') {
     return (
       <pattern id={id} width="16" height="16" patternUnits="userSpaceOnUse">
-        <rect width="16" height="16" fill="#15336e" />
+        <rect width="16" height="16" style={{ fill: 'rgb(var(--ink-800))' }} />
         <path d="M8 3 L9.4 6.6 L13 8 L9.4 9.4 L8 13 L6.6 9.4 L3 8 L6.6 6.6 Z" fill="#c9a25a" opacity=".85" />
       </pattern>
     );

@@ -36,6 +36,8 @@ export type RuleErrorCode =
   | 'VARIANT_UNAVAILABLE'
   | 'BAD_TABLE_SIZE'
   | 'BAD_CONFIG'
+  | 'BAD_BET'
+  | 'INSUFFICIENT_CHIPS'
   | 'WRONG_PHASE'
   | 'GAME_OVER'
   | 'BAD_INSURANCE'
@@ -80,7 +82,10 @@ export type RoundCommand =
   /** Échéance du minuteur de 60 s, décidée par le serveur (l'engine n'a pas d'horloge). */
   | { type: 'TIMEOUT' }
   /** 6-1 et Le 10 : le joueur désigné retourne sa prochaine carte. */
-  | { type: 'REVEAL'; player: PlayerId };
+  | { type: 'REVEAL'; player: PlayerId }
+  /** 6-3, phase de paris extérieurs (avant la distribution) : remplace les paris du joueur (liste vide = aucun
+   * pari). Modifiable jusqu'à `VALIDATE`. Un pari = une ligne et un montant en jetons. */
+  | { type: 'BET'; player: PlayerId; bets: { line: 1 | 2 | 3; amount: number }[] };
 
 export interface RoundEvent {
   type: string;
@@ -116,6 +121,12 @@ export interface RoundContext {
   /** Partie « avec assistance » (réglage fixé pour toute la partie) : un simple indicateur du nom de la
    * combinaison déjà formée est exposé au joueur, jamais de suggestion. Faux par défaut. */
   assistance?: boolean;
+  /** 6-3 uniquement : nombre de tétines (0 à 2), cartes communes supplémentaires qui coulissent de ligne en ligne. */
+  teats?: number;
+  /** 6-3 uniquement : ouvre une phase de paris extérieurs avant la distribution des cartes. */
+  sideBets?: boolean;
+  /** 6-3 avec paris : jetons disponibles pour parier, par joueur (cave − mise + gains et pertes de paris). */
+  budgets?: Record<PlayerId, number>;
 }
 
 export interface Round {

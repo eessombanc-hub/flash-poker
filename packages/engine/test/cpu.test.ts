@@ -241,3 +241,34 @@ describe('CPU : qualité des choix', () => {
     expect(categoryOf(0)).toBe(HandCategory.HighCard);
   });
 });
+
+describe('CPU : 6-3 avec tétines et paris extérieurs', () => {
+  it('valide « aucun pari » pendant la phase de paris, puis désigne une paire en tenant compte des tétines', () => {
+    const rng = new SeededRng(11);
+    const players = ['P0', 'P1', 'P2'];
+    const g = new GameManager({ players, targetPoints: 3, stakeChips: 0 }, rng);
+    g.apply({ type: 'CHOOSE_VARIANT', player: g.chooser(), variant: 'V6_3', options: { teats: 2, sideBets: true } });
+    expect(g.view('P1').round!.phase).toBe('BETS');
+    for (const p of players) for (const c of cpuPlan(g.view(p), p, rng)) g.apply(c);
+    expect(g.view('P0').round!.phase).toBe('LINE_1');
+    expect((g.view('P0').round!.info as { pools: unknown[] }).pools).toEqual([]); // personne n'a parié
+    for (const p of players) for (const c of cpuPlan(g.view(p), p, rng)) g.apply(c);
+    expect(['LINE_2', undefined].includes(g.view('P0').round?.phase) || g.phase() === 'GAME_OVER').toBe(true);
+  });
+
+  it('une partie complète de CPU avec tétines et paris se termine sans erreur', () => {
+    const rng = new SeededRng(5);
+    const players = ['A', 'B', 'C', 'D'];
+    const g = new GameManager({ players, targetPoints: 2, stakeChips: 0 }, rng);
+    let guard = 0;
+    while (g.phase() !== 'GAME_OVER' && guard++ < 400) {
+      const v = g.view(players[0]!);
+      if (v.phase === 'VARIANT_SELECTION') {
+        g.apply({ type: 'CHOOSE_VARIANT', player: v.chooser, variant: 'V6_3', options: { teats: guard % 3, sideBets: guard % 2 === 0 } });
+        continue;
+      }
+      for (const p of v.awaiting) for (const c of cpuPlan(g.view(p), p, rng)) g.apply(c);
+    }
+    expect(g.phase()).toBe('GAME_OVER');
+  });
+});

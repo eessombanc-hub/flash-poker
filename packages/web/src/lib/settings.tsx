@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { AMBIANCE_OPTIONS } from './theme';
 
 export type FeltColor = 'vert' | 'bleu' | 'bordeaux' | 'anthracite';
+export type Ambiance = 'saphir' | 'emeraude' | 'cuir' | 'carbone' | 'bordeaux' | 'violet';
 export type CardBack = 'losange' | 'rayures' | 'etoile';
 
 interface Settings {
@@ -16,15 +18,19 @@ interface Settings {
   /** Motif du dos des cartes. */
   cardBack: CardBack;
   setCardBack: (v: CardBack) => void;
+  /** Ambiance générale (teinte du fond de l'interface). */
+  ambiance: Ambiance;
+  setAmbiance: (v: Ambiance) => void;
 }
 const KEY = 'poker.settings.v1';
-const DEFAULTS: Stored = { fourColor: false, sound: true, feltColor: 'vert', cardBack: 'losange' };
+const DEFAULTS: Stored = { fourColor: false, sound: true, feltColor: 'vert', cardBack: 'losange', ambiance: 'saphir' };
 const Ctx = createContext<Settings>({
   ...DEFAULTS,
   setFourColor: () => undefined,
   setSound: () => undefined,
   setFeltColor: () => undefined,
   setCardBack: () => undefined,
+  setAmbiance: () => undefined,
 });
 
 interface Stored {
@@ -32,7 +38,9 @@ interface Stored {
   sound: boolean;
   feltColor: FeltColor;
   cardBack: CardBack;
+  ambiance: Ambiance;
 }
+const AMBIANCES: Ambiance[] = ['saphir', 'emeraude', 'cuir', 'carbone', 'bordeaux', 'violet'];
 const FELT_COLORS: FeltColor[] = ['vert', 'bleu', 'bordeaux', 'anthracite'];
 const CARD_BACKS: CardBack[] = ['losange', 'rayures', 'etoile'];
 function load(): Stored {
@@ -43,6 +51,7 @@ function load(): Stored {
       sound: s.sound !== false,
       feltColor: FELT_COLORS.includes(s.feltColor) ? s.feltColor : DEFAULTS.feltColor,
       cardBack: CARD_BACKS.includes(s.cardBack) ? s.cardBack : DEFAULTS.cardBack,
+      ambiance: AMBIANCES.includes(s.ambiance) ? s.ambiance : DEFAULTS.ambiance,
     };
   } catch {
     return { ...DEFAULTS };
@@ -57,42 +66,30 @@ function save(s: Stored): void {
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const initial = load();
-  const [fourColor, setFourColorState] = useState(initial.fourColor);
-  const [sound, setSoundState] = useState(initial.sound);
-  const [feltColor, setFeltColorState] = useState(initial.feltColor);
-  const [cardBack, setCardBackState] = useState(initial.cardBack);
-  const setFourColor = useCallback(
-    (v: boolean) => {
-      setFourColorState(v);
-      save({ fourColor: v, sound, feltColor, cardBack });
-    },
-    [sound, feltColor, cardBack],
-  );
-  const setSound = useCallback(
-    (v: boolean) => {
-      setSoundState(v);
-      save({ fourColor, sound: v, feltColor, cardBack });
-    },
-    [fourColor, feltColor, cardBack],
-  );
-  const setFeltColor = useCallback(
-    (v: FeltColor) => {
-      setFeltColorState(v);
-      save({ fourColor, sound, feltColor: v, cardBack });
-    },
-    [fourColor, sound, cardBack],
-  );
-  const setCardBack = useCallback(
-    (v: CardBack) => {
-      setCardBackState(v);
-      save({ fourColor, sound, feltColor, cardBack: v });
-    },
-    [fourColor, sound, feltColor],
-  );
-  const value = useMemo(
-    () => ({ fourColor, setFourColor, sound, setSound, feltColor, setFeltColor, cardBack, setCardBack }),
-    [fourColor, setFourColor, sound, setSound, feltColor, setFeltColor, cardBack, setCardBack],
+  const [state, setState] = useState<Stored>(load);
+  const update = useCallback((patch: Partial<Stored>) => {
+    setState((prev) => {
+      const next = { ...prev, ...patch };
+      save(next);
+      return next;
+    });
+  }, []);
+  // L'ambiance s'applique à toute la page (variables CSS) et à la barre du navigateur sur téléphone.
+  useEffect(() => {
+    document.documentElement.dataset.ambiance = state.ambiance;
+    const meta = AMBIANCE_OPTIONS.find((a) => a.id === state.ambiance)?.meta;
+    if (meta) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', meta);
+  }, [state.ambiance]);
+  const value = useMemo<Settings>(
+    () => ({
+      ...state,
+      setFourColor: (v) => update({ fourColor: v }),
+      setSound: (v) => update({ sound: v }),
+      setFeltColor: (v) => update({ feltColor: v }),
+      setCardBack: (v) => update({ cardBack: v }),
+      setAmbiance: (v) => update({ ambiance: v }),
+    }),
+    [state, update],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

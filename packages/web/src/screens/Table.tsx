@@ -194,7 +194,7 @@ function TableCenter() {
 function phaseLabel(variant: string, phase: string): string {
   const n = phase.split('_')[1];
   if (phase === 'DONE') return 'terminée';
-  if (variant === 'V6_3') return `ligne ${n} / 3`;
+  if (variant === 'V6_3') return phase === 'BETS' ? 'paris' : `ligne ${n} / 3`;
   if (variant === 'V6_1' || variant === 'LE10') return 'révélations';
   if (variant === 'MORPION') return 'désignation';
   if (variant.startsWith('CLOSED')) return `change ${n}`;

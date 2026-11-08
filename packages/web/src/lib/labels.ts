@@ -14,7 +14,7 @@ export const VARIANTS: readonly VariantInfo[] = [
     name: '6-3',
     tagline: 'Omaha en trois lignes',
     description:
-      '6 cartes privées, flop et turn ouverts, puis trois rivers dévoilées ligne après ligne. À chaque ligne, désignez 2 cartes : aucune aide, 60 secondes.',
+      '6 cartes privées, flop et turn ouverts, puis trois rivers dévoilées ligne après ligne. À chaque ligne, désignez 2 cartes : aucune aide, 60 secondes. En option : 1 ou 2 tétines qui glissent de ligne en ligne, et des paris extérieurs.',
   },
   {
     id: 'V6_1',

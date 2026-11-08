@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { PlayingCard } from '../components/Card';
 import { Confetti } from '../components/Confetti';
 import { TrophyIcon } from '../components/Icons3D';
+import { CoinRain, RevealCard, Shine, SpinTrophy } from '../components/Scene3D';
 import { Avatar, Badge, Button, Eyebrow, Modal, ScorePips } from '../components/ui';
 import type { FeedItem } from '../lib/client';
 import { deNom, formatChips, formatSignedChips, pointsLabel, STARTING_CHIPS } from '../lib/format';
@@ -140,14 +141,24 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
           {shownBoard.map((c, i) => (c ? <PlayingCard key={i} code={c} size="sm" fourColor={fourColor} /> : <span key={i} className="aspect-[5/7] w-12 rounded-[9px] border border-dashed border-ivory-100/25" />))}
         </div>
       )}
+      {(record.summary?.teats ?? 0) > 0 && <p className="mt-3 text-center text-xs text-ivory-200/80">Manche jouée avec {record.summary!.teats === 1 ? 'une tétine' : '2 tétines'}.</p>}
+      {(record.summary?.sideBets ?? []).length > 0 && (
+        <ul className="mt-3 space-y-1 rounded-xl border border-gold-500/30 bg-gold-500/5 p-3 text-sm text-ivory-100" aria-label="Paris extérieurs">
+          {record.summary!.sideBets!.map((b) => (
+            <li key={`${b.line}-${b.amount}`}>
+              Ligne {b.line}, {b.amount.toLocaleString('fr-FR')} jetons par joueur : {b.refunded || b.winners.length === 0 ? 'mises rendues' : `${b.winners.map((w) => nick(view, w)).join(' + ')} ${b.winners.length > 1 ? 'se partagent' : 'remporte'} la cagnotte`}
+            </li>
+          ))}
+        </ul>
+      )}
       {showdown && (
         <ul className="mt-4 space-y-2" aria-label="Mains dévoilées">
           {Object.entries(showdown).map(([pid, h]) => (
             <li key={pid} className={`flex flex-wrap items-center gap-3 rounded-xl px-3 py-2 ${pid === winner ? 'bg-gold-500/15 ring-1 ring-gold-400' : 'bg-ink-900/60'}`}>
               <span className="w-24 truncate font-medium text-ivory-50">{nick(view, pid)}</span>
               <span className="flex -space-x-2">
-                {h.cards.map((c) => (
-                  <PlayingCard key={c} code={c} size="xs" fourColor={fourColor} />
+                {h.cards.map((c, i) => (
+                  <RevealCard key={c} code={c} size="xs" index={i} />
                 ))}
               </span>
               <span className="text-sm text-ivory-200/85">{categoryLabel(h.category)}</span>
@@ -188,8 +199,9 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
   return (
     <Modal title="Fin de partie" wide>
       <Confetti />
+      <CoinRain />
       <div className="flex items-center gap-4">
-        <TrophyIcon size={84} className="animate-[pulse_3s_ease-in-out_infinite] motion-reduce:animate-none" />
+        <SpinTrophy size={96} />
         <div className="min-w-0">
           <Eyebrow>Fin de partie</Eyebrow>
           <h2 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">Victoire {deNom(nick(view, o.winner))}</h2>
@@ -249,7 +261,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
                 <td className="hidden py-1.5 text-right tabular-nums text-ivory-200/80 sm:table-cell">{formatChips(game.stakeChips)}</td>
                 <td className="py-1.5 text-right tabular-nums text-ivory-50"><span className="sm:hidden">{payout.toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatChips(payout)}</span></td>
                 <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}><span className="sm:hidden">{net > 0 ? '+' : net < 0 ? '−' : ''}{Math.abs(net).toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatSignedChips(net)}</span></td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net).toLocaleString('fr-FR')}</td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net + (o.sideBets?.[p.player] ?? 0)).toLocaleString('fr-FR')}</td>
               </tr>
             );
           })}
@@ -348,15 +360,15 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
 // ---------- Vainqueur de la manche et combinaison gagnante ----------
 /** Bandeau de fin de manche : qui gagne, avec quelle combinaison (et ses cartes quand elles sont connues). */
 export function WinnerBanner({ record, view }: { record: RoundRecord; view: RoomView }) {
-  const { fourColor } = useSettings();
   const a = record.award;
   const winner = a.kind === 'POINTS' || a.kind === 'INSTANT_VICTORY' ? a.winner : null;
   const combo = winningCombination(record);
   if (!winner || !combo) return null;
   const cards = winningCards(record);
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/50 bg-gradient-to-r from-gold-500/20 to-transparent px-3 py-2.5" data-testid="vainqueur-manche">
-      <TrophyIcon size={40} />
+    <div className="relative mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/50 bg-gradient-to-r from-gold-500/20 to-transparent px-3 py-2.5" data-testid="vainqueur-manche">
+      <Shine />
+      <SpinTrophy size={44} />
       <div className="min-w-[10rem] flex-1">
         <p className="text-xs uppercase tracking-widest text-gold-300">Vainqueur de la manche</p>
         <p className="font-display text-xl text-ivory-50">
@@ -365,8 +377,8 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
       </div>
       {cards.length > 0 && (
         <span className="flex -space-x-2" role="group" aria-label="Cartes de la combinaison gagnante">
-          {cards.map((c) => (
-            <PlayingCard key={c} code={c} size="xs" fourColor={fourColor} />
+          {cards.map((c, i) => (
+            <RevealCard key={c} code={c} size="xs" index={i + 1} />
           ))}
         </span>
       )}

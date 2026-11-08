@@ -51,8 +51,8 @@ export function restoreRound(snapshot: RoundSnapshot, rng: Rng, assistance = fal
 export * from './types';
 export { ClosedRound } from './closedRound';
 export { HoldemDiscardRound } from './holdemDiscardRound';
-export { Round63, LINE_UNITS } from './round63';
-export type { LineResult, LineDesignation } from './round63';
+export { Round63, LINE_UNITS, MAX_TEATS } from './round63';
+export type { LineResult, LineDesignation, SideBet, SideBetPool, SideBetResult } from './round63';
 export { Round61 } from './round61';
 export type { RevealStep, NextReason } from './round61';
 export { RoundMorpion, MORPION_LINES } from './roundMorpion';

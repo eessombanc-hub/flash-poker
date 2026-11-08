@@ -1,4 +1,5 @@
-import { Badge } from '../components/ui';
+import { useState } from 'react';
+import { Badge, Button } from '../components/ui';
 import { useClient } from '../lib/context';
 import { VARIANTS } from '../lib/labels';
 import { nick } from '../lib/selectors';
@@ -11,6 +12,9 @@ export function VariantPicker() {
   const { view, game, me, canAct } = useTable();
   const isChooser = game.chooser === me && canAct;
   const pending = game.insurance.pending !== null;
+  const [opts63, setOpts63] = useState(false);
+  const [teats, setTeats] = useState(0);
+  const [sideBets, setSideBets] = useState(false);
 
   return (
     <PanelShell
@@ -34,7 +38,7 @@ export function VariantPicker() {
               <button
                 type="button"
                 disabled={disabled}
-                onClick={() => void client.command({ type: 'CHOOSE_VARIANT', variant: v.id })}
+                onClick={() => (v.id === 'V6_3' ? setOpts63(true) : void client.command({ type: 'CHOOSE_VARIANT', variant: v.id }))}
                 className={`group flex h-full w-full flex-col items-stretch justify-start rounded-xl border p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400 ${
                   disabled ? 'cursor-not-allowed border-ivory-100/10 bg-ink-900/40 opacity-60' : 'border-gold-500/40 bg-ink-900/70 hover:border-gold-400 hover:bg-gold-500/10'
                 }`}
@@ -50,6 +54,30 @@ export function VariantPicker() {
           );
         })}
       </ul>
+      {opts63 && isChooser && (
+        <div role="group" aria-label="Options du 6-3" className="mt-4 rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
+          <p className="font-display text-lg text-ivory-50">Options du 6-3</p>
+          <fieldset className="mt-2">
+            <legend className="text-sm text-ivory-200/85">Tétines : cartes supplémentaires qui glissent de ligne en ligne</legend>
+            <div className="mt-1.5 flex gap-2">
+              {[0, 1, 2].map((n) => (
+                <label key={n} className={`cursor-pointer rounded-lg border px-4 py-2 text-sm ${teats === n ? 'border-gold-400 bg-gold-500/15 text-gold-200' : 'border-ivory-100/20 text-ivory-200/85'}`}>
+                  <input type="radio" name="teats" className="sr-only" checked={teats === n} onChange={() => setTeats(n)} />
+                  {n === 0 ? 'Aucune' : n === 1 ? '1 tétine' : '2 tétines'}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-ivory-200/90">
+            <input type="checkbox" checked={sideBets} onChange={(e) => setSideBets(e.target.checked)} className="mt-1" />
+            <span>Paris extérieurs : chacun peut miser sur une ligne avant la distribution des cartes</span>
+          </label>
+          <div className="mt-4 flex gap-2">
+            <Button onClick={() => void client.command({ type: 'CHOOSE_VARIANT', variant: 'V6_3', teats, sideBets })}>Lancer le 6-3</Button>
+            <Button variant="ghost" onClick={() => setOpts63(false)}>Retour</Button>
+          </div>
+        </div>
+      )}
     </PanelShell>
   );
 }

@@ -1,7 +1,7 @@
 import { ALL_CARDS, parseCard, type Card } from '../core/card';
 import type { PlayerId } from '../core/cardEngine';
 import type { Rng } from '../core/rng';
-import { categoryOf, evaluate5, forEachCombination, HandCategory, type HandRank } from '../evaluation/handEvaluator';
+import { bestOf, categoryOf, evaluate5, forEachCombination, HandCategory, type HandRank } from '../evaluation/handEvaluator';
 import { evaluateHoldem } from '../evaluation/holdemEvaluator';
 import { evaluateOmahaWithPair } from '../evaluation/omahaEvaluator';
 import type { GameCommand, GameView } from '../game/gameManager';
@@ -176,16 +176,24 @@ function planDiscard(round: RoundView, me: PlayerId, opponents: number, rng: Rng
 
 /** 6-3 : toute la ligne est visible, on désigne exactement la meilleure paire des 15 possibles. */
 function plan63(round: RoundView, me: PlayerId): GameCommand[] {
+  // Paris extérieurs : le CPU ne parie pas (il valide « aucun pari » pour ne pas retarder la table).
+  if (round.phase === 'BETS') return [command({ type: 'BET', player: me, bets: [] }), validate(me)];
   const codes = ownHand(round, me);
   const line = Number(round.info.line);
   if (codes.length < 2 || ![1, 2, 3].includes(line)) return [];
   const slice = round.cards.board.slice((line - 1) * 5, line * 5);
   if (slice.length !== 5 || slice.some((c) => c === null)) return [];
   const board = (slice as string[]).map(parseCard);
+  // Tétines (cases 15 et suivantes) : avec elles, meilleure main de 5 parmi la paire, la ligne et les tétines.
+  const teats = round.cards.board
+    .slice(15)
+    .filter((c): c is string => c !== null)
+    .map(parseCard);
   const hand = codes.map(parseCard);
   let best: { pair: [Card, Card]; rank: HandRank } | null = null;
   for (const pair of combinations(hand, 2) as [Card, Card][]) {
-    const { rank } = evaluateOmahaWithPair(pair, hand, board);
+    let { rank } = evaluateOmahaWithPair(pair, hand, board);
+    if (teats.length > 0) rank = Math.max(rank, bestOf([...pair, ...board, ...teats]).rank);
     if (best === null || rank > best.rank) best = { pair, rank };
   }
   return best ? [select(me, best.pair.map((c) => c.code)), validate(me)] : [];

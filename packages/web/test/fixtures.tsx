@@ -49,6 +49,7 @@ export function game(over: Partial<GameView> = {}, n = 3): GameView {
     round: null,
     history: [],
     outcome: null,
+    wallets: {},
     ...over,
   };
 }

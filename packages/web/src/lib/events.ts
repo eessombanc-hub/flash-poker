@@ -23,6 +23,18 @@ export function describeEvent(e: RoundEvent, view: RoomView): Announcement | nul
       };
     case 'BOARD_REVEALED':
       return d.line ? { text: `River ${d.line} dévoilée`, tone: 'info' } : null;
+    case 'SIDE_BETS_LOCKED': {
+      const n = Array.isArray(d.pools) ? d.pools.length : 0;
+      return { text: n === 0 ? 'Paris extérieurs : aucun pari commun, les cartes sont distribuées' : `Paris extérieurs : ${n} cagnotte${n > 1 ? 's' : ''} engagée${n > 1 ? 's' : ''}`, tone: 'info' };
+    }
+    case 'SIDE_BET_RESOLVED': {
+      const winners = (d.winners as string[]) ?? [];
+      if (d.refunded || winners.length === 0) return { text: `Pari de la ligne ${d.line} : mises rendues`, tone: 'warning' };
+      const pot = Number(d.amount ?? 0) * ((d.members as string[] | undefined)?.length ?? 0);
+      return { text: `Pari de la ligne ${d.line} : ${winners.map(who).join(' et ')} ${winners.length > 1 ? 'se partagent' : 'remporte'} ${pot.toLocaleString('fr-FR')} jetons`, tone: 'success' };
+    }
+    case 'TEATS_MOVED':
+      return { text: `Les tétines passent à la ligne ${Number(d.line) + 1}`, tone: 'info' };
     case 'LINE_RESOLVED': {
       const winners = (d.winners as string[]) ?? [];
       if (winners.length === 0) return { text: `Ligne ${d.line} : aucun gagnant`, tone: 'warning' };

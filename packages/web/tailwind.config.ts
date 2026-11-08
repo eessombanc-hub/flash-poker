@@ -7,9 +7,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Bleu saphir, du fond le plus profond (950) jusqu'à un bleu franc et lumineux (500) pour les
-        // bordures et accents — remplace l'ancien noir/anthracite neutre.
-        ink: { 950: '#081a3d', 900: '#0d2555', 800: '#15336e', 700: '#1f4588', 600: '#2f5aa8', 500: '#4779c9' },
+        // Fond du jeu, du plus profond (950) à la teinte d'accent des bordures (500). Les valeurs viennent de
+        // l'ambiance choisie dans les Paramètres (variables CSS, voir styles.css) ; saphir par défaut.
+        ink: { 950: 'rgb(var(--ink-950) / <alpha-value>)', 900: 'rgb(var(--ink-900) / <alpha-value>)', 800: 'rgb(var(--ink-800) / <alpha-value>)', 700: 'rgb(var(--ink-700) / <alpha-value>)', 600: 'rgb(var(--ink-600) / <alpha-value>)', 500: 'rgb(var(--ink-500) / <alpha-value>)' },
         felt: { 900: '#06261c', 800: '#0a3325', 700: '#0e4130', 600: '#13543f', 500: '#1a6b51' },
         gold: { 300: '#e6cf9c', 400: '#d8b872', 500: '#c9a25a', 600: '#a9843f', 700: '#846531' },
         ivory: { 50: '#fbf8f1', 100: '#f4efe4', 200: '#e8e0cf', 300: '#cfc6b1' },
