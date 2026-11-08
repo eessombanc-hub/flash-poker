@@ -1,6 +1,6 @@
 import { parseCard, type Card } from '../core/card';
 import type { PlayerId } from '../core/cardEngine';
-import { categoryOf, evaluate5 } from '../evaluation/handEvaluator';
+import { categoryOf, combinationCodes, evaluate5 } from '../evaluation/handEvaluator';
 import { rankGroups } from '../evaluation/ranking';
 import { publicEvent, RoundBase } from './roundBase';
 import { RuleError, type RoundCommand, type RoundContext, type RoundEvent, type RoundSnapshot, type VariantId } from './types';
@@ -130,16 +130,20 @@ export class RoundMorpion extends RoundBase {
   protected infoFor(viewer: PlayerId | null): Record<string, unknown> {
     const draft = viewer && !this.outcome ? this.s.drafts[viewer]! : { cards: [], line: null };
     let assistCategory: number | null = null;
+    let assistCards: string[] = [];
     if (this.assistance && draft.cards.length === 2 && draft.line !== null) {
       const [a, b, c] = MORPION_LINES[draft.line]!;
       const board = this.boardCards();
-      assistCategory = categoryOf(evaluate5([...draft.cards.map(parseCard), board[a]!, board[b]!, board[c]!]));
+      const five = [...draft.cards.map(parseCard), board[a]!, board[b]!, board[c]!];
+      assistCategory = categoryOf(evaluate5(five));
+      assistCards = combinationCodes(five);
     }
     return {
       validated: [...this.s.validated],
       yourDraft: { cards: [...draft.cards], line: draft.line },
       // Assistance : combinaison des 2 cartes désignées + les 3 cartes de l'alignement choisi.
       assistCategory,
+      assistCards,
     };
   }
 }

@@ -1,5 +1,6 @@
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { CardSlot, type CardSize } from './Card';
+import { assistCards } from '../lib/roundInfo';
 import { useSettings } from '../lib/settings';
 import type { RoundView } from '../lib/types';
 
@@ -10,8 +11,9 @@ const FIVE_LABELS = ['Flop', 'Flop', 'Flop', 'Turn', 'River'];
 export function Board({ round, size = 'md' }: { round: RoundView; size?: CardSize }) {
   const { fourColor } = useSettings();
   const b = round.cards.board;
-  if (round.variant === 'V6_3') return b.length === 0 ? null : <Board63 board={b} line={Number(round.info.line ?? 1)} size={size} fourColor={fourColor} />;
-  if (round.variant === 'MORPION') return <BoardMorpion board={b} size={size} fourColor={fourColor} />;
+  const assist = assistCards(round);
+  if (round.variant === 'V6_3') return b.length === 0 ? null : <Board63 board={b} line={Number(round.info.line ?? 1)} size={size} fourColor={fourColor} assist={assist} />;
+  if (round.variant === 'MORPION') return <BoardMorpion board={b} size={size} fourColor={fourColor} assist={assist} />;
   if (round.variant === 'LE10') return null; // aucune carte commune
   const isAviation = round.variant === 'AVIATION' || round.variant === 'AVIA_6';
   if (b.length === 0) return null;
@@ -19,7 +21,7 @@ export function Board({ round, size = 'md' }: { round: RoundView; size?: CardSiz
     <div role="group" aria-label="Cartes communes" className="flex items-end justify-center gap-1.5 sm:gap-2.5">
       {b.map((code, i) => (
         <div key={i} className="flex flex-col items-center gap-1">
-          <CardSlot code={code} size={size} fourColor={fourColor} dealIndex={i} label={isAviation ? FIVE_LABELS[i] : undefined} />
+          <CardSlot code={code} size={size} fourColor={fourColor} dealIndex={i} label={isAviation ? FIVE_LABELS[i] : undefined} assist={!!code && assist.includes(code)} />
           {isAviation && <span className="text-xs uppercase tracking-widest text-ivory-200/60">{i === 0 || i === 3 || i === 4 ? FIVE_LABELS[i] : ''}</span>}
         </div>
       ))}
@@ -34,7 +36,7 @@ const LINE_CARD_LABELS = ['Flop', 'Flop', 'Flop', 'Turn', 'River'];
  * (gérés par CardSlot) tant qu'elles n'ont pas été révélées par le moteur.
  * Tétines (cases 15 et suivantes) : posées sur la ligne en cours, elles glissent vers la ligne suivante quand
  * la ligne est résolue (animation de mise en page, immobile si les animations sont réduites). */
-function Board63({ board, line, size, fourColor }: { board: (string | null)[]; line: number; size: CardSize; fourColor: boolean }) {
+function Board63({ board, line, size, fourColor, assist }: { board: (string | null)[]; line: number; size: CardSize; fourColor: boolean; assist: string[] }) {
   const reduce = useReducedMotion();
   const teats = board.slice(15);
   return (
@@ -49,7 +51,7 @@ function Board63({ board, line, size, fourColor }: { board: (string | null)[]; l
               <div className="flex items-end gap-1.5 sm:gap-2">
                 {cards.map((code, i) => (
                   <div key={i} className="flex flex-col items-center gap-0.5">
-                    <CardSlot code={code} size={size} fourColor={fourColor} flip={n > 1 && i === 4 && code !== null} dealIndex={i} label={i === 4 ? `River ${n}` : LINE_CARD_LABELS[i]} />
+                    <CardSlot code={code} size={size} fourColor={fourColor} flip={n > 1 && i === 4 && code !== null} dealIndex={i} label={i === 4 ? `River ${n}` : LINE_CARD_LABELS[i]} assist={current && !!code && assist.includes(code)} />
                     {/* Sur téléphone, l'emplacement vide de la river porte déjà son nom : légendes masquées pour gagner de la hauteur. */}
                     <span className="hidden text-[9px] uppercase tracking-widest text-ivory-200/50 sm:block">{i === 4 ? `River ${n}` : i === 3 ? 'Turn' : ''}</span>
                   </div>
@@ -64,7 +66,7 @@ function Board63({ board, line, size, fourColor }: { board: (string | null)[]; l
                       className={`flex flex-col items-center gap-0.5 rounded-lg ring-2 ring-gold-400/70 ring-offset-2 ring-offset-transparent ${i === 0 ? 'ml-1.5 sm:ml-3' : ''}`}
                       data-testid="tetine"
                     >
-                      <CardSlot code={code} size={size} fourColor={fourColor} label={`Tétine ${i + 1}`} />
+                      <CardSlot code={code} size={size} fourColor={fourColor} label={`Tétine ${i + 1}`} assist={!!code && assist.includes(code)} />
                       <span className="hidden text-[9px] uppercase tracking-widest text-gold-300 sm:block">Tétine</span>
                     </motion.div>
                   ))}
@@ -78,11 +80,11 @@ function Board63({ board, line, size, fourColor }: { board: (string | null)[]; l
 }
 
 /** Morpion : grille 3×3 de cartes communes (indices 0-8, lus ligne par ligne), toutes visibles d'emblée. */
-export function BoardMorpion({ board, size, fourColor }: { board: (string | null)[]; size: CardSize; fourColor: boolean }) {
+export function BoardMorpion({ board, size, fourColor, assist = [] }: { board: (string | null)[]; size: CardSize; fourColor: boolean; assist?: string[] }) {
   return (
     <div role="group" aria-label="Grille du morpion" className="grid grid-cols-3 gap-1.5 sm:gap-2">
       {board.map((code, i) => (
-        <CardSlot key={i} code={code} size={size} fourColor={fourColor} dealIndex={i} />
+        <CardSlot key={i} code={code} size={size} fourColor={fourColor} dealIndex={i} assist={!!code && assist.includes(code)} />
       ))}
     </div>
   );

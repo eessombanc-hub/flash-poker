@@ -117,6 +117,11 @@ export function reveal10Info(round: RoundView): Reveal10Info {
 
 /** Assistance : catégorie de la combinaison actuelle du joueur (0 = carte haute … 8 = quinte flush), ou null
  * quand l'assistance est inactive ou que la sélection est encore trop incomplète pour être évaluée. */
+/** Assistance : codes des cartes (main, plateau, tétines) qui forment la combinaison actuelle ; vide sinon. */
+export function assistCards(round: RoundView): string[] {
+  const v = round.info.assistCards;
+  return Array.isArray(v) ? v.filter((c): c is string => typeof c === 'string') : [];
+}
 export function assistCategory(round: RoundView): number | null {
   const v = round.info.assistCategory;
   return typeof v === 'number' ? v : null;

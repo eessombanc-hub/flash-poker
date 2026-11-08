@@ -570,3 +570,19 @@ describe('6-3 : paris extérieurs et tétines', () => {
     expect(screen.getByLabelText('Paris extérieurs')).toHaveTextContent('Ligne 1');
   });
 });
+
+describe('Assistance : cartes de la combinaison en surbrillance', () => {
+  it('poker fermé : seules les cartes de la paire sont signalées', () => {
+    const v = roomView({}, game({ assistance: true, round: round('CLOSED_1', ['As', 'Ad', '9c', '5h', '2s'], { change: 1, totalChanges: 1, validated: [], yourDraft: [], assistCategory: 1, assistCards: ['As', 'Ad'] }, { phase: 'CHANGE_1' }) }));
+    renderWith(<ClosedPanel />, v);
+    expect(screen.getByRole('button', { name: /As de pique : dans votre combinaison/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /As de carreau : dans votre combinaison/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '9 de trèfle' })).toBeInTheDocument();
+    expect(screen.getAllByText(/dans votre combinaison/)).toHaveLength(2);
+  });
+  it('sans assistance, aucune carte n’est signalée', () => {
+    const v = roomView({}, game({ assistance: false, round: round('CLOSED_1', ['As', 'Ad', '9c', '5h', '2s'], { change: 1, totalChanges: 1, validated: [], yourDraft: [], assistCategory: null, assistCards: [] }, { phase: 'CHANGE_1' }) }));
+    renderWith(<ClosedPanel />, v);
+    expect(screen.queryByText(/dans votre combinaison/)).toBeNull();
+  });
+});

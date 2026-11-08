@@ -1,6 +1,6 @@
 import { parseCard, type Card } from '../core/card';
 import type { PlayerId } from '../core/cardEngine';
-import { bestOf, categoryOf, HandCategory } from '../evaluation/handEvaluator';
+import { bestOf, categoryOf, combinationCodes, HandCategory } from '../evaluation/handEvaluator';
 import { evaluateOmahaWithPair } from '../evaluation/omahaEvaluator';
 import { freshSel, publicEvent, RoundBase, type PhaseSel } from './roundBase';
 import {
@@ -328,10 +328,16 @@ export class Round63 extends RoundBase {
   /** Combinaison d'une paire désignée sur une ligne : avec tétines, meilleure main de 5 parmi la paire, le plateau
    * de la ligne et les tétines ; sans tétine, règle classique du 6-3 (2 cartes de la main + 3 du plateau). */
   private evaluatePair(pair: [Card, Card], hand: Card[], board: Card[]): { rank: number; baseRank: number } {
-    const base = evaluateOmahaWithPair(pair, hand, board).rank;
-    if (this.s.teats === 0) return { rank: base, baseRank: base };
-    const withTeats = bestOf([...pair, ...board, ...this.teatCards()]).rank;
-    return { rank: Math.max(withTeats, base), baseRank: base };
+    const { rank, baseRank } = this.evaluatePairCards(pair, hand, board);
+    return { rank, baseRank };
+  }
+
+  /** Comme `evaluatePair`, avec en plus les 5 cartes qui forment la combinaison retenue (assistance). */
+  private evaluatePairCards(pair: [Card, Card], hand: Card[], board: Card[]): { rank: number; baseRank: number; cards: readonly Card[] } {
+    const base = evaluateOmahaWithPair(pair, hand, board);
+    if (this.s.teats === 0) return { rank: base.rank, baseRank: base.rank, cards: base.cards };
+    const withTeats = bestOf([...pair, ...board, ...this.teatCards()]);
+    return withTeats.rank > base.rank ? { rank: withTeats.rank, baseRank: base.rank, cards: withTeats.cards } : { rank: base.rank, baseRank: base.rank, cards: base.cards };
   }
 
   /** Plateau INDÉPENDANT de la ligne k : 5 cartes propres (flop + turn + river), aucune carte partagée entre lignes. */
@@ -450,6 +456,11 @@ export class Round63 extends RoundBase {
         this.assistance && viewer && !this.s.done && !betting && draft.length === 2
           ? categoryOf(this.evaluatePair([parseCard(draft[0]!), parseCard(draft[1]!)], this.handOf(viewer), this.lineBoard(this.s.line)).rank)
           : null,
+      // Assistance : les cartes (paire désignée, plateau, tétines) qui forment cette combinaison.
+      assistCards:
+        this.assistance && viewer && !this.s.done && !betting && draft.length === 2
+          ? combinationCodes(this.evaluatePairCards([parseCard(draft[0]!), parseCard(draft[1]!)], this.handOf(viewer), this.lineBoard(this.s.line)).cards)
+          : [],
     };
   }
 }

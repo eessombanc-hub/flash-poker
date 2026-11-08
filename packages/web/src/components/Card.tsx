@@ -132,6 +132,8 @@ interface CardProps {
   dimmed?: boolean;
   /** Liseré doré (carte mise en avant, ex. prochaine carte à révéler au 6-1). */
   highlight?: boolean;
+  /** Assistance : la carte fait partie de la combinaison du joueur (halo lumineux, par-dessus la sélection). */
+  assist?: boolean;
   fourColor?: boolean;
   /** Motif du dos (carte face cachée uniquement). Par défaut « losange ». */
   back?: CardBackId;
@@ -155,13 +157,15 @@ export function spokenName(code: string): string {
 }
 
 /** Une carte : face, ou dos si `code` est nul. Cliquable (sélection) ou purement décorative. */
-export function PlayingCard({ code, size = 'md', selected = false, disabled = false, dimmed = false, highlight = false, fourColor = false, back = 'losange', flip = false, dealIndex, onClick, hint, className = '' }: CardProps) {
+export function PlayingCard({ code, size = 'md', selected = false, disabled = false, dimmed = false, highlight = false, assist = false, fourColor = false, back = 'losange', flip = false, dealIndex, onClick, hint, className = '' }: CardProps) {
   const uid = useId();
   const reduce = useReducedMotion();
   // Figures : la lettre dessinée (J, Q, K) figure aussi dans le nom, pour la commande vocale (« cliquer K »).
   const label = code ? spokenName(code) : 'Carte face cachée';
+  if (assist && !hint) hint = 'dans votre combinaison';
   const interactive = !!onClick && !disabled;
-  const ring = selected ? 'shadow-gold' : highlight ? 'ring-2 ring-gold-400' : 'shadow-card';
+  const base = selected ? 'shadow-gold' : highlight ? 'ring-2 ring-gold-400' : 'shadow-card';
+  const ring = assist ? (selected ? `${base} ring-[3px] ring-gold-200` : 'ring-[3px] ring-gold-200 shadow-[0_0_18px_4px_rgba(240,214,140,0.7)]') : base;
   // Carte cliquable : c'est le bouton qui porte le nom ; le dessin est alors décoratif (sinon le nom serait
   // lu deux fois, et le texte dessiné « K ♦ » ne correspondrait pas au nom « Roi de carreau »).
   const inner = (
@@ -197,8 +201,8 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
 }
 
 /** Emplacement de plateau : carte, ou gabarit en pointillés tant qu'elle n'est pas dévoilée. */
-export function CardSlot({ code, size = 'md', label, fourColor, flip, dealIndex }: { code: string | null; size?: CardSize; label?: string; fourColor?: boolean; flip?: boolean; dealIndex?: number }) {
-  if (code) return <PlayingCard code={code} size={size} fourColor={fourColor} flip={flip} dealIndex={dealIndex} />;
+export function CardSlot({ code, size = 'md', label, fourColor, flip, dealIndex, assist }: { code: string | null; size?: CardSize; label?: string; fourColor?: boolean; flip?: boolean; dealIndex?: number; assist?: boolean }) {
+  if (code) return <PlayingCard code={code} size={size} fourColor={fourColor} flip={flip} dealIndex={dealIndex} assist={assist} />;
   return (
     <span
       className={`relative inline-flex aspect-[5/7] shrink-0 items-center justify-center rounded-[9px] border border-dashed border-ivory-100/25 bg-ink-950/25 text-center text-[11px] leading-tight text-ivory-200/60 ${WIDTH[size]}`}

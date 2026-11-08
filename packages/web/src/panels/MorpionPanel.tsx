@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AssistBadge } from '../components/AssistBadge';
-import { assistCategory } from '../lib/roundInfo';
+import { assistCards, assistCategory } from '../lib/roundInfo';
 import { SelectableHand } from '../components/Hand';
 import { Button } from '../components/ui';
 import { sortHand } from '../lib/cards';
@@ -104,7 +104,7 @@ export function MorpionPanel() {
     >
       {canAct ? (
         <>
-          <SelectableHand label="Votre main" cards={hand} selected={draft.cards} max={2} disabled={validated} onToggle={toggleCard} size={wide ? 'md' : 'sm'} />
+          <SelectableHand label="Votre main" cards={hand} selected={draft.cards} max={2} assist={assistCards(round)} disabled={validated} onToggle={toggleCard} size={wide ? 'md' : 'sm'} />
           <fieldset className="mt-1.5 sm:mt-3">
             <legend className="sr-only sm:not-sr-only sm:mb-1 sm:text-sm sm:font-medium sm:text-ivory-100">Alignement</legend>
             {/* Les 8 alignements en une seule rangée. */}

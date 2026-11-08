@@ -1,6 +1,6 @@
 import { SelectableHand, useDraft } from '../components/Hand';
 import { AssistBadge } from '../components/AssistBadge';
-import { assistCategory } from '../lib/roundInfo';
+import { assistCards, assistCategory } from '../lib/roundInfo';
 import { Badge, Button } from '../components/ui';
 import { sortHand } from '../lib/cards';
 import { useClient } from '../lib/context';
@@ -37,7 +37,7 @@ export function DiscardPanel() {
         </>
       ) : canAct ? (
         <>
-          <SelectableHand label="Votre main" cards={hand} selected={draft} max={n} disabled={validated} onToggle={(c) => toggle(c, n)} />
+          <SelectableHand label="Votre main" cards={hand} selected={draft} max={n} assist={assistCards(round)} disabled={validated} onToggle={(c) => toggle(c, n)} />
           <AssistBadge active={game.assistance} category={assistCategory(round)} waiting="Combinaison des cartes que vous gardez" />
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className="text-sm text-ivory-200/80" aria-live="polite">

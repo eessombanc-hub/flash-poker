@@ -1,6 +1,6 @@
 import { parseCard } from '../core/card';
 import type { PlayerId } from '../core/cardEngine';
-import { evaluate5, categoryOf } from '../evaluation/handEvaluator';
+import { evaluate5, categoryOf, combinationCodes } from '../evaluation/handEvaluator';
 import { rankGroups } from '../evaluation/ranking';
 import { freshSel, publicEvent, RoundBase, type PhaseSel } from './roundBase';
 import {
@@ -133,6 +133,8 @@ export class ClosedRound extends RoundBase {
       yourDraft: viewer && !this.outcome ? [...(this.s.sel.drafts[viewer] ?? [])] : [],
       // Assistance : simple indicateur du nom de la combinaison ACTUELLE (avant changement), jamais de suggestion.
       assistCategory: this.assistance && viewer && !this.outcome ? categoryOf(evaluate5(this.handOf(viewer))) : null,
+      // Assistance : les cartes de la main qui forment cette combinaison (mises en surbrillance à l'écran).
+      assistCards: this.assistance && viewer && !this.outcome ? combinationCodes(this.handOf(viewer)) : [],
     };
   }
 }

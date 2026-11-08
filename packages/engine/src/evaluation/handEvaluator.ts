@@ -135,6 +135,25 @@ export function bestOf(cards: readonly Card[]): EvalResult {
 }
 
 /**
+ * Assistance : codes des cartes qui FORMENT la combinaison (la paire, les deux paires, le brelan, le carré ; les 5
+ * cartes d'une quinte, d'une couleur, d'un full ou d'une quinte flush ; la carte la plus haute sinon).
+ * `cards` : les cartes déjà évaluées (au plus 5 retenues ; moins de 5 pour les variantes à main incomplète).
+ */
+export function combinationCodes(cards: readonly Card[]): string[] {
+  if (cards.length === 0) return [];
+  const five = cards.length >= 5 ? bestOf(cards).cards : cards;
+  const category = categoryOf(five.length === 5 ? evaluate5(five) : evaluatePartial(five));
+  if (category === HandCategory.Straight || category === HandCategory.Flush || category === HandCategory.FullHouse || category === HandCategory.StraightFlush) {
+    return five.map((c) => c.code);
+  }
+  const count = new Map<number, number>();
+  for (const c of five) count.set(c.rank, (count.get(c.rank) ?? 0) + 1);
+  const made = five.filter((c) => (count.get(c.rank) ?? 0) >= 2);
+  if (made.length > 0) return made.map((c) => c.code);
+  return [five.reduce((best, c) => (c.rank > best.rank ? c : best)).code];
+}
+
+/**
  * Le 10, comparaison PENDANT les révélations : de 1 à 9 cartes visibles, sans plateau commun (donc jamais assez
  * pour une quinte ou une couleur, impossibles à moins de 5 cartes). Classement par effectifs de rang (carré >
  * brelan > double paire > paire > carte haute), à départager par les cartes les plus hautes — la même logique

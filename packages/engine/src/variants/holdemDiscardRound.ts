@@ -1,6 +1,6 @@
 import { parseCard } from '../core/card';
 import type { PlayerId } from '../core/cardEngine';
-import { categoryOf, evaluatePartial } from '../evaluation/handEvaluator';
+import { categoryOf, combinationCodes, evaluatePartial } from '../evaluation/handEvaluator';
 import { evaluateHoldem } from '../evaluation/holdemEvaluator';
 import { rankGroups } from '../evaluation/ranking';
 import { freshSel, publicEvent, RoundBase, type PhaseSel } from './roundBase';
@@ -161,6 +161,11 @@ export class HoldemDiscardRound extends RoundBase {
         this.assistance && viewer && !this.outcome && this.s.status[viewer] === 'ACTIVE'
           ? categoryOf(evaluatePartial([...this.keptCards(viewer), ...this.visibleBoardCards()]))
           : null,
+      // Assistance : cartes (main gardée et plateau révélé) qui forment cette combinaison.
+      assistCards:
+        this.assistance && viewer && !this.outcome && this.s.status[viewer] === 'ACTIVE'
+          ? combinationCodes([...this.keptCards(viewer), ...this.visibleBoardCards()])
+          : [],
     };
   }
 

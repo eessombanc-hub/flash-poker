@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PlayingCard } from '../components/Card';
 import { AssistBadge } from '../components/AssistBadge';
-import { assistCategory } from '../lib/roundInfo';
+import { assistCards, assistCategory } from '../lib/roundInfo';
 import { SelectableHand, useDraft } from '../components/Hand';
 import { Badge, Button } from '../components/ui';
 import { sortHand } from '../lib/cards';
@@ -42,7 +42,7 @@ export function Line63Panel() {
     >
       {canAct ? (
         <>
-          <SelectableHand label="Votre main" cards={hand} selected={draft} max={2} disabled={validated} onToggle={(c) => toggle(c, 2)} />
+          <SelectableHand label="Votre main" cards={hand} selected={draft} max={2} assist={assistCards(round)} disabled={validated} onToggle={(c) => toggle(c, 2)} />
           <AssistBadge active={game.assistance} category={assistCategory(round)} waiting="Désignez 2 cartes" />
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className="text-sm text-ivory-200/80" aria-live="polite">
