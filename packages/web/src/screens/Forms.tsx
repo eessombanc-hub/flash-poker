@@ -3,7 +3,8 @@ import { ApiError } from '../lib/api';
 import { useAccount, useClient } from '../lib/context';
 import { formatChips, STARTING_CHIPS } from '../lib/format';
 import { Avatar, AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Segmented, Title } from '../components/ui';
-import type { AccountPrivate } from '../lib/types';
+import { VARIANTS } from '../lib/labels';
+import type { AccountPrivate, VariantId } from '../lib/types';
 
 /** Joueur inscrit : il joue sous le pseudo et l'avatar de son compte (modifiables dans « Mon espace »). */
 function AccountIdentity({ me }: { me: AccountPrivate }) {
@@ -115,8 +116,15 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
 }
 
 /** Entraînement : une table privée contre des adversaires CPU, démarrée tout de suite (aucune salle d'attente). */
-export function TrainingRoom({ onBack }: { onBack: () => void }) {
+/** Variantes injouables à 6 joueurs (donc avec 5 adversaires CPU). */
+const NOT_AT_SIX: readonly VariantId[] = ['CLOSED_2', 'LE10'];
+
+export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?: VariantId }) {
   const client = useClient();
+  const info = variant ? VARIANTS.find((v) => v.id === variant) : undefined;
+  const maxCpu = variant && NOT_AT_SIX.includes(variant) ? 4 : 5;
+  const [teats, setTeats] = useState(0);
+  const [sideBets, setSideBets] = useState(false);
   const [cpu, setCpu] = useState(3);
   const [target, setTarget] = useState(3);
   const [assistance, setAssistance] = useState(false);
@@ -133,7 +141,7 @@ export function TrainingRoom({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await client.createRoom({ name: 'Entraînement', maxPlayers: cpu + 1, targetPoints: target, stakeChips: 0, assistance, cpu, nickname: nickname.trim(), avatar });
+      await client.createRoom({ name: 'Entraînement', maxPlayers: cpu + 1, targetPoints: target, stakeChips: 0, assistance, cpu, nickname: nickname.trim(), avatar, ...(variant ? { variant, ...(variant === 'V6_3' ? { teats, sideBets } : {}) } : {}) });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Création impossible.');
       setBusy(false);
@@ -147,14 +155,27 @@ export function TrainingRoom({ onBack }: { onBack: () => void }) {
       </Button>
       <Panel className="p-6 sm:p-8">
         <Eyebrow>Entraînement</Eyebrow>
-        <Title className="mb-2 mt-1 text-3xl">S’entraîner contre le CPU</Title>
+        <Title className="mb-2 mt-1 text-3xl">{info ? `Solo : ${info.name}` : 'S’entraîner contre le CPU'}</Title>
         <p className="mb-6 text-sm text-ivory-200/85">
-          Une table privée, prête tout de suite et sans mise. Les CPU jouent avec les mêmes règles que vous et ne voient jamais vos cartes. Ils choisissent la variante au hasard quand vient leur tour et refusent toute assurance.
+          {info
+            ? `${info.tagline}. Chaque manche se joue dans cette variante, sans mise, contre des adversaires gérés par l’ordinateur. Ils jouent avec les mêmes règles que vous et ne voient jamais vos cartes.`
+            : 'Une table privée, prête tout de suite et sans mise. Les CPU jouent avec les mêmes règles que vous et ne voient jamais vos cartes. Ils choisissent la variante au hasard quand vient leur tour et refusent toute assurance.'}
         </p>
         <form onSubmit={submit} className="space-y-5" noValidate>
-          <Field label="Adversaires CPU" hint={cpu === 5 ? 'À 6 joueurs, Le 10 et le Poker fermé à 2 changes ne sont pas jouables.' : `À ${cpu + 1} joueurs, toutes les variantes sont jouables.`}>
-            <Segmented label="Adversaires CPU" value={cpu} options={[1, 2, 3, 4, 5]} onChange={setCpu} />
+          <Field label="Adversaires CPU" hint={variant ? (maxCpu === 4 ? 'Cette variante se joue jusqu’à 5 joueurs.' : undefined) : cpu === 5 ? 'À 6 joueurs, Le 10 et le Poker fermé à 2 changes ne sont pas jouables.' : `À ${cpu + 1} joueurs, toutes les variantes sont jouables.`}>
+            <Segmented label="Adversaires CPU" value={cpu} options={[1, 2, 3, 4, 5].slice(0, maxCpu)} onChange={setCpu} />
           </Field>
+          {variant === 'V6_3' && (
+            <>
+              <Field label="Tétines" hint="Cartes supplémentaires qui glissent de ligne en ligne.">
+                <Segmented label="Tétines" value={teats} options={[0, 1, 2]} onChange={setTeats} />
+              </Field>
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-ivory-100">
+                <input type="checkbox" checked={sideBets} onChange={(e) => setSideBets(e.target.checked)} className="mt-1" />
+                Paris extérieurs sur les lignes
+              </label>
+            </>
+          )}
           <Field label="Objectif en points" hint="Le premier à atteindre l’objectif gagne la partie.">
             <Segmented label="Objectif en points" value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
           </Field>

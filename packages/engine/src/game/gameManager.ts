@@ -51,6 +51,10 @@ export interface GameConfig {
   /** Partie « avec assistance » (fixé pour toute la partie, décidé en salle d'attente) : simple indicateur
    * du nom de la combinaison déjà formée, jamais de suggestion. Faux par défaut. */
   assistance?: boolean;
+  /** Entraînement en solo : toutes les manches se jouent dans cette variante, démarrées sans étape de choix. */
+  fixedVariant?: VariantId;
+  /** Options du 6-3 quand `fixedVariant` vaut V6_3 (tétines et paris extérieurs). */
+  fixedOptions?: { teats: number; sideBets: boolean };
 }
 
 export type GamePhase = 'VARIANT_SELECTION' | 'ROUND' | 'GAME_OVER';
@@ -206,6 +210,8 @@ interface LiveConfig {
   stakeChips: number;
   maxPlayers: number;
   assistance: boolean;
+  fixedVariant?: VariantId;
+  fixedOptions?: { teats: number; sideBets: boolean };
 }
 
 /**
@@ -249,7 +255,17 @@ export class GameManager {
     if (!Number.isInteger(stakeChips) || stakeChips < 0 || stakeChips > MAX_STAKE_CHIPS) {
       throw new RuleError('BAD_CONFIG', 'Mise : de 0 à 10 000 jetons (nombre entier)');
     }
-    this.config = { players: [...players], targetPoints, stakeChips, maxPlayers, assistance: config.assistance ?? false };
+    if (config.fixedVariant !== undefined && (!VARIANT_IDS.includes(config.fixedVariant) || !isVariantAvailable(config.fixedVariant, players.length))) {
+      throw new RuleError('BAD_CONFIG', `${String(config.fixedVariant)} n'est pas jouable à ${players.length} joueurs`);
+    }
+    this.config = {
+      players: [...players],
+      targetPoints,
+      stakeChips,
+      maxPlayers,
+      assistance: config.assistance ?? false,
+      ...(config.fixedVariant ? { fixedVariant: config.fixedVariant, fixedOptions: config.fixedVariant === 'V6_3' ? { teats: config.fixedOptions?.teats ?? 0, sideBets: config.fixedOptions?.sideBets ?? false } : undefined } : {}),
+    };
     for (const p of players) this.scores[p] = 0;
     for (const p of players) this.sideNet[p] = 0;
     if (snapshot) {
@@ -322,6 +338,7 @@ export class GameManager {
     return this.pending;
   }
   availableVariants(): VariantId[] {
+    if (this.config.fixedVariant) return [this.config.fixedVariant];
     return VARIANT_IDS.filter((v) => isVariantAvailable(v, this.config.players.length));
   }
   /** Manche en cours — SERVEUR UNIQUEMENT (expose les cartes cachées). */
@@ -516,6 +533,10 @@ export class GameManager {
   }
 
   private autoChooseVariant(events: RoundEvent[]): void {
+    if (this.config.fixedVariant) {
+      this.startRound(this.config.fixedVariant, this.chooser(), events, true, this.config.fixedOptions ?? { teats: 0, sideBets: false });
+      return;
+    }
     const variants = this.availableVariants();
     const variant = variants[this.rng.int(variants.length)]!;
     this.startRound(variant, this.chooser(), events, true);
@@ -607,6 +628,10 @@ export class GameManager {
     this.roundNo_++;
     this.phase_ = 'VARIANT_SELECTION';
     events.push(this.publicEvent('VARIANT_SELECTION_STARTED', { roundNo: this.roundNo_, chooser: this.chooser() }));
+    if (this.config.fixedVariant) {
+      this.autoChooseVariant(events); // solo : la variante est imposée, la manche suivante démarre aussitôt
+      return;
+    }
     // Notification « assurance disponible » : au moins 2 joueurs à 1 point de la fin, aucune assurance encore
     const eligible = this.eligibleForInsurance();
     if (eligible.length >= 2) {

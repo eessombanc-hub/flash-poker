@@ -7,6 +7,8 @@ import { Sound } from './lib/sound';
 import type { AuthMode } from './screens/Auth';
 import { CreateRoom, JoinRoom, TrainingRoom } from './screens/Forms';
 import { Home } from './screens/Home';
+import { Solo } from './screens/Solo';
+import type { VariantId } from './lib/types';
 import { Lobby } from './screens/Lobby';
 import { Table } from './screens/Table';
 
@@ -18,7 +20,7 @@ const AuthScreen = lazy(() => loadAuth().then((m) => ({ default: m.AuthScreen })
 const Blackjack = lazy(() => loadBlackjack().then((m) => ({ default: m.Blackjack })));
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 
-type Screen = 'home' | 'create' | 'join' | 'train' | 'space' | 'blackjack' | { auth: AuthMode };
+type Screen = 'home' | 'create' | 'join' | 'solo' | 'train' | 'space' | 'blackjack' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -128,6 +130,7 @@ export function App() {
   const [resetToken] = useState(takeResetToken);
   const [invite] = useState(takeInviteCode);
   const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : initialCode() ? 'join' : 'home'));
+  const [trainVariant, setTrainVariant] = useState<VariantId | undefined>(undefined);
   const [joinCode, setJoinCode] = useState<string>(initialCode);
 
   useEffect(() => {
@@ -167,13 +170,24 @@ export function App() {
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} />;
   else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
-  else if (screen === 'train') content = <TrainingRoom onBack={() => setScreen('home')} />;
+  else if (screen === 'solo')
+    content = (
+      <Solo
+        onBack={() => setScreen('home')}
+        onPick={(v) => {
+          setTrainVariant(v ?? undefined);
+          setScreen('train');
+        }}
+        onBlackjack={() => setScreen('blackjack')}
+      />
+    );
+  else if (screen === 'train') content = <TrainingRoom onBack={() => setScreen('solo')} variant={trainVariant} />;
   else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={joinCode} />;
   else
     content = (
       <Home
         onCreate={() => setScreen('create')}
-        onTrain={() => setScreen('train')}
+        onTrain={() => setScreen('solo')}
         onBlackjack={() => setScreen('blackjack')}
         onJoin={(code) => {
           setJoinCode(code ?? '');

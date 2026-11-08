@@ -24,6 +24,11 @@ export const createRoomSchema = z.object({
   /** Mode entraînement : nombre d'adversaires CPU (1 à 5). La table est alors privée (complète dès la création,
    * `maxPlayers` est ramené à CPU + 1) et la partie démarre aussitôt. Absent : partie entre humains. */
   cpu: z.number().int().min(1).max(5).optional(),
+  /** Entraînement uniquement : toutes les manches se jouent dans cette variante (absent : variante au choix, comme en partie normale). */
+  variant: z.enum(['V6_3', 'V6_1', 'CLOSED_1', 'CLOSED_2', 'AVIATION', 'AVIA_6', 'MORPION', 'LE10']).optional(),
+  /** 6-3 imposé : nombre de tétines (0 à 2) et paris extérieurs. */
+  teats: z.number().int().min(0).max(2).optional(),
+  sideBets: z.boolean().optional(),
   /** Salle privée : non listée dans « Parties ouvertes », on n'y entre qu'avec le code (ou le lien d'invitation). */
   private: z.boolean().optional(),
   nickname,

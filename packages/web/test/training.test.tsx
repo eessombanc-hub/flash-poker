@@ -33,7 +33,7 @@ function renderForm(client: GameClient, onBack = vi.fn()) {
 }
 
 describe('accueil : entrée du mode entraînement', () => {
-  it('le bouton « S’entraîner contre le CPU » ouvre l’entraînement', () => {
+  it('le bouton « Jouer en solo » ouvre l’entraînement', () => {
     const onTrain = vi.fn();
     render(
       <SettingsProvider>
@@ -42,7 +42,7 @@ describe('accueil : entrée du mode entraînement', () => {
         </ClientProvider>
       </SettingsProvider>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'S’entraîner contre le CPU' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Jouer en solo' }));
     expect(onTrain).toHaveBeenCalledTimes(1);
   });
 });
@@ -131,5 +131,29 @@ describe('siège d’un joueur CPU', () => {
       </SettingsProvider>,
     );
     expect(screen.queryByText('CPU')).toBeNull();
+  });
+});
+
+describe('Menu solo', () => {
+  it('propose les huit variantes, le hasard et le Blackjack', async () => {
+    const { Solo } = await import('../src/screens/Solo');
+    const onPick = vi.fn();
+    const onBlackjack = vi.fn();
+    render(<Solo onBack={() => undefined} onPick={onPick} onBlackjack={onBlackjack} />);
+    expect(within(screen.getByRole('list', { name: 'Variantes de poker' })).getAllByRole('listitem')).toHaveLength(9);
+    fireEvent.click(screen.getByRole('button', { name: 'Le 10' }));
+    expect(onPick).toHaveBeenLastCalledWith('LE10');
+    fireEvent.click(screen.getByRole('button', { name: 'Toutes les variantes' }));
+    expect(onPick).toHaveBeenLastCalledWith(null);
+    fireEvent.click(screen.getByRole('button', { name: 'Blackjack' }));
+    expect(onBlackjack).toHaveBeenCalled();
+  });
+  it('variante imposée : 5 CPU interdits quand elle ne se joue pas à 6, options du 6-3', () => {
+    const { rerender } = render(<ClientProvider client={makeClient()}><TrainingRoom onBack={() => undefined} variant="LE10" /></ClientProvider>);
+    expect(screen.getByRole('heading', { name: /Solo : Le 10/ })).toBeInTheDocument();
+    expect(within(screen.getByRole('radiogroup', { name: 'Adversaires CPU' })).queryByRole('radio', { name: '5' })).toBeNull();
+    rerender(<ClientProvider client={makeClient()}><TrainingRoom onBack={() => undefined} variant="V6_3" /></ClientProvider>);
+    expect(screen.getByRole('radiogroup', { name: 'Tétines' })).toBeInTheDocument();
+    expect(within(screen.getByRole('radiogroup', { name: 'Adversaires CPU' })).getByRole('radio', { name: '5' })).toBeInTheDocument();
   });
 });

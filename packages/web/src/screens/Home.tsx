@@ -54,7 +54,7 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, notice, account }
         <section aria-label="Commencer" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ActionTile icon={<CardsIcon size={58} />} title="Créer une partie" text="Choisissez la mise, l’objectif et la visibilité, puis invitez vos amis." onClick={onCreate} primary />
           <ActionTile icon={<JoinIcon size={58} />} title="Rejoindre avec un code" text="Entrez le code POKER-XXXX reçu de l’hôte, ou ouvrez son lien d’invitation." onClick={() => onJoin()} />
-          <ActionTile icon={<TrophyIcon size={58} />} title="S’entraîner contre le CPU" text="Seul à la table, contre un à cinq adversaires gérés par l’ordinateur. Aucune mise." onClick={onTrain} />
+          <ActionTile icon={<TrophyIcon size={58} />} title="Jouer en solo" text="Les huit variantes contre le CPU, ou le Blackjack face au croupier. Aucune mise." onClick={onTrain} />
           <ActionTile icon={<RulesIcon size={58} />} title="Mémo des règles" text="Les huit variantes et les règles communes, en un coup d’œil." onClick={() => setRules(true)} />
         </section>
 
