@@ -73,6 +73,8 @@ export interface AccountHooks {
   isReservedNickname(nickname: string): boolean;
   /** Partie terminée normalement (jamais pour une partie annulée). */
   onGameFinished(game: FinishedGame): void;
+  /** Le compte a-t-il assez de jetons pour miser ? (portefeuille persistant, recharge différée). */
+  canAfford?(accountId: string, stake: number): boolean;
 }
 export interface BotConfig {
   minDelayMs: number;
@@ -153,6 +155,7 @@ export class RoomManager {
     const cfg = this.parse(createRoomSchema, input);
     const now = this.deps.scheduler.now();
     const who = this.identity(cfg.nickname, cfg.avatar ?? null, account);
+    this.assertAffordable(who.accountId, cfg.stakeChips);
     const code = this.newCode();
     const host = this.newPlayer(who, 'LOBBY', true); // propose l'assistance : l'approuve de fait
     // Entraînement : la table est exactement l'hôte + ses adversaires CPU, donc privée (aucun siège libre)
@@ -201,6 +204,7 @@ export class RoomManager {
     const parsed = this.parse(joinRoomSchema, input);
     if (room.status === 'FINISHED' || room.status === 'CANCELLED') throw new ServerError('WRONG_STATE', 'Cette partie est terminée');
     const who = this.identity(parsed.nickname, parsed.avatar ?? null, account);
+    this.assertAffordable(who.accountId, room.config.stakeChips);
     const nickname = who.nickname;
     if (who.accountId && room.players.some((p) => p.accountId === who.accountId)) {
       throw new ServerError('NICKNAME_TAKEN', 'Vous êtes déjà dans cette partie (sur un autre appareil ?)');
@@ -732,6 +736,13 @@ export class RoomManager {
     return res.data;
   }
   /** Pseudo et avatar du joueur : ceux du compte s'il est connecté ; un invité ne peut pas prendre le pseudo d'un compte. */
+  /** Portefeuille persistant : un compte ne s'assoit pas à une table dont la mise dépasse son solde. */
+  private assertAffordable(accountId: string | null, stake: number): void {
+    if (!accountId || stake <= 0) return;
+    const ok = this.deps.accounts?.canAfford?.(accountId, stake) ?? true;
+    if (!ok) throw new ServerError('RULE', 'Solde insuffisant pour cette mise : consultez votre portefeuille dans votre espace (recharge programmée)');
+  }
+
   private identity(nickname: string, avatar: string | null, account?: AccountRef | null): { nickname: string; avatar: string | null; accountId: string | null } {
     if (account) return { nickname: account.nickname, avatar: account.avatar ?? avatar, accountId: account.id };
     if (this.deps.accounts?.isReservedNickname(nickname)) {

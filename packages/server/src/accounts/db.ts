@@ -81,6 +81,12 @@ export class AccountDb {
         inviter_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS wallet_refills (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        at INTEGER NOT NULL,
+        amount INTEGER NOT NULL,
+        PRIMARY KEY (user_id, at)
+      );
       CREATE TABLE IF NOT EXISTS notify_log (
         user_id TEXT NOT NULL,
         fav_id TEXT NOT NULL,

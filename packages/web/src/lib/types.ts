@@ -41,4 +41,5 @@ export type {
   InviteOverview,
   SentInvite,
   VariantStats,
+  Wallet,
 } from '@poker/server/src/accounts/types';

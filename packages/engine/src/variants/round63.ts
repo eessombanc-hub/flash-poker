@@ -416,8 +416,7 @@ export class Round63 extends RoundBase {
       return;
     }
     const winner = leaders[0]!;
-    const soloAllLines = this.s.lines.every((l) => l.winners.length === 1 && l.winners[0] === winner);
-    this.finish({ kind: 'WINNER', winner, points: soloAllLines ? 2 : 1, detail: { units } }, events);
+    this.finish({ kind: 'WINNER', winner, points: 1, detail: { units } }, events); // 1 point, comme dans toutes les variantes
   }
 
   protected stateForSnapshot(): unknown {

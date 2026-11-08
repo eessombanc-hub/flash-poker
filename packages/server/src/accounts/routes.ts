@@ -82,6 +82,7 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
   app.get('/me/games', async (req) => ({ games: accounts.games(me(req).id) }));
   app.get<{ Params: { id: string } }>('/me/games/:id', async (req) => accounts.game(me(req).id, req.params.id));
   app.get('/me/stats', async (req) => accounts.stats(me(req).id));
+  app.get('/me/wallet', async (req) => accounts.wallet(me(req).id));
   app.get('/me/bankroll', async (req) => accounts.bankroll(me(req).id));
 
   app.get('/me/favorite-rounds', async (req) => ({ rounds: accounts.favoriteRounds(me(req).id) }));

@@ -5,7 +5,7 @@ import { ServerError } from '../errors';
 import type { AccountDb } from './db';
 import { mail, type Mailer } from './mailer';
 import { hashPassword, newToken, tokenHash, verifyPassword } from './password';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
 const nickname = z
@@ -31,6 +31,7 @@ function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
   return r.data;
 }
 
+export type { Wallet } from './types';
 export type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, SentInvite, VariantStats } from './types';
 
 const SESSION_MS = 30 * 24 * 3_600_000;
@@ -41,6 +42,12 @@ const RESET_MS = 3_600_000;
 const day = (t: number) => new Date(t).toISOString().slice(0, 10);
 
 type Row = Record<string, unknown>;
+
+/** Politique des jetons : 5 000 au départ ; sous 1 000, recharge à 2 000 après 2 h sans partie. */
+export const WALLET_START = 5_000;
+export const WALLET_THRESHOLD = 1_000;
+export const WALLET_REFILL_TO = 2_000;
+export const WALLET_REFILL_DELAY_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Comptes joueurs : inscription, connexion, profil, historique, statistiques, bankroll, favoris, présence.
@@ -275,6 +282,43 @@ export class AccountService {
       return { endedAt: r.ended_at as number, netChips: r.net_cents as number, cumulativeChips: cumulative, name: (JSON.parse(r.data as string) as FinishedGame).name };
     });
     return { totalChips: cumulative, games: rows.length, series };
+  }
+
+  // ---------- Portefeuille de jetons ----------
+
+  /**
+   * Solde = jetons de départ + net de chaque partie + recharges. La recharge est appliquée à la lecture : si le
+   * solde est sous le seuil et que le délai est écoulé depuis la dernière partie (ou recharge), il est remonté.
+   */
+  wallet(userId: string): Wallet {
+    const num = (sql: string): number => Number((this.db.prepare(sql).get(userId) as Row | undefined)?.v ?? 0);
+    const compute = (): { balance: number; since: number } => {
+      const net = num('SELECT COALESCE(SUM(net_cents), 0) AS v FROM user_games WHERE user_id = ?');
+      const refills = num('SELECT COALESCE(SUM(amount), 0) AS v FROM wallet_refills WHERE user_id = ?');
+      const lastGame = num('SELECT COALESCE(MAX(ended_at), 0) AS v FROM user_games WHERE user_id = ?');
+      const lastRefill = num('SELECT COALESCE(MAX(at), 0) AS v FROM wallet_refills WHERE user_id = ?');
+      const created = num('SELECT created_at AS v FROM users WHERE id = ?');
+      return { balance: WALLET_START + net + refills, since: Math.max(lastGame, lastRefill, created) };
+    };
+    let { balance, since } = compute();
+    const now = this.now();
+    if (balance < WALLET_THRESHOLD && now >= since + WALLET_REFILL_DELAY_MS) {
+      this.db.prepare('INSERT OR IGNORE INTO wallet_refills (user_id, at, amount) VALUES (?, ?, ?)').run(userId, now, WALLET_REFILL_TO - balance);
+      ({ balance, since } = compute());
+    }
+    return {
+      balance,
+      startingChips: WALLET_START,
+      threshold: WALLET_THRESHOLD,
+      refillTo: WALLET_REFILL_TO,
+      refillDelayMs: WALLET_REFILL_DELAY_MS,
+      nextRefillAt: balance < WALLET_THRESHOLD ? since + WALLET_REFILL_DELAY_MS : null,
+    };
+  }
+
+  /** Vrai si le compte peut miser `stake` jetons (les invités et les parties sans mise ne sont pas concernés). */
+  canAfford(userId: string, stake: number): boolean {
+    return stake <= 0 || this.wallet(userId).balance >= stake;
   }
 
   // ---------- Manches favorites ----------

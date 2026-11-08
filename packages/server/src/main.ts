@@ -43,7 +43,7 @@ const manager = new RoomManager({
   rng: new CryptoRng(),
   scheduler,
   store,
-  accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g) },
+  accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g), canAfford: (id, stake) => accounts.canAfford(id, stake) },
   ...(testTimers ? { timers: { durationMs: phaseSeconds * 1000, warningMs: 10_000 } } : {}),
 });
 await manager.restoreFromStore();

@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
 const KEY = 'poker.account.v1';
@@ -158,6 +158,7 @@ export class AccountClient {
   games = () => this.request<{ games: GameSummary[] }>('GET', '/me/games').then((r) => r.games);
   game = (id: string) => this.request<GameDetail>('GET', `/me/games/${encodeURIComponent(id)}`);
   stats = () => this.request<{ variants: VariantStats[]; games: number; gamesWon: number }>('GET', '/me/stats');
+  wallet = () => this.request<Wallet>('GET', '/me/wallet');
   bankroll = () => this.request<Bankroll>('GET', '/me/bankroll');
   favoriteRounds = () => this.request<{ rounds: FavoriteRound[] }>('GET', '/me/favorite-rounds').then((r) => r.rounds);
   addFavoriteRound = (gameId: string, roundNo: number) => this.request('POST', '/me/favorite-rounds', { gameId, roundNo });

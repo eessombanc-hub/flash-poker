@@ -47,6 +47,20 @@ export interface Bankroll {
   games: number;
   series: { endedAt: number; netChips: number; cumulativeChips: number; name: string }[];
 }
+/**
+ * Portefeuille de jetons d'un compte : solde de départ + gains/pertes des parties + recharges.
+ * Sous le seuil, une recharge unique remonte le solde au plafond de recharge après le délai d'attente.
+ */
+export interface Wallet {
+  balance: number;
+  startingChips: number;
+  /** Sous ce solde, la recharge est programmée (c'est aussi la mise maximale d'une partie). */
+  threshold: number;
+  refillTo: number;
+  refillDelayMs: number;
+  /** Horodatage de la prochaine recharge ; null si le solde est suffisant. */
+  nextRefillAt: number | null;
+}
 export interface FavoritePlayer extends AccountPublic {
   online: boolean;
 }

@@ -136,7 +136,7 @@ describe('score, objectif, victoire', () => {
     expect(() => round(g, TIMEOUT)).toThrowError(/terminée/);
   });
 
-  it('dépassement de l\'objectif : 1 point + 2 points du 6-3 (objectif 2) → 3 points, victoire', () => {
+  it('un 6-3 gagné seul sur les 3 lignes ne rapporte qu\'1 point (objectif 2) : victoire au 2e point', () => {
     const g = stackedGame(cfg(3, 2), { 1: closedWin(3, 0), 2: stack63(['7c', '2s', 'Kh']) });
     choose(g, 'CLOSED_1');
     round(g, TIMEOUT);
@@ -144,9 +144,9 @@ describe('score, objectif, victoire', () => {
     expect(g.chooser()).toBe('P1');
     choose(g, 'V6_3');
     lines63(g, [{ P0: ['As', 'Ad'] }, { P0: ['As', 'Ad'] }, { P0: ['As', 'Ad'] }]); // P0 gagne seul les 3 lignes
-    expect(g.scoreOf('P0')).toBe(3);
+    expect(g.scoreOf('P0')).toBe(2);
     expect(g.outcome()).toMatchObject({ winner: 'P0', victoryType: 'SCORE' });
-    expect(g.history()[1]!.points).toEqual({ P0: 2, P1: 0, P2: 0 });
+    expect(g.history()[1]!.points).toEqual({ P0: 1, P1: 0, P2: 0 });
   });
 
   it('manche sans gagnant (6-3 sans aucune désignation) : aucun point, on passe au chooser suivant', () => {

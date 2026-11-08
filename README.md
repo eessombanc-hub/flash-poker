@@ -199,3 +199,5 @@ n'est modifiée, le CPU n'utilise que les commandes ouvertes à un joueur humain
    `comptes.db` à côté de `DB_PATH`). Reste : choisir le service d'envoi d'e-mails (variables `SMTP_*`).
 5. **Plusieurs instances de serveur** : la persistance SQLite actuelle suppose un seul processus ; passer à PostgreSQL
    (même interface `RoomStore`) le jour où la charge exige de répartir les parties sur plusieurs serveurs.
+
+**Points et jetons.** Une manche gagnée vaut 1 point dans toutes les variantes (le double point du 6-3 est supprimé). Chaque compte dispose d'un portefeuille persistant : 5 000 jetons à l'inscription, débité/crédité du net de chaque partie ; sous 1 000 jetons, une recharge à 2 000 est accordée après 2 h sans partie (appliquée à la lecture, `GET /me/wallet`). Une table dont la mise dépasse le solde est refusée à la création et à l'arrivée ; les invités et l'entraînement ne sont pas concernés.

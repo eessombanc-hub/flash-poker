@@ -88,10 +88,10 @@ describe('6-3 : plateau et déroulé (3 plateaux indépendants de 5 cartes, 15 a
 });
 
 describe('6-3 : points (règle de la table v1.1)', () => {
-  it('Cas 2 : le même joueur gagne seul les 3 lignes -> 2 points', () => {
+  it('Cas 2 : le même joueur gagne seul les 3 lignes -> 1 point, comme dans toutes les variantes', () => {
     const r = game(3);
     for (let i = 0; i < 3; i++) line(r, 3, { P0: AA });
-    expect(r.result()).toMatchObject({ kind: 'WINNER', winner: 'P0', points: 2 });
+    expect(r.result()).toMatchObject({ kind: 'WINNER', winner: 'P0', points: 1 });
   });
 
   it('A / A / B -> A gagne le plus de lignes : 1 point', () => {

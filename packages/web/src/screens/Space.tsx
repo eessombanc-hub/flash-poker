@@ -5,7 +5,7 @@ import { ApiError } from '../lib/api';
 import { useAccount, useAccountClient } from '../lib/context';
 import { formatChips, formatSignedChips } from '../lib/format';
 import { variantName } from '../lib/labels';
-import type { AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats } from '../lib/types';
+import type { AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats, Wallet } from '../lib/types';
 import { RoundList } from './Overlays';
 
 export type SpaceTab = 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter';
@@ -447,9 +447,11 @@ function FavoriteRoundsTab() {
 function BankrollTab() {
   const account = useAccountClient()!;
   const { data, error } = useLoad(account.bankroll);
+  const { data: wallet } = useLoad(account.wallet);
   return (
     <div>
       <H2>Bankroll</H2>
+      {wallet && <WalletCard wallet={wallet} />}
       <p className="mt-1 text-sm text-ivory-300/80">Bilan de vos parties en jetons : gains moins mises, assurances comprises.</p>
       {data === null && !error ? (
         <Loading />
@@ -468,6 +470,23 @@ function BankrollTab() {
         </State>
       )}
     </div>
+  );
+}
+
+/** Solde du portefeuille et, sous le seuil, heure de la prochaine recharge. */
+export function WalletCard({ wallet }: { wallet: Wallet }) {
+  const low = wallet.nextRefillAt !== null;
+  const when = low ? new Date(wallet.nextRefillAt!).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+  return (
+    <section aria-label="Portefeuille" className="mt-3 rounded-xl border border-gold-500/40 bg-gold-500/10 p-3">
+      <p className="text-xs text-gold-300">Portefeuille</p>
+      <p className="font-display text-2xl text-ivory-50" data-testid="wallet-balance">{formatChips(wallet.balance)}</p>
+      <p className="mt-1 text-xs text-ivory-200/85">
+        {low
+          ? `Solde sous ${formatChips(wallet.threshold)} : recharge à ${formatChips(wallet.refillTo)} à ${when} (après ${wallet.refillDelayMs / 3_600_000} h sans partie).`
+          : `Vous avez reçu ${formatChips(wallet.startingChips)} à l’inscription. Sous ${formatChips(wallet.threshold)}, une recharge à ${formatChips(wallet.refillTo)} est accordée après ${wallet.refillDelayMs / 3_600_000} h sans partie.`}
+      </p>
+    </section>
   );
 }
 
