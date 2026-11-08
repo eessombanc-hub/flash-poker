@@ -103,7 +103,7 @@ Variante à deux joueurs : cinq colonnes de cinq cartes, posées une à une et d
 
 **Reprise et déconnexion.** L'état est la graine plus le journal des coups, rejoués à l'identique après un redémarrage. Aucun minuteur serveur : chaque requête fait d'abord avancer l'horloge (coups de l'IA arrivés à échéance, délais dépassés). Après 3 délais manqués consécutifs, une partie amicale est perdue par forfait ; une partie d'entraînement est mise en pause et reprend au retour du joueur.
 
-**Variante « Tableau 5 cartes ».** Colonnes vides au départ et 5 cartes en main (les mêmes 5 cartes de départ que la variante classique, la distribution et la preuve d'équité sont donc identiques). À chaque tour, le joueur pioche puis pose soit la carte piochée, soit une carte de sa main (la piochée la remplace). Au bout de 20 pioches il reste une carte au paquet, qui ne se pioche jamais : plus personne ne pioche et chacun termine ses colonnes avec les 5 cartes de sa main (25 placements par joueur, 50 coups). Passé le délai de 30 s, la carte piochée est posée dans la première colonne libre (ou, sans pioche, la première carte de la main). La main de l'adversaire n'est jamais transmise. L'IA choisit la carte et la colonne : l'Expert départage ses huit meilleurs coups par simulation.
+**Variante « Tableau 5 cartes ».** Comme en variante classique, une carte de départ ouvre chaque colonne ; chaque joueur reçoit en plus 5 cartes en main, prélevées sur son paquet (qui compte alors 16 cartes ; le mélange des 52 cartes et la preuve d'équité sont inchangés). À chaque tour, le joueur pioche puis pose soit la carte piochée, soit une carte de sa main (la piochée la remplace). Au bout de 15 pioches il reste une carte au paquet, qui ne se pioche jamais : plus personne ne pioche et chacun termine ses colonnes avec les 5 cartes de sa main (20 placements par joueur, 40 coups). Passé le délai de 30 s, la carte piochée est posée dans la première colonne libre (ou, sans pioche, la première carte de la main). La main de l'adversaire n'est jamais transmise. L'IA choisit la carte et la colonne : l'Expert départage ses huit meilleurs coups par simulation.
 
 **Intelligence artificielle.** Elle ne reçoit que la vue de son siège (équité).
 - Débutant : se place près d'une carte de même valeur sinon remplit à gauche, et se trompe une fois sur trois.
@@ -114,6 +114,12 @@ Des parties appariées (sièges échangés) vérifient la hiérarchie des niveau
 **Tests.** Énumération des 2 598 960 mains (répartition officielle des catégories retrouvée), départages, distribution, parties complètes, délais, reprise, synchronisation, absence de fuite, bout en bout avec un vrai serveur.
 
 **Prévu aux étapes suivantes.** Étape 2 : dix ligues, mode Classé, statistiques et défis. Étape 3 : tournois. Les droits (`lib/entitlements.ts`) restent le point d'extension de la monétisation : cosmétique et confort uniquement, jamais d'avantage de jeu.
+
+## Langues
+
+Sélecteur en haut de page (français, English, Español, Deutsch, Italiano) ; le choix est mémorisé dans le navigateur, à défaut la langue du navigateur est utilisée. Les textes sont des dictionnaires plats dans `packages/web/src/i18n/` (le français est la langue source ; un test vérifie que les cinq dictionnaires ont les mêmes clés et les mêmes paramètres). Pour Le Tableau, le serveur ne renvoie que des faits (cartes, catégories, codes d'erreur) : noms de combinaisons, conseils et messages sont composés dans le navigateur, dans la langue choisie (`lib/tbText.ts`).
+
+Traduit à ce jour : accueil, menu « Jouer en solo », Le Tableau et Tableau 5 cartes. Restent en français pour l'instant : tables de poker, Blackjack, comptes, mémo des règles (descriptions des variantes), paramètres.
 
 ## Protocole
 

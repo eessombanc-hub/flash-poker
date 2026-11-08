@@ -364,12 +364,13 @@ describe('Tableau — partie amicale (code d’invitation)', () => {
 });
 
 describe('Tableau 5 cartes — serveur', () => {
-  it('entraînement : colonnes vides, main de 5 cartes, partie de 25 coups par joueur jusqu’au résultat', () => {
+  it('entraînement : une carte ouvre chaque colonne, main de 5 cartes, partie de 20 placements par joueur jusqu’au résultat', () => {
     const env = setup();
     let v = env.tb.create(A, { mode: 'training', level: 'intermediate', variant: 'hand5' });
     expect(v.variant).toBe('hand5');
     expect(v.view!.hand).toHaveLength(5);
-    expect(v.view!.remaining[v.you]).toBe(25);
+    expect(v.view!.remaining[v.you]).toBe(20);
+    expect(v.view!.columns[v.you]!.every((c) => c.length === 1)).toBe(true);
     for (let i = 0; i < 600 && v.status === 'playing'; i++) {
       if (v.view!.turn === v.you) {
         const card = i % 2 === 0 ? v.view!.hand[0]! : (v.view!.yourCard ?? v.view!.hand[1]!);
@@ -380,7 +381,7 @@ describe('Tableau 5 cartes — serveur', () => {
       }
     }
     expect(v.status).toBe('finished');
-    expect(v.view!.placed).toEqual([25, 25]);
+    expect(v.view!.placed).toEqual([20, 20]);
     expect(v.view!.hand).toHaveLength(0);
     expect(verifyTableauReveal(v.reveal!)).toBe(true);
     expect(env.tb.history(A.userId)[0]!.variant).toBe('hand5');

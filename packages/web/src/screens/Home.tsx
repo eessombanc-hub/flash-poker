@@ -8,10 +8,12 @@ import { HeroScene } from '../components/Scene3D';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import { CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 import { SettingsBody } from '../components/SettingsBody';
+import { useI18n } from '../i18n';
 
 const LIST_POLL_MS = 5000;
 
 export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
+  const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
   return (
@@ -23,7 +25,7 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
         </p>
         <div className="flex items-center gap-0 sm:gap-1">
           <Button variant="ghost" className="whitespace-nowrap px-2 sm:px-3" onClick={() => setSettings(true)}>
-            Paramètres
+            {t('common.settings')}
           </Button>
           {account}
         </div>
@@ -33,13 +35,13 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
         {/* Accroche */}
         <section className="grid items-center gap-8 py-6 md:grid-cols-[1.1fr_1fr] md:py-10">
           <div className="text-center md:text-left">
-            <Eyebrow>Table en direct</Eyebrow>
+            <Eyebrow>{t('home.eyebrow')}</Eyebrow>
             <h1 className="mt-3 font-display text-4xl leading-[1.05] tracking-wide text-ivory-50 sm:text-6xl">
-              Le poker entre amis,
-              <span className="block bg-gradient-to-r from-gold-300 via-gold-400 to-gold-600 bg-clip-text text-transparent">en un éclair.</span>
+              {t('home.h1a')}
+              <span className="block bg-gradient-to-r from-gold-300 via-gold-400 to-gold-600 bg-clip-text text-transparent">{t('home.h1b')}</span>
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-base text-ivory-200/85 sm:text-lg md:mx-0">
-              Huit variantes, une seule table. De deux à six joueurs, en temps réel, sur ordinateur comme sur téléphone.
+              {t('home.lead')}
             </p>
             {notice && (
               <p role="alert" className="mt-6 rounded-lg border border-amber-400/40 bg-amber-950/60 px-4 py-2.5 text-sm text-amber-100">
@@ -51,11 +53,11 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
         </section>
 
         {/* Actions principales */}
-        <section aria-label="Commencer" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <ActionTile icon={<CardsIcon size={58} />} title="Créer une partie" text="Choisissez la mise, l’objectif et la visibilité, puis invitez vos amis." onClick={onCreate} primary />
-          <ActionTile icon={<JoinIcon size={58} />} title="Rejoindre avec un code" text="Entrez le code POKER-XXXX reçu de l’hôte, ou ouvrez son lien d’invitation." onClick={() => onJoin()} />
-          <ActionTile icon={<TrophyIcon size={58} />} title="Jouer en solo" text="Les huit variantes contre le CPU, ou le Blackjack face au croupier. Aucune mise." onClick={onTrain} />
-          <ActionTile icon={<RulesIcon size={58} />} title="Mémo des règles" text="Les huit variantes et les règles communes, en un coup d’œil." onClick={() => setRules(true)} />
+        <section aria-label={t('home.start')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ActionTile icon={<CardsIcon size={58} />} title={t('home.create.title')} text={t('home.create.text')} onClick={onCreate} primary />
+          <ActionTile icon={<JoinIcon size={58} />} title={t('home.join.title')} text={t('home.join.text')} onClick={() => onJoin()} />
+          <ActionTile icon={<TrophyIcon size={58} />} title={t('home.solo.title')} text={t('home.solo.text')} onClick={onTrain} />
+          <ActionTile icon={<RulesIcon size={58} />} title={t('home.rules.title')} text={t('home.rules.text')} onClick={() => setRules(true)} />
         </section>
 
         {/* Blackjack : rubrique à part, distincte des variantes de poker */}
@@ -65,19 +67,19 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
               <div className="flex items-center gap-4">
                 <span aria-hidden="true"><CoinIcon size={58} /></span>
                 <div>
-                  <Eyebrow>Casino</Eyebrow>
+                  <Eyebrow>{t('home.bj.eyebrow')}</Eyebrow>
                   <h2 className="font-display text-2xl text-ivory-50">
                     <button type="button" onClick={onBlackjack} className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none" aria-describedby="bj-tile-d">
                       Blackjack
                     </button>
                   </h2>
                   <p id="bj-tile-d" className="mt-0.5 max-w-xl text-sm text-ivory-200/85">
-                    Seul face au croupier : six tables, défis quotidiens, niveaux et classement. Aucun compte nécessaire.
+                    {t('home.bj.text')}
                   </p>
                 </div>
               </div>
               <span className="self-start rounded-full border border-gold-400/60 px-4 py-2 text-sm font-semibold text-gold-300 sm:self-center" aria-hidden="true">
-                Jouer
+                {t('home.play')}
               </span>
             </div>
           </section>
@@ -85,15 +87,15 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
 
         {/* Le Tableau et le Tableau 5 cartes : jeux à part, au même rang que le Blackjack, contre l'ordinateur ou un ami */}
         {onTableau && (
-          <section aria-label="Le Tableau" className="mt-4 grid gap-3 sm:grid-cols-2">
+          <section aria-label={t('tb.title')} className="mt-4 grid gap-3 sm:grid-cols-2">
             {([
-              ['classic', 'Le Tableau', 'Cinq colonnes de cinq cartes, posées une à une : battez trois colonnes de votre adversaire.'],
-              ['hand5', 'Tableau 5 cartes', 'Même principe, avec une main de 5 cartes : posez la carte piochée ou l’une des vôtres.'],
+              ['classic', t('tb.variant.classic'), t('home.tb.classic.text')],
+              ['hand5', t('tb.variant.hand5'), t('home.tb.hand5.text')],
             ] as const).map(([id, title, text]) => (
               <div key={id} className="relative flex items-center gap-4 overflow-hidden rounded-3xl border border-gold-400/50 bg-gradient-to-r from-ink-800 via-felt-900 to-felt-800 p-5 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-gold-400">
                 <span aria-hidden="true"><CardsIcon size={52} /></span>
                 <div>
-                  <Eyebrow>Contre l’ordinateur ou un ami</Eyebrow>
+                  <Eyebrow>{t('home.tb.eyebrow')}</Eyebrow>
                   <h2 className="font-display text-2xl text-ivory-50">
                     <button type="button" onClick={() => onTableau(id)} className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none" aria-describedby={`tb-${id}-d`}>
                       {title}
@@ -109,12 +111,12 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
         )}
 
         {/* Atouts */}
-        <ul className="mt-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4" aria-label="En bref">
+        <ul className="mt-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4" aria-label={t('home.stats.aria')}>
           {[
-            ['8', 'variantes, du 6-3 au Morpion'],
-            ['2 à 6', 'joueurs par table'],
-            ['60 s', 'par décision, en temps réel'],
-            ['Privée', 'ou publique, au choix de l’hôte'],
+            [t('home.stat1.big'), t('home.stat1.small')],
+            [t('home.stat2.big'), t('home.stat2.small')],
+            [t('home.stat3.big'), t('home.stat3.small')],
+            [t('home.stat4.big'), t('home.stat4.small')],
           ].map(([big, small]) => (
             <li key={big} className="rounded-2xl border border-ivory-100/10 bg-ink-800/60 px-4 py-3 text-center">
               <span className="block font-display text-2xl text-gold-300">{big}</span>
@@ -124,17 +126,17 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
         </ul>
 
         <OpenRooms onSelect={onJoin} />
-        <p className="mt-10 text-center text-xs text-ivory-300/60">Jetons sans valeur monétaire : rien à gagner en argent.</p>
+        <p className="mt-10 text-center text-xs text-ivory-300/60">{t('home.footer')}</p>
       </main>
       {rules && <RulesModal onClose={() => setRules(false)} />}
       {settings && (
-        <Modal title="Paramètres" onClose={() => setSettings(false)}>
-          <h2 className="font-display text-2xl text-ivory-50">Paramètres</h2>
+        <Modal title={t('common.settings')} onClose={() => setSettings(false)}>
+          <h2 className="font-display text-2xl text-ivory-50">{t('common.settings')}</h2>
           <div className="mt-5">
             <SettingsBody />
           </div>
           <div className="mt-7 flex justify-end">
-            <Button onClick={() => setSettings(false)}>Fermer</Button>
+            <Button onClick={() => setSettings(false)}>{t('common.close')}</Button>
           </div>
         </Modal>
       )}
@@ -170,6 +172,7 @@ function ActionTile({ icon, title, text, onClick, primary = false }: { icon: Rea
 
 /** Liste publique des parties ouvertes : actualisée en continu, on les rejoint en un clic. */
 function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
+  const { t, tp } = useI18n();
   const client = useClient();
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
   const [error, setError] = useState(false);
@@ -199,12 +202,12 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
     <section className="mx-auto mt-10 w-full max-w-3xl text-left">
       <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-gold-400">
         <ChipsIcon size={28} />
-        Parties ouvertes
+        {t('rooms.title')}
       </h2>
       <Panel className="divide-y divide-ivory-100/10 p-2">
-        {rooms === null && !error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Recherche de tables…</p>}
-        {error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Liste indisponible pour l’instant.</p>}
-        {rooms?.length === 0 && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">Aucune partie ouverte pour le moment. Soyez le premier à en créer une.</p>}
+        {rooms === null && !error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">{t('rooms.searching')}</p>}
+        {error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">{t('rooms.unavailable')}</p>}
+        {rooms?.length === 0 && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">{t('rooms.none')}</p>}
         {rooms?.map((r) => (
           <button
             key={r.code}
@@ -216,19 +219,19 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
               <span className="block truncate font-medium text-ivory-50">{r.name}</span>
               <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ivory-300/70">
                 <span>
-                  {r.maxPlayers - r.seatsLeft}/{r.maxPlayers} joueurs
+                  {t('rooms.players', { a: r.maxPlayers - r.seatsLeft, b: r.maxPlayers })}
                 </span>
-                <span>Objectif {r.targetPoints} pt{r.targetPoints > 1 ? 's' : ''}</span>
+                <span>{tp('rooms.goal', r.targetPoints)}</span>
                 {r.stakeChips > 0 && (
                   <>
                     <span aria-hidden="true">·</span>
-                    <span>{formatChips(r.stakeChips)} / joueur</span>
+                    <span>{t('rooms.perPlayer', { amount: formatChips(r.stakeChips) })}</span>
                   </>
                 )}
-                {r.assistance && <Badge tone="gold">Assistance</Badge>}
+                {r.assistance && <Badge tone="gold">{t('rooms.assist')}</Badge>}
               </span>
             </span>
-            <Badge tone={r.status === 'RUNNING' ? 'amber' : 'green'}>{r.status === 'RUNNING' ? 'En cours' : 'En attente'}</Badge>
+            <Badge tone={r.status === 'RUNNING' ? 'amber' : 'green'}>{r.status === 'RUNNING' ? t('rooms.running') : t('rooms.waiting')}</Badge>
           </button>
         ))}
       </Panel>

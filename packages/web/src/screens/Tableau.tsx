@@ -3,13 +3,14 @@ import { PlayingCard } from '../components/Card';
 import { CoinRain } from '../components/Scene3D';
 import { ColumnStack, ResultsTable, VerdictRow } from '../components/tableau/Board';
 import { Avatar, Badge, Button, CountdownRing, Eyebrow, Modal, Panel, Segmented, inputClass } from '../components/ui';
-import { ApiError } from '../lib/api';
 import type { AccountClient } from '../lib/account';
 import { useAccount, useAccountClient } from '../lib/context';
 import { useSettings } from '../lib/settings';
 import { useSound } from '../lib/sound';
-import { announce, clockSkew, COMBOS, inviteUrl, LEVELS, levelLabel, outcomeWord, ROMAN, secondsLeft, VARIANT_OPTIONS, variantLabel } from '../lib/tableau';
-import type { AiLevel, TableauVariant, TbGameDto, TbHistoryEntry } from '../lib/types';
+import { announce, clockSkew, COMBOS, inviteUrl, LEVELS, outcomeKey, ROMAN, secondsLeft, VARIANT_OPTIONS } from '../lib/tableau';
+import { adviceText, columnLabel, errorText } from '../lib/tbText';
+import { useI18n, type Key } from '../i18n';
+import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry } from '../lib/types';
 
 const NICK_KEY = 'poker.tb.nick.v1';
 const CONFIRM_KEY = 'poker.tb.confirm.v1';
@@ -28,10 +29,12 @@ const writeStore = (k: string, v: string): void => {
     /* stockage indisponible : simple confort */
   }
 };
-const errText = (e: unknown): string => (e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.');
+/** Nom de l'adversaire contrôlé par l'ordinateur, selon son niveau, dans la langue choisie. */
+const cpuName = (t: (k: Key) => string, level: AiLevel | null): string => t(`tb.cpu.${level ?? 'intermediate'}` as Key);
 
 /** Point d'entrée : menu des modes, puis la partie. Ouvert à tous (invité ou connecté). */
 export function Tableau({ onBack, onLogin, initialCode, initialVariant = 'classic' }: { onBack: () => void; onLogin: () => void; initialCode?: string; initialVariant?: TableauVariant }) {
+  const { t } = useI18n();
   const client = useAccountClient();
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
@@ -40,23 +43,23 @@ export function Tableau({ onBack, onLogin, initialCode, initialVariant = 'classi
     <div className="min-h-screen">
       <header className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
         <button type="button" onClick={game ? () => setGame(null) : onBack} className="rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
-          {game ? '← Menu du Tableau' : '← Accueil'}
+          {game ? t('tb.back.menu') : t('common.backHome')}
         </button>
-        <p className="font-display text-xl tracking-wide text-ivory-50">Le Tableau</p>
+        <p className="font-display text-xl tracking-wide text-ivory-50">{t('tb.title')}</p>
         <span className="w-16" aria-hidden="true" />
       </header>
       <main className="mx-auto max-w-3xl px-4 pb-12">
         {!client || !ready ? (
-          <p className="py-10 text-center text-sm text-ivory-300/70">{client ? 'Chargement…' : 'Le Tableau nécessite le serveur de l’application.'}</p>
+          <p className="py-10 text-center text-sm text-ivory-300/70">{client ? t('common.loading') : t('tb.noServer')}</p>
         ) : game ? (
           <GameScreen key={game.code} client={client} initial={game} onExit={() => setGame(null)} />
         ) : (
           <>
             {!me && (
               <p className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gold-500/30 bg-gold-500/10 px-4 py-2.5 text-xs text-ivory-100">
-                <span>Vous jouez en invité : l’historique reste sur cet appareil. Avec un compte, il vous suit partout.</span>
+                <span>{t('tb.guestNote')}</span>
                 <button type="button" onClick={onLogin} className="font-semibold text-gold-300 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
-                  Se connecter
+                  {t('common.login')}
                 </button>
               </p>
             )}
@@ -72,6 +75,8 @@ export function Tableau({ onBack, onLogin, initialCode, initialVariant = 'classi
 // Menu
 
 function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: AccountClient; guest: boolean; initialCode?: string; initialVariant: TableauVariant; onGame: (g: TbGameDto) => void }) {
+  const i18n = useI18n();
+  const { t, tp } = i18n;
   const [level, setLevel] = useState<AiLevel>('intermediate');
   const [variant, setVariant] = useState<TableauVariant>(initialVariant);
   const [nick, setNick] = useState(() => readStore(NICK_KEY));
@@ -98,7 +103,7 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
       if (guest && nick.trim()) writeStore(NICK_KEY, nick.trim());
       onGame(await f());
     } catch (e) {
-      setError(errText(e));
+      setError(errorText(i18n, e));
     } finally {
       setBusy(false);
     }
@@ -109,29 +114,29 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
   return (
     <div className="space-y-5">
       <section className="rounded-3xl border border-gold-500/40 bg-gradient-to-br from-felt-800 via-felt-900 to-ink-900 p-5">
-        <Eyebrow>Variante</Eyebrow>
-        <h1 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">Le Tableau</h1>
+        <Eyebrow>{t('tb.eyebrow')}</Eyebrow>
+        <h1 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">{t('tb.title')}</h1>
         <p className="mt-2 max-w-xl text-sm text-ivory-200/90">
-          Deux joueurs, cinq colonnes de cinq cartes. À chaque tour, vous piochez une carte et la posez définitivement dans l’une de vos colonnes. Chaque colonne est ensuite comparée à celle de l’adversaire : trois colonnes gagnées suffisent pour l’emporter. Pas de mise, pas de bluff : tout se joue dans le placement.
+          {t('tb.intro')}
         </p>
         <Button variant="secondary" className="mt-3" onClick={() => setHelp(true)}>
-          Règles et combinaisons
+          {t('tb.rules.btn')}
         </Button>
       </section>
 
       <Panel className="p-4">
-        <p className="mb-2 text-sm font-medium text-ivory-100">Variante</p>
-        <Segmented value={variant} options={VARIANT_OPTIONS.map((v) => v.id)} format={variantLabel} onChange={setVariant} label="Variante du Tableau" />
-        <p className="mt-2 text-xs text-ivory-300/85">{VARIANT_OPTIONS.find((v) => v.id === variant)?.text}</p>
+        <p className="mb-2 text-sm font-medium text-ivory-100">{t('tb.variant.heading')}</p>
+        <Segmented value={variant} options={VARIANT_OPTIONS.map((v) => v.id)} format={(v) => t(`tb.variant.${v}` as Key)} onChange={setVariant} label={t('tb.variant.label')} />
+        <p className="mt-2 text-xs text-ivory-300/85">{t(`tb.variant.${variant}.text` as Key)}</p>
       </Panel>
 
       {active && (
         <Panel className="flex flex-wrap items-center justify-between gap-3 border-gold-400/60 p-4">
           <p className="text-sm text-ivory-100">
-            Une partie {active.mode === 'training' ? 'd’entraînement' : 'amicale'} est en cours <span className="font-semibold text-gold-300">({active.code})</span>.
+            {active.mode === 'training' ? t('tb.resume.training', { code: active.code }) : t('tb.resume.friendly', { code: active.code })}
           </p>
           <Button disabled={busy} onClick={() => void run(() => client.tbGet(active.code))}>
-            Reprendre la partie
+            {t('tb.resume.btn')}
           </Button>
         </Panel>
       )}
@@ -139,9 +144,9 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
       {guest && (
         <div className="max-w-xs">
           <label htmlFor="tb-nick" className="mb-1 block text-sm font-medium text-ivory-100">
-            Votre nom
+            {t('tb.nick')}
           </label>
-          <input id="tb-nick" className={inputClass} value={nick} maxLength={20} placeholder="Invité" onChange={(e) => setNick(e.target.value)} />
+          <input id="tb-nick" className={inputClass} value={nick} maxLength={20} placeholder={t('tb.nick.ph')} onChange={(e) => setNick(e.target.value)} />
         </div>
       )}
 
@@ -153,22 +158,22 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Panel className="p-5">
-          <h2 className="font-display text-xl text-ivory-50">Contre l’ordinateur</h2>
-          <p className="mt-1 text-sm text-ivory-200/85">Une partie contre l’ordinateur, sans enjeu, avec conseils de placement.</p>
+          <h2 className="font-display text-xl text-ivory-50">{t('tb.vs.cpu')}</h2>
+          <p className="mt-1 text-sm text-ivory-200/85">{t('tb.vs.cpu.text')}</p>
           <div className="mt-3">
-            <Segmented value={level} options={LEVELS.map((l) => l.id)} format={(id) => levelLabel(id)} onChange={setLevel} label="Niveau de l’adversaire" />
+            <Segmented value={level} options={LEVELS.map((l) => l.id)} format={(id) => t(`tb.level.${id}` as Key)} onChange={setLevel} label={t('tb.level.aria')} />
           </div>
-          <p className="mt-2 min-h-[2.5rem] text-xs text-ivory-300/80">{LEVELS.find((l) => l.id === level)?.text}</p>
+          <p className="mt-2 min-h-[2.5rem] text-xs text-ivory-300/80">{t(`tb.level.${level}.text` as Key)}</p>
           <Button className="mt-3 w-full" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'training', level, variant, nickname }))}>
-            Lancer l’entraînement
+            {t('tb.start.cpu')}
           </Button>
         </Panel>
 
         <Panel className="p-5">
-          <h2 className="font-display text-xl text-ivory-50">Contre un humain</h2>
-          <p className="mt-1 text-sm text-ivory-200/85">Partie privée : envoyez un code ou un lien à un ami. Aucune incidence sur un classement.</p>
+          <h2 className="font-display text-xl text-ivory-50">{t('tb.vs.human')}</h2>
+          <p className="mt-1 text-sm text-ivory-200/85">{t('tb.vs.human.text')}</p>
           <Button className="mt-3 w-full" variant="secondary" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'friendly', variant, nickname }))}>
-            Créer une partie privée
+            {t('tb.create.friendly')}
           </Button>
           <form
             className="mt-3 flex gap-2"
@@ -178,48 +183,48 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
             }}
           >
             <label htmlFor="tb-code" className="sr-only">
-              Code de la partie
+              {t('tb.code.label')}
             </label>
             <input id="tb-code" className={inputClass} value={code} placeholder="TB-XXXX" maxLength={8} autoCapitalize="characters" onChange={(e) => setCode(e.target.value.toUpperCase())} />
             <Button type="submit" disabled={busy || !code.trim()}>
-              Rejoindre
+              {t('tb.join')}
             </Button>
           </form>
         </Panel>
 
         <Panel className="border-dashed p-5 opacity-80">
           <h2 className="font-display text-xl text-ivory-50">
-            Classé <Badge tone="amber">à venir</Badge>
+            {t('tb.ranked')} <Badge tone="amber">{t('tb.soon')}</Badge>
           </h2>
-          <p className="mt-1 text-sm text-ivory-200/85">Affrontements contre de vrais joueurs, points de classement et dix ligues. Disponible à la prochaine étape.</p>
+          <p className="mt-1 text-sm text-ivory-200/85">{t('tb.ranked.text')}</p>
         </Panel>
         <Panel className="border-dashed p-5 opacity-80">
           <h2 className="font-display text-xl text-ivory-50">
-            Tournois <Badge tone="amber">à venir</Badge>
+            {t('tb.tournaments')} <Badge tone="amber">{t('tb.soon')}</Badge>
           </h2>
-          <p className="mt-1 text-sm text-ivory-200/85">Tableaux à élimination ou à points, classement final et récompenses virtuelles.</p>
+          <p className="mt-1 text-sm text-ivory-200/85">{t('tb.tournaments.text')}</p>
         </Panel>
       </div>
 
       {history.length > 0 && (
         <Panel className="p-5">
           <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-xl text-ivory-50">Mes dernières parties</h2>
+            <h2 className="font-display text-xl text-ivory-50">{t('tb.history')}</h2>
             <p className="text-xs text-ivory-300/80">
-              {wins} victoire{wins > 1 ? 's' : ''} sur {history.length}
+              {tp('tb.winsOf', wins, { w: wins, n: history.length })}
             </p>
           </div>
           <ul className="mt-2 divide-y divide-ivory-100/10">
             {history.slice(0, 8).map((h) => (
               <li key={h.code} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="min-w-0 truncate text-ivory-100">
-                  {h.mode === 'training' ? 'Entraînement' : 'Amical'}{h.variant === 'hand5' ? ' · 5 cartes' : ''} · {h.opponent}
+                  {h.mode === 'training' ? t('tb.mode.training') : t('tb.mode.friendly')}{h.variant === 'hand5' ? t('tb.hist.hand5') : ''} · {h.opponentLevel ? cpuName(t, h.opponentLevel) : h.opponent}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="tabular-nums text-ivory-300">
                     {h.score[0]}–{h.score[1]}
                   </span>
-                  <Badge tone={h.outcome === 'win' ? 'green' : h.outcome === 'loss' ? 'red' : 'amber'}>{outcomeWord(h.outcome)}</Badge>
+                  <Badge tone={h.outcome === 'win' ? 'green' : h.outcome === 'loss' ? 'red' : 'amber'}>{t(outcomeKey(h.outcome))}</Badge>
                 </span>
               </li>
             ))}
@@ -233,24 +238,19 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
 }
 
 function HelpModal({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   return (
-    <Modal title="Règles du Tableau" onClose={onClose} wide>
-      <h2 className="font-display text-2xl text-ivory-50">Règles du Tableau</h2>
+    <Modal title={t('tb.help.title')} onClose={onClose} wide>
+      <h2 className="font-display text-2xl text-ivory-50">{t('tb.help.title')}</h2>
       <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-ivory-100">
-        <li>Chaque joueur reçoit 5 cartes (une par colonne) et un paquet personnel de 21 cartes ; aucune carte n’existe en double.</li>
-        <li>À votre tour, la carte du dessus de votre paquet apparaît : vous avez 30 secondes pour la poser dans une colonne qui n’est pas pleine.</li>
-        <li>Le placement est définitif. Passé le délai, la carte est posée automatiquement dans la première colonne libre.</li>
-        <li>Il y a 20 places libres pour 21 cartes : on ne défausse jamais, et la dernière carte du paquet n’est pas jouée.</li>
-        <li>À la fin, les colonnes se comparent deux à deux (I contre I, II contre II…). Trois colonnes gagnées font gagner la partie ; 2–2 avec une égalité est un match nul.</li>
-        <li>Les couleurs de cartes ne départagent jamais deux mains égales.</li>
-        <li>
-          <strong>Tableau 5 cartes</strong> : les colonnes sont vides et chacun reçoit 5 cartes en main. À chaque tour, vous piochez, puis vous posez soit la carte piochée, soit une carte de votre main (la piochée la remplace alors). Quand il ne reste plus qu’une carte au paquet, plus personne ne pioche : chacun termine ses colonnes avec sa main.
-        </li>
+        {(['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7'] as const).map((r) => (
+          <li key={r}>{t(`tb.help.${r}` as Key)}</li>
+        ))}
       </ul>
-      <h3 className="mt-4 font-display text-lg text-ivory-50">Les dix combinaisons, de la plus faible à la plus forte</h3>
+      <h3 className="mt-4 font-display text-lg text-ivory-50">{t('tb.help.combos')}</h3>
       <ol className="mt-2 space-y-2">
         {COMBOS.map((c, i) => (
-          <li key={c.name} className="flex items-center gap-3 rounded-xl bg-ink-900/60 p-2">
+          <li key={c.example} className="flex items-center gap-3 rounded-xl bg-ink-900/60 p-2">
             <span className="w-5 shrink-0 text-center text-xs text-ivory-300/70">{i + 1}</span>
             <span className="flex shrink-0 gap-0.5" aria-hidden="true">
               {c.example.split(' ').map((k) => (
@@ -258,14 +258,14 @@ function HelpModal({ onClose }: { onClose: () => void }) {
               ))}
             </span>
             <span className="min-w-0 text-sm">
-              <span className="block font-semibold text-gold-300">{c.name}</span>
-              <span className="block text-xs text-ivory-200/85">{c.text}</span>
+              <span className="block font-semibold text-gold-300">{t(`tb.combo.${i}` as Key)}</span>
+              <span className="block text-xs text-ivory-200/85">{t(`tb.combo.${i}.text` as Key)}</span>
             </span>
           </li>
         ))}
       </ol>
       <Button className="mt-4 w-full" onClick={onClose}>
-        Fermer
+        {t('common.close')}
       </Button>
     </Modal>
   );
@@ -275,6 +275,8 @@ function HelpModal({ onClose }: { onClose: () => void }) {
 // Partie
 
 function GameScreen({ client, initial, onExit }: { client: AccountClient; initial: TbGameDto; onExit: () => void }) {
+  const i18n = useI18n();
+  const { t, tp } = i18n;
   const { fourColor, cardBack, sound } = useSettings();
   const snd = useSound(sound);
   const [dto, setDto] = useState(initial);
@@ -285,7 +287,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
   const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [advice, setAdvice] = useState<{ col: number; text: string } | null>(null);
+  const [advice, setAdvice] = useState<{ col: number; card: string; kind: 'improve' | 'empty' | 'dump'; after: ColumnHand | null; afterCodes: string[]; fromHand: boolean } | null>(null);
   const [confirm, setConfirm] = useState(() => (readStore(CONFIRM_KEY) ? readStore(CONFIRM_KEY) === '1' : typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches));
   const [leaving, setLeaving] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -314,7 +316,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       client
         .tbGet(dto.code)
         .then((d) => !off && apply(d))
-        .catch((e) => !off && setError(errText(e)));
+        .catch((e) => !off && setError(errorText(i18n, e)));
     const id = setInterval(poll, myTurn ? 2500 : 1000);
     return () => {
       off = true;
@@ -369,7 +371,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       setPicked(null);
       setAdvice(null);
     } catch (e) {
-      setError(errText(e));
+      setError(errorText(i18n, e));
       snd.play('error');
       client.tbGet(dto.code).then(apply).catch(() => undefined);
     } finally {
@@ -397,9 +399,9 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
     const url = inviteUrl(dto.code);
     return (
       <Panel className="mx-auto max-w-md p-6 text-center">
-        <Eyebrow>Partie amicale · {variantLabel(dto.variant)}</Eyebrow>
-        <h1 className="mt-1 font-display text-2xl text-ivory-50">En attente de votre ami</h1>
-        <p className="mt-3 text-sm text-ivory-200/90">Envoyez-lui ce code, ou le lien d’invitation :</p>
+        <Eyebrow>{t('tb.wait.eyebrow', { variant: t(`tb.variant.${dto.variant}` as Key) })}</Eyebrow>
+        <h1 className="mt-1 font-display text-2xl text-ivory-50">{t('tb.wait.title')}</h1>
+        <p className="mt-3 text-sm text-ivory-200/90">{t('tb.wait.send')}</p>
         <p className="my-3 font-display text-4xl tracking-[0.2em] text-gold-300" data-testid="tb-code">
           {dto.code}
         </p>
@@ -410,17 +412,17 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
               void navigator.clipboard?.writeText(url).then(() => setCopied(true)).catch(() => undefined);
             }}
           >
-            {copied ? 'Lien copié' : 'Copier le lien'}
+            {copied ? t('tb.wait.copied') : t('tb.wait.copy')}
           </Button>
           {typeof navigator !== 'undefined' && 'share' in navigator && (
-            <Button variant="secondary" onClick={() => void navigator.share({ title: 'Le Tableau', text: `Rejoins ma partie du Tableau : ${dto.code}`, url }).catch(() => undefined)}>
-              Partager
+            <Button variant="secondary" onClick={() => void navigator.share({ title: t('tb.title'), text: t('tb.wait.shareText', { code: dto.code }), url }).catch(() => undefined)}>
+              {t('tb.wait.share')}
             </Button>
           )}
         </div>
-        <p className="mt-3 text-xs text-ivory-300/80">La partie démarre dès l’arrivée de votre ami. Elle est conservée une heure.</p>
+        <p className="mt-3 text-xs text-ivory-300/80">{t('tb.wait.note')}</p>
         <Button variant="ghost" className="mt-3" onClick={() => void leave()}>
-          Annuler la partie
+          {t('tb.wait.cancel')}
         </Button>
         {error && <p role="alert" className="mt-2 text-sm text-ruby-300">{error}</p>}
       </Panel>
@@ -436,49 +438,50 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
   const theirScore = you === 0 ? score[1] : score[0];
   const lastMove = dto.lastMove;
   const outcome = dto.winner === null ? 'draw' : dto.winner === you ? 'win' : 'loss';
+  const oppName = opponent?.kind === 'cpu' ? cpuName(t, opponent.level) : (opponent?.nickname ?? t('tb.opponent'));
 
   return (
     <div className="space-y-3">
       <p className="sr-only" role="status" aria-live="polite">
-        {announce(dto)}
+        {announce(dto, t)}
       </p>
 
       {/* Adversaire */}
-      <PlayerBar name={opponent?.nickname ?? 'Adversaire'} avatar={opponent?.avatar ?? null} badge={`${opponent?.kind === 'cpu' ? `Niveau ${levelLabel(opponent.level)}` : 'Ami · partie amicale'}${hand5 ? ` · main ${view.handCount[opp]}` : ''}`} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
+      <PlayerBar name={oppName} avatar={opponent?.avatar ?? null} badge={`${opponent?.kind === 'cpu' ? t('tb.badge.level', { level: t(`tb.level.${opponent.level ?? 'intermediate'}` as Key) }) : t('tb.badge.friend')}${hand5 ? t('tb.badge.hand', { n: view.handCount[opp] }) : ''}`} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
 
-      <Board dto={dto} seat={opp} side="theirs" look={look} owner={opponent?.nickname ?? 'Adversaire'} selectable={false} pending={null} onPick={() => undefined} />
+      <Board dto={dto} seat={opp} side="theirs" look={look} owner={oppName} selectable={false} pending={null} onPick={() => undefined} />
 
       {/* Bande centrale */}
       <div className="rounded-2xl border border-gold-500/25 bg-felt-900/70 p-3">
         <VerdictRow verdicts={dto.verdicts} you={you} final={finished} />
         {!finished ? (
           <div className="mt-3 flex items-center justify-center gap-4">
-            {dto.deadline !== null && myTurn ? <CountdownRing secondsLeft={left} total={dto.turnMs / 1000} label="Temps pour placer votre carte" /> : <span className="w-14" aria-hidden="true" />}
+            {dto.deadline !== null && myTurn ? <CountdownRing secondsLeft={left} total={dto.turnMs / 1000} label={t('tb.timeLeft')} /> : <span className="w-14" aria-hidden="true" />}
             <div className="flex min-h-[7.2rem] min-w-[5.5rem] items-center justify-center" data-testid="tb-drawn">
               {myTurn && view.yourCard ? (
-                <PlayingCard code={view.yourCard} size="lg" fourColor={fourColor} highlight selected={pending !== null} hint="Carte à placer" />
+                <PlayingCard code={view.yourCard} size="lg" fourColor={fourColor} highlight selected={pending !== null} hint={t('tb.drawnCard')} />
               ) : (
                 <PlayingCard code={null} size="lg" back={cardBack} dimmed />
               )}
             </div>
             <div className="w-28 text-sm leading-snug text-ivory-100" aria-live="polite">
               {dto.paused ? (
-                <span className="text-amber-200">Partie en pause. Jouez pour reprendre.</span>
+                <span className="text-amber-200">{t('tb.paused')}</span>
               ) : myTurn ? (
-                <span className="font-semibold text-gold-200">{hand5 ? 'Choisissez une carte (piochée ou en main), puis une colonne.' : confirm ? 'Touchez une colonne, puis confirmez.' : 'Touchez une colonne pour poser la carte.'}</span>
+                <span className="font-semibold text-gold-200">{hand5 ? t('tb.turn.hand5') : confirm ? t('tb.turn.confirm') : t('tb.turn.tap')}</span>
               ) : (
-                <span className="text-ivory-300">{opponent?.kind === 'cpu' ? `${opponent.nickname.split(' ')[0]} réfléchit…` : 'Votre adversaire joue…'}</span>
+                <span className="text-ivory-300">{opponent?.kind === 'cpu' ? t('tb.thinks', { name: oppName }) : t('tb.oppPlays')}</span>
               )}
             </div>
           </div>
         ) : (
-          <p className="mt-2 text-center text-sm text-ivory-200">Partie terminée</p>
+          <p className="mt-2 text-center text-sm text-ivory-200">{t('tb.over')}</p>
         )}
         {myTurn && (
           <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
             {pending !== null && (
               <Button disabled={busy} onClick={() => void place(pending)}>
-                Poser en colonne {ROMAN[pending]}
+                {t('tb.placeIn', { c: ROMAN[pending]! })}
               </Button>
             )}
             {dto.mode === 'training' && (
@@ -489,20 +492,20 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
                   void client
                     .tbAdvice(dto.code)
                     .then((a) => {
-                      setAdvice(a);
+                      setAdvice({ col: a.col, card: a.card, kind: a.kind, after: a.after, afterCodes: [...(view.columns[you]![a.col] ?? []), a.card], fromHand: view.hand.includes(a.card) });
                       if (hand5) setPicked(a.card);
                     })
-                    .catch((e) => setError(errText(e)))
+                    .catch((e) => setError(errorText(i18n, e)))
                 }
               >
-                Conseil
+                {t('tb.advice')}
               </Button>
             )}
           </div>
         )}
         {advice && (
           <p className="mt-2 rounded-xl bg-gold-500/15 px-3 py-2 text-center text-sm text-gold-100" role="note">
-            {advice.text}
+            {adviceText(i18n, advice, advice.fromHand)}
           </p>
         )}
         {error && (
@@ -510,49 +513,49 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
             {error}
           </p>
         )}
-        {lastMove?.auto && !finished && <p className="mt-2 text-center text-xs text-amber-200">Délai dépassé : la dernière carte de {lastMove.seat === you ? 'votre côté' : 'l’adversaire'} a été posée automatiquement.</p>}
+        {lastMove?.auto && !finished && <p className="mt-2 text-center text-xs text-amber-200">{lastMove.seat === you ? t('tb.auto.me') : t('tb.auto.opp')}</p>}
       </div>
 
       {/* Vous */}
-      <Board dto={dto} seat={you} side="mine" look={look} owner="Vous" selectable={myTurn && !busy} pending={pending} onPick={(c) => void place(c)} />
+      <Board dto={dto} seat={you} side="mine" look={look} owner={t('tb.you')} selectable={myTurn && !busy} pending={pending} onPick={(c) => void place(c)} />
       {hand5 && (
         <div className="rounded-2xl border border-gold-500/25 bg-ink-800/70 p-2" data-testid="tb-hand">
           <p className="mb-1 text-center text-xs text-ivory-300/85">
-            Votre main{view.pile[you] === 0 ? ' · plus de pioche : terminez vos colonnes avec ces cartes' : ` · ${view.pile[you]} pioche${view.pile[you] > 1 ? 's' : ''} restante${view.pile[you] > 1 ? 's' : ''}`}
+            {view.pile[you] === 0 ? t('tb.hand.title.noPile') : tp('tb.hand.title.pile', view.pile[you])}
           </p>
           <div className="flex justify-center gap-1.5 sm:gap-2">
             {view.hand.map((c) => (
-              <PlayingCard key={c} code={c} size="md" fourColor={fourColor} selected={myTurn && card === c} disabled={!myTurn} onClick={myTurn ? () => { setPicked(c); setPending(null); } : undefined} hint="Carte de votre main" />
+              <PlayingCard key={c} code={c} size="md" fourColor={fourColor} selected={myTurn && card === c} disabled={!myTurn} onClick={myTurn ? () => { setPicked(c); setPending(null); } : undefined} hint={t('tb.handCard')} />
             ))}
           </div>
         </div>
       )}
-      <PlayerBar name={mine?.nickname ?? 'Vous'} avatar={mine?.avatar ?? null} badge="Vous" remaining={view.remaining[you]} score={myScore} active={myTurn} />
+      <PlayerBar name={mine?.nickname ?? t('tb.you')} avatar={mine?.avatar ?? null} badge={t('tb.you')} remaining={view.remaining[you]} score={myScore} active={myTurn} />
 
       {finished ? (
-        <Finished dto={dto} outcome={outcome} onExit={onExit} onAgain={dto.mode === 'training' ? () => client.tbCreate({ mode: 'training', level: (dto.players[opp]?.level ?? 'intermediate') as AiLevel, variant: dto.variant }).then((d) => { latest.current = d; skew.current = clockSkew(d); seenPly.current = 0; setDto(d); setError(''); }).catch((e) => setError(errText(e))) : undefined} />
+        <Finished dto={dto} outcome={outcome} oppName={oppName} onExit={onExit} onAgain={dto.mode === 'training' ? () => client.tbCreate({ mode: 'training', level: (dto.players[opp]?.level ?? 'intermediate') as AiLevel, variant: dto.variant }).then((d) => { latest.current = d; skew.current = clockSkew(d); seenPly.current = 0; setDto(d); setError(''); }).catch((e) => setError(errorText(i18n, e))) : undefined} />
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <label className="flex items-center gap-2 text-xs text-ivory-200">
             <input type="checkbox" checked={confirm} onChange={(e) => toggleConfirm(e.target.checked)} className="h-4 w-4 accent-[#c9a25a]" />
-            Confirmer chaque placement
+            {t('tb.confirm')}
           </label>
           <Button variant="ghost" onClick={() => setLeaving(true)}>
-            Quitter la partie
+            {t('tb.quit')}
           </Button>
         </div>
       )}
 
       {leaving && (
-        <Modal title="Quitter la partie" onClose={() => setLeaving(false)}>
-          <h2 className="font-display text-xl text-ivory-50">Quitter la partie ?</h2>
-          <p className="mt-2 text-sm text-ivory-200">{dto.mode === 'friendly' ? 'La partie amicale sera perdue par forfait.' : 'La partie d’entraînement sera abandonnée, sans conséquence.'}</p>
+        <Modal title={t('tb.quit')} onClose={() => setLeaving(false)}>
+          <h2 className="font-display text-xl text-ivory-50">{t('tb.quit.title')}</h2>
+          <p className="mt-2 text-sm text-ivory-200">{dto.mode === 'friendly' ? t('tb.quit.friendly') : t('tb.quit.training')}</p>
           <div className="mt-4 flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setLeaving(false)}>
-              Continuer
+              {t('tb.quit.continue')}
             </Button>
             <Button className="flex-1" onClick={() => void leave()}>
-              Quitter
+              {t('tb.quit.confirm')}
             </Button>
           </div>
         </Modal>
@@ -562,6 +565,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
 }
 
 function PlayerBar({ name, avatar, badge, remaining, score, active }: { name: string; avatar: string | null; badge: string; remaining: number; score: number; active: boolean }) {
+  const { t } = useI18n();
   return (
     <div className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 ${active ? 'border-gold-400/70 bg-gold-500/10' : 'border-ivory-100/10 bg-ink-800/70'}`}>
       <div className="flex min-w-0 items-center gap-2">
@@ -573,13 +577,13 @@ function PlayerBar({ name, avatar, badge, remaining, score, active }: { name: st
       </div>
       <dl className="flex shrink-0 gap-4 text-center">
         <div>
-          <dt className="text-[10px] text-ivory-300/80">Cartes à jouer</dt>
+          <dt className="text-[10px] text-ivory-300/80">{t('tb.remaining')}</dt>
           <dd className="font-display text-lg tabular-nums text-ivory-50" data-testid="tb-remaining">
             {remaining}
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] text-ivory-300/80">Colonnes</dt>
+          <dt className="text-[10px] text-ivory-300/80">{t('tb.columns')}</dt>
           <dd className="font-display text-lg tabular-nums text-gold-300">{score}</dd>
         </div>
       </dl>
@@ -588,9 +592,9 @@ function PlayerBar({ name, avatar, badge, remaining, score, active }: { name: st
 }
 
 function Board({ dto, seat, side, look, owner, selectable, pending, onPick }: { dto: TbGameDto; seat: 0 | 1; side: 'mine' | 'theirs'; look: { fourColor: boolean; back: 'losange' | 'rayures' | 'etoile' }; owner: string; selectable: boolean; pending: number | null; onPick: (c: number) => void }) {
+  const i18n = useI18n();
   const view = dto.view!;
   const cols = view.columns[seat]!;
-  const labels = dto.labels?.[seat] ?? [];
   const finished = dto.status === 'finished';
   return (
     <div className="grid grid-cols-5 gap-1 sm:gap-2" data-testid={`tb-board-${side}`}>
@@ -600,7 +604,7 @@ function Board({ dto, seat, side, look, owner, selectable, pending, onPick }: { 
           index={i}
           side={side}
           cards={cards}
-          label={labels[i] ?? ''}
+          label={columnLabel(i18n, cards, dto.made?.[seat]?.[i])}
           fresh={dto.lastMove?.seat === seat && dto.lastMove.col === i}
           selectable={selectable && view.legal.includes(i)}
           pending={pending === i}
@@ -614,7 +618,8 @@ function Board({ dto, seat, side, look, owner, selectable, pending, onPick }: { 
   );
 }
 
-function Finished({ dto, outcome, onExit, onAgain }: { dto: TbGameDto; outcome: 'win' | 'loss' | 'draw'; onExit: () => void; onAgain?: () => void }) {
+function Finished({ dto, outcome, oppName, onExit, onAgain }: { dto: TbGameDto; outcome: 'win' | 'loss' | 'draw'; oppName: string; onExit: () => void; onAgain?: () => void }) {
+  const { t, tp } = useI18n();
   const you = dto.you;
   const r = dto.result;
   const [check, setCheck] = useState<'idle' | 'ok' | 'ko' | 'na'>('idle');
@@ -631,41 +636,41 @@ function Finished({ dto, outcome, onExit, onAgain }: { dto: TbGameDto; outcome: 
   const mine = r ? r.score[you] : dto.forfeit === you ? 0 : 3;
   const theirs = r ? r.score[(1 - you) as 0 | 1] : dto.forfeit === you ? 3 : 0;
   return (
-    <section className="relative space-y-3 rounded-3xl border border-gold-500/40 bg-ink-800/90 p-4" aria-label="Résultat de la partie">
+    <section className="relative space-y-3 rounded-3xl border border-gold-500/40 bg-ink-800/90 p-4" aria-label={t('tb.fin.aria')}>
       {outcome === 'win' && <CoinRain />}
       <div className="text-center">
-        <Eyebrow>Fin de partie</Eyebrow>
+        <Eyebrow>{t('tb.fin.eyebrow')}</Eyebrow>
         <h2 className="mt-1 font-display text-3xl text-ivory-50" data-testid="tb-outcome">
-          {outcome === 'win' ? 'Victoire' : outcome === 'loss' ? 'Défaite' : 'Match nul'}
+          {outcome === 'win' ? t('tb.fin.win') : outcome === 'loss' ? t('tb.fin.loss') : t('tb.fin.draw')}
         </h2>
         <p className="mt-1 text-lg tabular-nums text-gold-300">
           {mine} – {theirs}
-          {r && r.ties > 0 ? <span className="ml-2 text-sm text-ivory-300">({r.ties} égalité{r.ties > 1 ? 's' : ''})</span> : null}
+          {r && r.ties > 0 ? <span className="ml-2 text-sm text-ivory-300">{tp('tb.fin.ties', r.ties)}</span> : null}
         </p>
-        {dto.forfeit !== null && <p className="mt-1 text-sm text-ivory-200">{dto.forfeit === you ? 'Vous avez abandonné la partie.' : 'Votre adversaire a quitté la partie.'}</p>}
+        {dto.forfeit !== null && <p className="mt-1 text-sm text-ivory-200">{dto.forfeit === you ? t('tb.fin.youForfeit') : t('tb.fin.oppForfeit')}</p>}
       </div>
-      <ResultsTable dto={dto} />
+      <ResultsTable dto={dto} opponentName={oppName} />
       <details className="rounded-xl bg-ink-900/60 p-3 text-xs text-ivory-200">
-        <summary className="cursor-pointer font-semibold text-ivory-100">Vérifier l’équité du mélange</summary>
-        <p className="mt-2">Avant la première carte, le serveur a publié l’empreinte de sa graine aléatoire. La graine est maintenant révélée : vous pouvez contrôler qu’elle correspond, et recalculer l’ordre des 52 cartes.</p>
-        <p className="mt-2 break-all">Empreinte publiée : <code>{dto.commitment}</code></p>
-        <p className="mt-1 break-all">Graine : <code>{dto.reveal?.seed}</code></p>
-        <p className="mt-1 break-all">Ordre : <code>{dto.reveal?.order.join(' ')}</code></p>
+        <summary className="cursor-pointer font-semibold text-ivory-100">{t('tb.fair.summary')}</summary>
+        <p className="mt-2">{t('tb.fair.intro')}</p>
+        <p className="mt-2 break-all">{t('tb.fair.commit')} <code>{dto.commitment}</code></p>
+        <p className="mt-1 break-all">{t('tb.fair.seed')} <code>{dto.reveal?.seed}</code></p>
+        <p className="mt-1 break-all">{t('tb.fair.order')} <code>{dto.reveal?.order.join(' ')}</code></p>
         <Button variant="secondary" className="mt-2" onClick={() => void verify()}>
-          Contrôler l’empreinte
+          {t('tb.fair.check')}
         </Button>
-        {check === 'ok' && <p className="mt-1 text-jade-300" role="status">Conforme : la graine correspond à l’empreinte publiée avant la partie.</p>}
-        {check === 'ko' && <p className="mt-1 text-ruby-300" role="alert">Non conforme.</p>}
-        {check === 'na' && <p className="mt-1 text-amber-200" role="status">Contrôle indisponible sur ce navigateur.</p>}
+        {check === 'ok' && <p className="mt-1 text-jade-300" role="status">{t('tb.fair.ok')}</p>}
+        {check === 'ko' && <p className="mt-1 text-ruby-300" role="alert">{t('tb.fair.ko')}</p>}
+        {check === 'na' && <p className="mt-1 text-amber-200" role="status">{t('tb.fair.na')}</p>}
       </details>
       <div className="flex flex-col gap-2 sm:flex-row">
         {onAgain && (
           <Button className="flex-1" onClick={() => void onAgain()}>
-            Rejouer
+            {t('tb.again')}
           </Button>
         )}
         <Button variant="secondary" className="flex-1" onClick={onExit}>
-          Retour au menu
+          {t('tb.toMenu')}
         </Button>
       </div>
     </section>

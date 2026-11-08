@@ -3,34 +3,25 @@
  * (distribution, tours, délais, résultats) ; le navigateur n'embarque ni le moteur ni les cartes cachées.
  */
 import type { AiLevel, TableauVariant, TbGameDto } from './types';
+import { fr, type Key } from '../i18n/fr';
 
-export const VARIANT_OPTIONS: readonly { id: TableauVariant; label: string; text: string }[] = [
-  { id: 'classic', label: 'Le Tableau', text: 'Une carte de départ par colonne, puis vous posez chaque carte piochée.' },
-  { id: 'hand5', label: 'Tableau 5 cartes', text: 'Colonnes vides et 5 cartes en main : à chaque tour, posez la carte piochée ou une carte de votre main. À la fin du paquet, la main termine vos colonnes.' },
-];
-export const variantLabel = (v: TableauVariant): string => VARIANT_OPTIONS.find((x) => x.id === v)?.label ?? '';
-
-export const LEVELS: readonly { id: AiLevel; label: string; text: string }[] = [
-  { id: 'beginner', label: 'Débutant', text: 'Joue simplement et se trompe parfois : idéal pour découvrir les combinaisons.' },
-  { id: 'intermediate', label: 'Intermédiaire', text: 'Construit des paires, brelans et tirages en tenant compte des cartes déjà sorties.' },
-  { id: 'expert', label: 'Expert', text: 'Simule des centaines de fins de partie pour viser au moins trois colonnes.' },
-];
-export const levelLabel = (l: AiLevel | null): string => LEVELS.find((x) => x.id === l)?.label ?? '';
+export const VARIANT_OPTIONS: readonly { id: TableauVariant }[] = [{ id: 'classic' }, { id: 'hand5' }];
+export const LEVELS: readonly { id: AiLevel }[] = [{ id: 'beginner' }, { id: 'intermediate' }, { id: 'expert' }];
 
 export const ROMAN = ['I', 'II', 'III', 'IV', 'V'] as const;
 
-/** Aide-mémoire des dix combinaisons, de la plus faible à la plus forte. */
-export const COMBOS: readonly { name: string; example: string; text: string }[] = [
-  { name: 'Carte haute', example: 'As Kd 9h 6c 3s', text: 'Aucune combinaison : la carte la plus haute décide.' },
-  { name: 'Paire', example: '8h 8d As 5c 2s', text: 'Deux cartes de même valeur.' },
-  { name: 'Double paire', example: 'Kh Kd 4s 4c 9d', text: 'Deux paires différentes.' },
-  { name: 'Brelan', example: '7h 7d 7s Kc 2d', text: 'Trois cartes de même valeur.' },
-  { name: 'Quinte', example: '5h 6d 7s 8c 9d', text: 'Cinq valeurs qui se suivent. L’As compte haut ou bas (A-2-3-4-5).' },
-  { name: 'Couleur', example: 'Ah 9h 7h 4h 2h', text: 'Cinq cartes de la même couleur.' },
-  { name: 'Full', example: 'Qh Qd Qs 3c 3d', text: 'Un brelan et une paire.' },
-  { name: 'Carré', example: '9h 9d 9s 9c Kd', text: 'Quatre cartes de même valeur.' },
-  { name: 'Quinte flush', example: '4h 5h 6h 7h 8h', text: 'Une quinte, toutes de la même couleur.' },
-  { name: 'Quinte flush royale', example: 'Th Jh Qh Kh Ah', text: 'De la quinte flush la plus haute : du 10 à l’As.' },
+/** Exemples d'aide-mémoire des dix combinaisons, de la plus faible à la plus forte (les noms sont traduits : clés `tb.combo.N`). */
+export const COMBOS: readonly { example: string }[] = [
+  { example: 'As Kd 9h 6c 3s' },
+  { example: '8h 8d As 5c 2s' },
+  { example: 'Kh Kd 4s 4c 9d' },
+  { example: '7h 7d 7s Kc 2d' },
+  { example: '5h 6d 7s 8c 9d' },
+  { example: 'Ah 9h 7h 4h 2h' },
+  { example: 'Qh Qd Qs 3c 3d' },
+  { example: '9h 9d 9s 9c Kd' },
+  { example: '4h 5h 6h 7h 8h' },
+  { example: 'Th Jh Qh Kh Ah' },
 ];
 
 /** Décalage entre l'horloge du serveur et celle du navigateur, mesuré à la réception d'une réponse. */
@@ -43,18 +34,18 @@ export function secondsLeft(dto: Pick<TbGameDto, 'deadline'>, skew: number, loca
   return Math.max(0, (dto.deadline - (localNow + skew)) / 1000);
 }
 
-/** Texte annoncé aux lecteurs d'écran à chaque changement de situation. */
-export function announce(dto: TbGameDto): string {
-  if (dto.status === 'waiting') return 'En attente de votre adversaire.';
+/** Texte annoncé aux lecteurs d'écran à chaque changement de situation (français par défaut). */
+export function announce(dto: TbGameDto, t: (key: Key) => string = (k) => fr[k]): string {
+  if (dto.status === 'waiting') return t('tb.say.waiting');
   if (dto.status === 'finished') {
-    if (dto.winner === null) return 'Partie terminée : match nul.';
-    return dto.winner === dto.you ? 'Partie terminée : vous avez gagné.' : 'Partie terminée : vous avez perdu.';
+    if (dto.winner === null) return t('tb.say.draw');
+    return dto.winner === dto.you ? t('tb.say.won') : t('tb.say.lost');
   }
-  if (dto.paused) return 'Partie en pause.';
-  return dto.view?.turn === dto.you ? 'À vous de jouer.' : 'Tour de votre adversaire.';
+  if (dto.paused) return t('tb.say.paused');
+  return dto.view?.turn === dto.you ? t('tb.say.yourTurn') : t('tb.say.theirTurn');
 }
 
-export const outcomeWord = (o: 'win' | 'loss' | 'draw'): string => (o === 'win' ? 'Victoire' : o === 'loss' ? 'Défaite' : 'Nul');
+export const outcomeKey = (o: 'win' | 'loss' | 'draw'): Key => (o === 'win' ? 'tb.out.win' : o === 'loss' ? 'tb.out.loss' : 'tb.out.draw');
 
 /** Lien d'invitation à une partie amicale. */
 export function inviteUrl(code: string): string {

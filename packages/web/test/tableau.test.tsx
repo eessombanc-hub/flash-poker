@@ -218,7 +218,7 @@ describe('Tableau : de bout en bout', () => {
     expect(within(friendView.container).getByText('Hôte')).toBeInTheDocument();
     // Les cartes cachées de l'autre n'apparaissent jamais : une seule des deux interfaces affiche une carte piochée
     await waitFor(() => {
-      const drawn = [hostView.container, friendView.container].map((c) => !!within(c).getByTestId('tb-drawn').querySelector('[aria-label*="Carte à placer"]'));
+      const drawn = [hostView.container, friendView.container].map((c) => !!within(c).getByTestId('tb-drawn').querySelector('[aria-label*="Carte piochée"]'));
       expect(drawn.filter(Boolean)).toHaveLength(1);
     });
   }, 30000);
@@ -237,7 +237,7 @@ describe('Tableau : de bout en bout', () => {
     await user.click(screen.getByRole('button', { name: 'Lancer l’entraînement' }));
     const hand = await screen.findByTestId('tb-hand');
     expect(within(hand).queryAllByRole('img').length + within(hand).queryAllByRole('button').length).toBe(5);
-    expect(screen.getAllByTestId('tb-remaining')[1]!.textContent).toBe('25');
+    expect(screen.getAllByTestId('tb-remaining')[1]!.textContent).toBe('20');
     const mine = screen.getByTestId('tb-board-mine');
     const stop = Date.now() + 90_000;
     let n = 0;

@@ -352,7 +352,9 @@ export interface TableauAdvice {
   col: number;
   /** Carte à jouer (utile dans la variante 5 cartes). */
   card: string;
-  /** Phrase d'explication en français. */
+  /** Nature du conseil : la colonne s'améliore, la colonne était vide, ou la carte est « sacrifiée ». */
+  kind: 'improve' | 'empty' | 'dump';
+  /** Phrase d'explication en français (les interfaces localisées composent la leur à partir de `kind`). */
   text: string;
 }
 
@@ -371,7 +373,7 @@ export function adviseColumn(view: TableauView): TableauAdvice {
     : before.length === 0
       ? `Placez le ${name}${fromHand} en colonne ${col + 1} : c’est une colonne encore vide.`
       : `Le ${name}${fromHand} n’améliore aucune colonne : posez-le en colonne ${col + 1}, votre colonne la plus faible, pour garder vos meilleures colonnes intactes.`;
-  return { col, card, text };
+  return { col, card, kind: gain ? 'improve' : before.length === 0 ? 'empty' : 'dump', text };
 }
 
 /** Commentaire après un placement : ce que la carte a changé dans la colonne. */

@@ -12,16 +12,17 @@ function playAuto(seed: string): TableauGame {
 }
 
 describe('Tableau 5 cartes — règles', () => {
-  it('départ : colonnes vides, 5 cartes en main, pioche de 21 dont 20 jouables', () => {
+  it('départ : une carte ouvre chaque colonne, 5 cartes en main, pioche de 16 dont 15 jouables', () => {
     const g = new TableauGame(SEED, 'hand5');
     for (const s of [0, 1] as const) {
-      expect(g.columnsOf(s).every((c) => c.length === 0)).toBe(true);
-      expect(g.handOf(s)).toEqual(g.deal.initial[s]);
+      expect(g.columnsOf(s).map((c) => c[0])).toEqual(g.deal.initial[s]);
+      expect(g.columnsOf(s).every((c) => c.length === 1)).toBe(true);
+      expect(g.handOf(s)).toEqual(g.deal.deck[s]!.slice(0, 5));
     }
     const v = g.view(g.turn!);
     expect(v.variant).toBe('hand5');
-    expect(v.remaining).toEqual([25, 25]);
-    expect(v.pile).toEqual([20, 20]);
+    expect(v.remaining).toEqual([20, 20]);
+    expect(v.pile).toEqual([15, 15]);
     expect(v.handCount).toEqual([5, 5]);
     expect(v.hand).toHaveLength(5);
   });
@@ -33,7 +34,7 @@ describe('Tableau 5 cartes — règles', () => {
     const inHand = g.handOf(s)[2]!;
     expect(g.options(s)).toEqual([drawn, ...g.handOf(s)]);
     g.place(s, 0, false, inHand);
-    expect(g.columnsOf(s)[0]).toEqual([inHand]);
+    expect(g.columnsOf(s)[0]).toEqual([g.deal.initial[s][0], inHand]);
     expect(g.handOf(s)).toContain(drawn);
     expect(g.handOf(s)).not.toContain(inHand);
     expect(g.handOf(s)).toHaveLength(5);
@@ -43,7 +44,7 @@ describe('Tableau 5 cartes — règles', () => {
     const d = g.drawn(t)!;
     g.place(t, 1, false, d);
     expect(g.handOf(t)).toEqual(hand);
-    expect(g.columnsOf(t)[1]).toEqual([d]);
+    expect(g.columnsOf(t)[1]).toEqual([g.deal.initial[t][1], d]);
   });
 
   it('carte inconnue ou déjà jouée : refusée ; l’adversaire ne joue pas votre main', () => {
@@ -58,14 +59,15 @@ describe('Tableau 5 cartes — règles', () => {
     expect(() => g.place(s, 1, false, played)).toThrow(/jouable/);
   });
 
-  it('partie complète : 50 coups, 20 pioches puis 5 cartes de la main, cinq colonnes pleines, 21e carte jamais jouée', () => {
+  it('partie complète : 40 coups, 15 pioches puis 5 cartes de la main, cinq colonnes pleines, 16e carte jamais jouée', () => {
     const g = playAuto(SEED);
-    expect(g.ply).toBe(50);
-    expect(g.placed).toEqual([25, 25]);
+    expect(g.ply).toBe(40);
+    expect(g.placed).toEqual([20, 20]);
     for (const s of [0, 1] as const) {
       expect(g.columnsOf(s).every((c) => c.length === 5)).toBe(true);
       expect(g.handOf(s)).toHaveLength(0);
       expect(g.columnsOf(s).flat()).not.toContain(g.deal.deck[s]![20]);
+      expect(g.columnsOf(s).flat()).not.toContain(g.deal.deck[s]![15 + 5]);
     }
     const all = [0, 1].flatMap((s) => g.columnsOf(s as Seat).flat());
     expect(new Set(all).size).toBe(50);
@@ -75,11 +77,11 @@ describe('Tableau 5 cartes — règles', () => {
 
   it('dernière carte du paquet : plus de pioche, on joue obligatoirement la main', () => {
     const g = new TableauGame(SEED, 'hand5');
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 30; i++) {
       const s = g.turn!;
       g.place(s, g.autoColumn(s), true, g.autoCard(s));
     }
-    // 20 pioches chacun faites : il reste 1 carte au paquet
+    // 15 pioches chacun faites : il reste 1 carte au paquet
     const s = g.turn!;
     const v = g.view(s);
     expect(v.pile).toEqual([0, 0]);
@@ -88,7 +90,7 @@ describe('Tableau 5 cartes — règles', () => {
     expect(g.options(s)).toEqual(g.handOf(s));
     expect(() => g.place(s, g.legalColumns(s)[0]!, false, g.deal.deck[s]![20])).toThrow(/jouable/);
     while (!g.finished) g.place(g.turn!, g.autoColumn(g.turn!), true, g.autoCard(g.turn!));
-    expect(g.ply).toBe(50);
+    expect(g.ply).toBe(40);
   });
 
   it('la vue adverse ne contient ni la main ni la pioche de l’autre', () => {
@@ -139,7 +141,7 @@ describe('Tableau 5 cartes — IA', () => {
         if (m.card !== g.drawn(s)) fromHand++;
         g.place(s, m.col, false, m.card);
       }
-      expect(g.ply).toBe(50);
+      expect(g.ply).toBe(40);
       expect(COLUMNS).toBe(5);
       expect(fromHand).toBeGreaterThan(0);
     });

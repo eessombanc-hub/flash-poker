@@ -2,7 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
 import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
-import type { AiLevel, TableauVariant, TbGameDto, TbHistoryEntry, TbMode, TbStatus } from './types';
+import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbMode, TbStatus } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
@@ -77,9 +77,9 @@ export class AccountClient {
       /* corps vide */
     }
     if (!res.ok) {
-      const e = (data as { error?: { code?: string; message?: string } } | null)?.error;
+      const e = (data as { error?: { code?: string; message?: string; ruleCode?: string } } | null)?.error;
       if (res.status === 401 && path === '/me') this.forget();
-      throw new ApiError(e?.code ?? 'HTTP', e?.message ?? `Erreur serveur (${res.status})`);
+      throw new ApiError(e?.code ?? 'HTTP', e?.message ?? `Erreur serveur (${res.status})`, (e as { ruleCode?: string } | undefined)?.ruleCode);
     }
     return data as T;
   }
@@ -190,7 +190,7 @@ export class AccountClient {
   tbGet = (code: string) => this.bj<TbGameDto>('GET', `/tableau/games/${encodeURIComponent(code)}`);
   tbJoin = (code: string, nickname?: string) => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/join`, { nickname });
   tbPlace = (code: string, col: number, card?: string) => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/place`, { col, card });
-  tbAdvice = (code: string) => this.bj<{ col: number; card: string; text: string }>('GET', `/tableau/games/${encodeURIComponent(code)}/advice`);
+  tbAdvice = (code: string) => this.bj<{ col: number; card: string; kind: 'improve' | 'empty' | 'dump'; after: ColumnHand | null; text: string }>('GET', `/tableau/games/${encodeURIComponent(code)}/advice`);
   tbLeave = (code: string) => this.bj<{ left: true; forfeit: boolean }>('POST', `/tableau/games/${encodeURIComponent(code)}/leave`, {});
   tbActive = () => this.bj<{ active: { code: string; mode: TbMode; status: TbStatus } | null }>('GET', '/me/tableau/active').then((r) => r.active);
   tbHistory = () => this.bj<{ history: TbHistoryEntry[] }>('GET', '/me/tableau/history').then((r) => r.history);

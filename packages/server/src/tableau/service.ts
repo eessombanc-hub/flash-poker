@@ -100,7 +100,7 @@ export interface TbHistoryEntry {
 }
 
 type Who = { userId: string; nickname: string; avatar: string | null };
-const rule = (m: string): ServerError => new ServerError('RULE', m);
+const rule = (m: string, ruleCode?: string): ServerError => new ServerError('RULE', m, ruleCode);
 
 export class TableauService {
   private readonly cache = new Map<string, { room: Room; game: TableauGame }>();
@@ -270,7 +270,7 @@ export class TableauService {
     const existing = this.activeOf(who.userId);
     if (existing) {
       const r = existing.room;
-      if (r.mode === 'friendly' && r.status === 'playing') throw rule(`Une partie amicale est déjà en cours (${r.code})`);
+      if (r.mode === 'friendly' && r.status === 'playing') throw rule(`Une partie amicale est déjà en cours (${r.code})`, 'TB_FRIENDLY_ACTIVE');
       this.drop(r.code); // entraînement ou salle d'attente non démarrée : remplacée
     }
     const level = req.level ?? 'intermediate';
@@ -299,9 +299,9 @@ export class TableauService {
     const { room, game } = this.load(codeRaw);
     const seat = this.seatOf(room, who.userId);
     if (seat !== null) return this.dto(room, game, seat);
-    if (room.mode !== 'friendly' || room.status !== 'waiting' || room.seats[1]) throw rule('Cette partie n’accepte plus de joueur');
+    if (room.mode !== 'friendly' || room.status !== 'waiting' || room.seats[1]) throw rule('Cette partie n’accepte plus de joueur', 'TB_NOT_JOINABLE');
     const mine = this.activeOf(who.userId);
-    if (mine) throw rule(`Vous avez déjà une partie en cours (${mine.room.code})`);
+    if (mine) throw rule(`Vous avez déjà une partie en cours (${mine.room.code})`, 'TB_ALREADY_PLAYING');
     room.seats[1] = { kind: 'human', userId: who.userId, nickname: who.nickname, avatar: who.avatar, level: null, idle: 0 };
     room.status = 'playing';
     this.begin(room, game, this.now());
@@ -341,7 +341,7 @@ export class TableauService {
     this.advance(room, game);
     if (room.status !== 'playing') {
       this.save(room);
-      throw new ServerError('WRONG_STATE', room.status === 'waiting' ? 'En attente d’un adversaire' : 'La partie est terminée');
+      throw new ServerError('WRONG_STATE', room.status === 'waiting' ? 'En attente d’un adversaire' : 'La partie est terminée', room.status === 'waiting' ? 'TB_WAITING' : 'TB_FINISHED');
     }
     try {
       this.apply(room, game, seat, col, false, this.now(), card);
@@ -355,14 +355,16 @@ export class TableauService {
     return this.dto(room, game, seat);
   }
 
-  advice(codeRaw: string, userId: string): { col: number; card: string; text: string } {
+  advice(codeRaw: string, userId: string): { col: number; card: string; kind: 'improve' | 'empty' | 'dump'; after: ColumnHand | null; text: string } {
     const { room, game } = this.load(codeRaw);
     const seat = this.seatOf(room, userId);
     if (seat === null) throw new ServerError('FORBIDDEN', 'Vous ne participez pas à cette partie');
-    if (room.mode !== 'training') throw rule('Les conseils sont réservés au mode Entraînement');
+    if (room.mode !== 'training') throw rule('Les conseils sont réservés au mode Entraînement', 'TB_ADVICE_TRAINING');
     this.advance(room, game);
-    if (game.turn !== seat) throw new ServerError('WRONG_STATE', 'Ce n’est pas votre tour');
-    return adviseColumn(game.view(seat));
+    if (game.turn !== seat) throw new ServerError('WRONG_STATE', 'Ce n’est pas votre tour', 'NOT_YOUR_TURN');
+    const adv = adviseColumn(game.view(seat));
+    const next = [...game.columnsOf(seat)[adv.col]!, adv.card];
+    return { ...adv, after: next.length === 5 ? evaluateColumn(next) : null };
   }
 
   /** Quitte la partie : l'entraînement et l'attente sont supprimés ; une partie amicale commencée est perdue par forfait. */

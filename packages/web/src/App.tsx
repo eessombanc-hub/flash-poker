@@ -9,6 +9,7 @@ import { CreateRoom, JoinRoom, TrainingRoom } from './screens/Forms';
 import { Home } from './screens/Home';
 import { Solo } from './screens/Solo';
 import type { VariantId } from './lib/types';
+import { I18nProvider, LanguageSelect, useI18n } from './i18n';
 import { Lobby } from './screens/Lobby';
 import { Table } from './screens/Table';
 
@@ -79,6 +80,7 @@ function takeInviteCode(): string {
 
 /** En-tête de l'accueil : accès au compte (connexion, inscription, ou « Mon espace »). */
 function AccountBar({ onAuth, onSpace }: { onAuth: (mode: AuthMode) => void; onSpace: () => void }) {
+  const { t } = useI18n();
   const account = useAccountClient();
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
@@ -89,7 +91,7 @@ function AccountBar({ onAuth, onSpace }: { onAuth: (mode: AuthMode) => void; onS
       <button type="button" onClick={onSpace} className="flex items-center gap-2 rounded-full border border-gold-500/50 bg-ink-800/70 py-1 pl-1 pr-4 text-sm font-semibold text-ivory-50 transition hover:border-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
         <Avatar nickname={me.nickname} avatar={me.avatar} size={32} />
         <span className="max-w-[9rem] truncate">{me.nickname}</span>
-        <span className="hidden text-gold-300 sm:inline">· Mon espace</span>
+        <span className="hidden text-gold-300 sm:inline">· {t('common.space')}</span>
       </button>
       </div>
     );
@@ -97,10 +99,10 @@ function AccountBar({ onAuth, onSpace }: { onAuth: (mode: AuthMode) => void; onS
     <div className="flex items-center gap-1 sm:gap-2">
       <Button variant="ghost" className="px-3" onClick={() => onAuth('login')}>
         <ProfileIcon size={24} />
-        Se connecter
+        {t('common.login')}
       </Button>
       <Button variant="secondary" className="hidden px-3 sm:inline-flex" onClick={() => onAuth('register')}>
-        Créer un compte
+        {t('common.register')}
       </Button>
     </div>
   );
@@ -136,7 +138,26 @@ function ConnectionBanner() {
   );
 }
 
+/** Applique la langue choisie à toute l'application ; le sélecteur reste en haut de page. */
 export function App() {
+  return (
+    <I18nProvider>
+      <AppContent />
+    </I18nProvider>
+  );
+}
+
+/** Bandeau fin en haut de page : choix de la langue (masqué à la table de poker en direct, pour ne pas gêner le jeu). */
+function TopBar() {
+  return (
+    <div className="mx-auto flex max-w-6xl justify-end px-5 pt-3">
+      <LanguageSelect />
+    </div>
+  );
+}
+
+function AppContent() {
+  const { t } = useI18n();
   const client = useClient();
   const session = useGame((s) => s.session);
   const view = useGame((s) => s.view);
@@ -216,7 +237,7 @@ export function App() {
           setScreen('join');
         }}
         account={<AccountBar onAuth={(mode) => setScreen({ auth: mode })} onSpace={() => setScreen('space')} />}
-        notice={closed === 'KICKED' ? 'Vous avez été retiré de la partie par l’hôte.' : closed === 'INVALID_SESSION' ? 'Votre session n’est plus valide (partie expirée ou supprimée).' : null}
+        notice={closed === 'KICKED' ? t('notice.kicked') : closed === 'INVALID_SESSION' ? t('notice.invalid') : null}
       />
     );
 
@@ -224,7 +245,8 @@ export function App() {
     <SettingsProvider>
       <SoundBridge />
       <ConnectionBanner />
-      <Suspense fallback={<p className="p-8 text-center text-sm text-ivory-300/70" role="status">Chargement…</p>}>{content}</Suspense>
+      {!(session && view && view.status !== 'WAITING' && view.status !== 'CANCELLED') && <TopBar />}
+      <Suspense fallback={<p className="p-8 text-center text-sm text-ivory-300/70" role="status">{t('common.loading')}</p>}>{content}</Suspense>
       <ToastHost toasts={toasts} onDismiss={client.dismissToast} />
     </SettingsProvider>
   );

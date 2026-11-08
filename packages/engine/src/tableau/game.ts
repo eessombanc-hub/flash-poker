@@ -18,9 +18,13 @@ export const DECK_SIZE = 21;
 export const PLAYABLE = 20;
 export const TURN_MS = 30_000;
 export const TOTAL_PLIES = 2 * PLAYABLE;
-/** « Tableau 5 cartes » : main de 5 cartes ; colonnes vides au départ (5 cartes en main + 20 pioches = 25 places). */
+/**
+ * « Tableau 5 cartes » : comme au Tableau, une carte de départ ouvre chaque colonne, et chaque joueur reçoit en plus une
+ * main de 5 cartes prélevée sur son paquet (qui passe de 21 à 16 cartes). On pioche 15 fois (la 16e carte reste dans le
+ * paquet), puis la main termine les colonnes : 15 + 5 = 20 placements, comme en variante classique.
+ */
 export const HAND_SIZE = 5;
-export const HAND_PLIES = COLUMNS * COLUMN_SIZE;
+export const HAND_PLAYABLE = PLAYABLE - HAND_SIZE;
 export type TableauVariant = 'classic' | 'hand5';
 export const TABLEAU_VARIANTS: readonly TableauVariant[] = ['classic', 'hand5'];
 export const VARIANT_LABELS_FR: Record<TableauVariant, string> = { classic: 'Le Tableau', hand5: 'Tableau 5 cartes' };
@@ -175,9 +179,17 @@ export class TableauGame {
       this.cols = [0, 1].map((s) => this.deal.initial[s]!.map((c) => [c]));
       this.hands = [[], []];
     } else {
-      this.cols = [0, 1].map(() => [[], [], [], [], []] as string[][]);
-      this.hands = [[...this.deal.initial[0]], [...this.deal.initial[1]]];
+      this.cols = [0, 1].map((s) => this.deal.initial[s]!.map((c) => [c]));
+      this.hands = [this.deal.deck[0]!.slice(0, HAND_SIZE), this.deal.deck[1]!.slice(0, HAND_SIZE)];
     }
+  }
+
+  /** Nombre de pioches possibles par joueur (la carte suivante reste dans le paquet). */
+  get playable(): number {
+    return this.variant === 'classic' ? PLAYABLE : HAND_PLAYABLE;
+  }
+  private drawPile(seat: Seat): readonly string[] {
+    return this.variant === 'classic' ? this.deal.deck[seat]! : this.deal.deck[seat]!.slice(HAND_SIZE);
   }
 
   static replay(seed: string, log: readonly (Pick<Placement, 'seat' | 'col'> & { card?: string })[], variant: TableauVariant = 'classic'): TableauGame {
@@ -186,9 +198,9 @@ export class TableauGame {
     return g;
   }
 
-  /** Placements par joueur : 20 (classique) ou 25 (5 cartes en main + 20 pioches). */
+  /** Placements par joueur : 20 dans les deux variantes (en 5 cartes : 15 pioches + les 5 cartes de la main). */
   get perPlayer(): number {
-    return this.variant === 'classic' ? PLAYABLE : HAND_PLIES;
+    return PLAYABLE;
   }
   get totalPlies(): number {
     return 2 * this.perPlayer;
@@ -208,8 +220,8 @@ export class TableauGame {
 
   /** Carte piochée par `seat` à son tour ; null hors de son tour ou quand il n'y a plus rien à piocher (la 21e carte reste dans le paquet). */
   drawn(seat: Seat): string | null {
-    if (this.turn !== seat || this.draws[seat] >= PLAYABLE) return null;
-    return this.deal.deck[seat]![this.draws[seat]] ?? null;
+    if (this.turn !== seat || this.draws[seat] >= this.playable) return null;
+    return this.drawPile(seat)[this.draws[seat]] ?? null;
   }
   handOf(seat: Seat): string[] {
     return [...this.hands[seat]];
@@ -304,7 +316,7 @@ export class TableauGame {
       variant: this.variant,
       hand: this.handOf(you),
       handCount: [this.hands[0].length, this.hands[1].length],
-      pile: [PLAYABLE - this.draws[0], PLAYABLE - this.draws[1]],
+      pile: [this.playable - this.draws[0], this.playable - this.draws[1]],
       you,
       first: this.deal.first,
       turn: this.turn,
