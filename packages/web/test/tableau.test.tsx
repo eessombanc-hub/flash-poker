@@ -1,0 +1,219 @@
+import { SeededRng } from '@poker/engine';
+import { AccountDb } from '@poker/server/src/accounts/db';
+import { LogMailer } from '@poker/server/src/accounts/mailer';
+import { AccountService } from '@poker/server/src/accounts/service';
+import { BlackjackService } from '@poker/server/src/blackjack/service';
+import { buildServer } from '@poker/server/src/http';
+import { RoomManager } from '@poker/server/src/roomManager';
+import { ManualScheduler } from '@poker/server/src/scheduler';
+import { TableauService } from '@poker/server/src/tableau/service';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AccountClient } from '../src/lib/account';
+import { AccountProvider } from '../src/lib/context';
+import { announce, clockSkew, inviteUrl, secondsLeft } from '../src/lib/tableau';
+import { ClientProvider } from '../src/lib/context';
+import { fakeClient } from './fixtures';
+import { Home } from '../src/screens/Home';
+import { Solo } from '../src/screens/Solo';
+import { Tableau } from '../src/screens/Tableau';
+import type { TbGameDto } from '../src/lib/types';
+
+const noop = () => undefined;
+beforeEach(() => {
+  try {
+    localStorage.clear();
+  } catch {
+    /* ignoré */
+  }
+});
+
+const cleanups: Array<() => Promise<void> | void> = [];
+afterEach(async () => {
+  for (const fn of cleanups.splice(0).reverse()) await fn();
+});
+const memoryStorage = () => {
+  const m = new Map<string, string>();
+  return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+};
+
+async function serverAndClients() {
+  const scheduler = new ManualScheduler();
+  const db = new AccountDb(':memory:');
+  const accounts = new AccountService(db, new LogMailer(true, () => undefined), { log: () => undefined });
+  const blackjack = new BlackjackService(db);
+  // IA rapide : peu de simulations et aucun délai de réflexion (le délai réel est testé côté serveur).
+  const tableau = new TableauService(db, blackjack, { aiSims: 10, aiBudgetMs: 200, cpuDelayMs: 0 });
+  const manager = new RoomManager({ rng: new SeededRng(3), scheduler, accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g) } });
+  const server = await buildServer({ manager, accounts, blackjack, tableau, now: () => scheduler.now(), onError: () => undefined, httpRateLimit: { max: 100000, windowMs: 60_000 } });
+  await server.app.listen({ port: 0, host: '127.0.0.1' });
+  const url = `http://127.0.0.1:${(server.app.server.address() as { port: number }).port}`;
+  cleanups.push(() => server.close());
+  const make = () => {
+    const a = new AccountClient({ baseUrl: url, storage: memoryStorage() });
+    cleanups.push(() => a.dispose());
+    return a;
+  };
+  return { make };
+}
+
+describe('Tableau : utilitaires', () => {
+  it('horloge : le délai restant suit l’heure du serveur, jamais négatif', () => {
+    const dto = { serverNow: 10_000, deadline: 40_000 } as TbGameDto;
+    const skew = clockSkew(dto, 4_000); // le navigateur retarde de 6 s
+    expect(secondsLeft(dto, skew, 4_000)).toBe(30);
+    expect(secondsLeft(dto, skew, 14_000)).toBe(20);
+    expect(secondsLeft(dto, skew, 99_000)).toBe(0);
+    expect(secondsLeft({ deadline: null }, 0, 0)).toBe(0);
+  });
+  it('annonces pour lecteurs d’écran', () => {
+    expect(announce({ status: 'waiting' } as TbGameDto)).toMatch(/attente/);
+    expect(announce({ status: 'playing', paused: false, you: 0, view: { turn: 0 } } as TbGameDto)).toBe('À vous de jouer.');
+    expect(announce({ status: 'playing', paused: false, you: 0, view: { turn: 1 } } as TbGameDto)).toMatch(/adversaire/);
+    expect(announce({ status: 'finished', winner: 1, you: 0 } as TbGameDto)).toMatch(/perdu/);
+    expect(announce({ status: 'finished', winner: null, you: 0 } as TbGameDto)).toMatch(/nul/);
+  });
+  it('lien d’invitation', () => {
+    expect(inviteUrl('TB-ABCD')).toContain('tableau=TB-ABCD');
+  });
+});
+
+describe('Tableau : accès depuis les menus', () => {
+  it('l’accueil et le menu Solo proposent Le Tableau', async () => {
+    const onTableau = vi.fn();
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <ClientProvider client={fakeClient(null).client}>
+        <Home onCreate={noop} onJoin={noop} onTrain={noop} onTableau={onTableau} />
+      </ClientProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Le Tableau' }));
+    expect(onTableau).toHaveBeenCalledTimes(1);
+    unmount();
+    const again = vi.fn();
+    render(<Solo onBack={noop} onPick={noop} onBlackjack={noop} onTableau={again} />);
+    await user.click(screen.getByRole('button', { name: 'Le Tableau' }));
+    expect(again).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Tableau : de bout en bout', () => {
+  it('menu : règles et dix combinaisons, modes à venir signalés', async () => {
+    const { make } = await serverAndClients();
+    const account = make();
+    const user = userEvent.setup();
+    render(
+      <AccountProvider account={account}>
+        <Tableau onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Le Tableau' })).toBeInTheDocument();
+    expect(screen.getAllByText('à venir')).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: 'Règles et combinaisons' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Règles du Tableau' });
+    expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThanOrEqual(10);
+    expect(within(dialog).getByText('Quinte flush royale')).toBeInTheDocument();
+  });
+
+  it('entraînement : plateau à cinq colonnes, placement, conseil, puis tour de l’IA', async () => {
+    const { make } = await serverAndClients();
+    const account = make();
+    const user = userEvent.setup();
+    render(
+      <AccountProvider account={account}>
+        <Tableau onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Lancer l’entraînement' }));
+    const mine = await screen.findByTestId('tb-board-mine');
+    const theirs = screen.getByTestId('tb-board-theirs');
+    expect(within(mine).queryAllByRole('group').length + within(mine).queryAllByRole('button').length).toBe(5);
+    expect(within(theirs).getAllByRole('group')).toHaveLength(5);
+    expect(screen.getAllByTestId('tb-remaining')[1]!.textContent).toBe('20');
+    // attend son tour (l'IA peut commencer)
+    await waitFor(() => expect(within(mine).queryAllByRole('button').length).toBeGreaterThan(0), { timeout: 8000 });
+    expect(screen.getByTestId('tb-drawn').querySelector('svg')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Conseil' }));
+    expect(await screen.findByRole('note')).toHaveTextContent(/colonne \d/);
+    // placement avec confirmation (par défaut sur un écran non tactile : direct)
+    const first = within(mine).getAllByRole('button')[0]!;
+    await user.click(first);
+    const confirmBtn = screen.queryByRole('button', { name: /Poser en colonne/ });
+    if (confirmBtn) await user.click(confirmBtn);
+    await waitFor(() => expect(screen.getAllByTestId('tb-remaining')[1]!.textContent).toBe('19'), { timeout: 4000 });
+    // l'IA a joué à son tour
+    await waitFor(() => expect(Number(screen.getAllByTestId('tb-remaining')[0]!.textContent)).toBeLessThanOrEqual(19), { timeout: 8000 });
+  }, 30000);
+
+  it('partie complète contre l’IA jusqu’à l’écran de résultats, avec vérification de l’équité', async () => {
+    const { make } = await serverAndClients();
+    const account = make();
+    const user = userEvent.setup();
+    render(
+      <AccountProvider account={account}>
+        <Tableau onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Lancer l’entraînement' }));
+    const mine = await screen.findByTestId('tb-board-mine');
+    // Joue vite : l'interface est pilotée comme un joueur, colonne libre la plus à gauche.
+    const stop = Date.now() + 90_000;
+    while (Date.now() < stop && !screen.queryByTestId('tb-outcome')) {
+      const cols = within(mine).queryAllByRole('button');
+      if (cols.length > 0) {
+        await user.click(cols[0]!);
+        const confirmBtn = screen.queryByRole('button', { name: /Poser en colonne/ });
+        if (confirmBtn) await user.click(confirmBtn);
+      }
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    expect(await screen.findByTestId('tb-outcome', undefined, { timeout: 120000 })).toHaveTextContent(/Victoire|Défaite|Match nul/);
+    expect(screen.getByRole('list', { name: 'Détail des cinq colonnes' }).children).toHaveLength(5);
+    expect(screen.getAllByTestId('tb-remaining').map((e) => e.textContent)).toEqual(['0', '0']);
+    await user.click(screen.getByText(/Vérifier l’équité du mélange/));
+    await user.click(screen.getByRole('button', { name: 'Contrôler l’empreinte' }));
+    expect(await screen.findByText(/Conforme/)).toBeInTheDocument();
+  }, 180000);
+
+  it('amical : l’hôte reçoit un code, l’ami le saisit, les deux voient la même partie', async () => {
+    const { make } = await serverAndClients();
+    const host = make();
+    const friend = make();
+    const user = userEvent.setup();
+    const hostView = render(
+      <AccountProvider account={host}>
+        <Tableau onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    await user.clear(await screen.findByLabelText('Votre nom'));
+    await user.type(screen.getByLabelText('Votre nom'), 'Hôte');
+    await user.click(screen.getByRole('button', { name: 'Créer une partie privée' }));
+    const code = (await screen.findByTestId('tb-code')).textContent!;
+    expect(code).toMatch(/^TB-[A-Z2-9]{4}$/);
+    expect(screen.getByText(/En attente de votre ami/)).toBeInTheDocument();
+
+    // L'ami rejoint (interface séparée)
+    const friendView = render(
+      <AccountProvider account={friend}>
+        <Tableau onBack={noop} onLogin={noop} initialCode={code} />
+      </AccountProvider>,
+    );
+    const friendUser = userEvent.setup();
+    const input = (await within(friendView.container).findByLabelText('Code de la partie')) as HTMLInputElement;
+    expect(input.value).toBe(code);
+    await friendUser.clear(await within(friendView.container).findByLabelText('Votre nom'));
+    await friendUser.type(within(friendView.container).getByLabelText('Votre nom'), 'Ami');
+    await friendUser.click(within(friendView.container).getByRole('button', { name: 'Rejoindre' }));
+    await within(friendView.container).findByTestId('tb-board-mine');
+    // L'hôte passe automatiquement de la salle d'attente à la partie
+    await within(hostView.container).findByTestId('tb-board-mine', undefined, { timeout: 5000 });
+    expect(within(hostView.container).getByText('Ami')).toBeInTheDocument();
+    expect(within(friendView.container).getByText('Hôte')).toBeInTheDocument();
+    // Les cartes cachées de l'autre n'apparaissent jamais : une seule des deux interfaces affiche une carte piochée
+    await waitFor(() => {
+      const drawn = [hostView.container, friendView.container].map((c) => !!within(c).getByTestId('tb-drawn').querySelector('[aria-label*="Carte à placer"]'));
+      expect(drawn.filter(Boolean)).toHaveLength(1);
+    });
+  }, 30000);
+});

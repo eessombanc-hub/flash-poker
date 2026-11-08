@@ -16,15 +16,32 @@ import { Table } from './screens/Table';
 const loadAuth = () => import('./screens/Auth');
 const loadSpace = () => import('./screens/Space');
 const loadBlackjack = () => import('./screens/Blackjack');
+const loadTableau = () => import('./screens/Tableau');
 const AuthScreen = lazy(() => loadAuth().then((m) => ({ default: m.AuthScreen })));
 const Blackjack = lazy(() => loadBlackjack().then((m) => ({ default: m.Blackjack })));
+const Tableau = lazy(() => loadTableau().then((m) => ({ default: m.Tableau })));
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 
-type Screen = 'home' | 'create' | 'join' | 'solo' | 'train' | 'space' | 'blackjack' | { auth: AuthMode };
+type Screen = 'home' | 'create' | 'join' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
     return new URLSearchParams(window.location.search).get('code')?.toUpperCase() ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Lien d'invitation à une partie amicale du Tableau (`?tableau=TB-XXXX`) : lu une fois, puis retiré de la barre d'adresse. */
+function takeTableauCode(): string {
+  try {
+    const url = new URL(window.location.href);
+    const c = (url.searchParams.get('tableau') ?? '').toUpperCase();
+    if (c) {
+      url.searchParams.delete('tableau');
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+    return /^TB-[A-Z2-9]{4}$/.test(c) ? c : '';
   } catch {
     return '';
   }
@@ -129,7 +146,8 @@ export function App() {
   const me = useAccount((s) => s.account);
   const [resetToken] = useState(takeResetToken);
   const [invite] = useState(takeInviteCode);
-  const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : initialCode() ? 'join' : 'home'));
+  const [tableauCode] = useState(takeTableauCode);
+  const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
   const [trainVariant, setTrainVariant] = useState<VariantId | undefined>(undefined);
   const [joinCode, setJoinCode] = useState<string>(initialCode);
 
@@ -146,7 +164,7 @@ export function App() {
   }, [client]);
   useEffect(() => {
     // Écrans de compte préchargés en tâche de fond, une fois l'accueil affiché : ils s'ouvrent ensuite sans attente.
-    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace(), loadBlackjack()]).catch(() => undefined), 1500);
+    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace(), loadBlackjack(), loadTableau()]).catch(() => undefined), 1500);
     return () => clearTimeout(t);
   }, []);
 
@@ -169,6 +187,7 @@ export function App() {
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} />;
+  else if (screen === 'tableau') content = <Tableau onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} />;
   else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
   else if (screen === 'solo')
     content = (
@@ -179,6 +198,7 @@ export function App() {
           setScreen('train');
         }}
         onBlackjack={() => setScreen('blackjack')}
+        onTableau={() => setScreen('tableau')}
       />
     );
   else if (screen === 'train') content = <TrainingRoom onBack={() => setScreen('solo')} variant={trainVariant} />;
@@ -189,6 +209,7 @@ export function App() {
         onCreate={() => setScreen('create')}
         onTrain={() => setScreen('solo')}
         onBlackjack={() => setScreen('blackjack')}
+        onTableau={() => setScreen('tableau')}
         onJoin={(code) => {
           setJoinCode(code ?? '');
           setScreen('join');

@@ -74,6 +74,16 @@ const BJ_SCHEMA = `
         at INTEGER NOT NULL,
         PRIMARY KEY (user_id, achievement_id)
       );
+      CREATE TABLE IF NOT EXISTS tb_game (
+        code TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS tb_seat (
+        user_id TEXT NOT NULL,
+        code TEXT NOT NULL,
+        PRIMARY KEY (user_id, code)
+      );
 `;
 const BJ_TABLES = ['bj_profile', 'bj_active', 'bj_history', 'bj_challenges', 'bj_achievements'] as const;
 

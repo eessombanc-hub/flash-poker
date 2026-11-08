@@ -13,3 +13,4 @@ export * from './game/positions';
 export * from './game/gameManager';
 export * from './game/insurance';
 export * from './cpu/cpu';
+export * from './tableau';

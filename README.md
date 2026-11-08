@@ -88,6 +88,31 @@ Rubrique « Casino » de l'accueil, séparée des huit variantes. Un joueur cont
 
 **Limite connue.** Sur l'hébergement gratuit de Render, le disque est éphémère : les comptes, jetons et statistiques disparaissent à chaque redéploiement. Un disque persistant (ou une base externe) est nécessaire pour de vrais testeurs.
 
+## Le Tableau (module indépendant, étape 1)
+
+Variante à deux joueurs : cinq colonnes de cinq cartes, posées une à une et définitivement ; les colonnes se comparent deux à deux, trois colonnes gagnées font gagner la partie (2–2 avec une égalité : nul). Aucune mise, aucun bluff.
+
+**Règles retenues.** 52 cartes, aucun doublon : chaque joueur reçoit 5 cartes de départ (une par colonne) et un paquet de 21 cartes. Il n'y a que 20 places libres : on pioche 20 fois, on ne défausse jamais et la 21e carte du paquet n'est pas jouée. Délai de 30 s par tour ; passé ce délai (plus 1,5 s de tolérance réseau), la carte est posée dans la première colonne libre, de gauche à droite.
+
+**Architecture.**
+- `packages/engine/src/tableau/` : `evaluator.ts` (les dix combinaisons dont la quinte flush royale, roue A-2-3-4-5, kickers, égalités parfaites ; jamais de somme de valeurs), `game.ts` (distribution, tours, placements, résultat), `ai.ts` (trois niveaux).
+- `packages/server/src/tableau/` : `TableauService` (parties Entraînement et Amical, persistance SQLite `tb_game` / `tb_seat`) et routes `/tableau/…`.
+- `packages/web/src/screens/Tableau.tsx` et `components/tableau/Board.tsx` : menu, plateau, résultats. Le navigateur n'embarque aucune règle : il affiche ce que le serveur décide.
+
+**Équité et cartes cachées.** Le serveur tire une graine de 256 bits et publie son empreinte SHA-256 avant la première carte. Le mélange (Fisher-Yates sur un flux SHA-256 en mode compteur, sans biais de modulo) est une fonction pure de la graine. À la fin de la partie, la graine et l'ordre des 52 cartes sont révélés ; l'écran de résultats permet de contrôler l'empreinte dans le navigateur. Une vue ne contient jamais le paquet de l'adversaire, ni sa carte piochée, ni vos cartes à venir (testé).
+
+**Reprise et déconnexion.** L'état est la graine plus le journal des coups, rejoués à l'identique après un redémarrage. Aucun minuteur serveur : chaque requête fait d'abord avancer l'horloge (coups de l'IA arrivés à échéance, délais dépassés). Après 3 délais manqués consécutifs, une partie amicale est perdue par forfait ; une partie d'entraînement est mise en pause et reprend au retour du joueur.
+
+**Intelligence artificielle.** Elle ne reçoit que la vue de son siège (équité).
+- Débutant : se place près d'une carte de même valeur sinon remplit à gauche, et se trompe une fois sur trois.
+- Intermédiaire : estime la force future de chaque colonne d'après les cartes non encore vues et place la carte où le gain est le plus grand ; la carte inutile va dans la colonne sacrifiée.
+- Expert : simule des centaines de fins de partie (cartes non vues tirées au hasard, adversaire raisonnable) et choisit la colonne qui maximise la probabilité d'atteindre trois colonnes. Temps borné (350 ms par défaut).
+Des parties appariées (sièges échangés) vérifient la hiérarchie des niveaux.
+
+**Tests.** Énumération des 2 598 960 mains (répartition officielle des catégories retrouvée), départages, distribution, parties complètes, délais, reprise, synchronisation, absence de fuite, bout en bout avec un vrai serveur.
+
+**Prévu aux étapes suivantes.** Étape 2 : onze ligues, mode Classé, statistiques et défis. Étape 3 : tournois. Les droits (`lib/entitlements.ts`) restent le point d'extension de la monétisation : cosmétique et confort uniquement, jamais d'avantage de jeu.
+
 ## Protocole
 
 **HTTP** — `POST /rooms` (création, 201 : `{code, playerId, token}`), `POST /rooms/:code/join` (arrivée), `GET /health`.

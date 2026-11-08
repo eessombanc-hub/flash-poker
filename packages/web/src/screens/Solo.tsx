@@ -4,7 +4,7 @@ import { VARIANTS } from '../lib/labels';
 import type { VariantId } from '../lib/types';
 
 /** Menu « Jouer en solo » : chaque variante de poker contre le CPU, ou le Blackjack face au croupier. */
-export function Solo({ onBack, onPick, onBlackjack }: { onBack: () => void; onPick: (variant: VariantId | null) => void; onBlackjack: () => void }) {
+export function Solo({ onBack, onPick, onBlackjack, onTableau }: { onBack: () => void; onPick: (variant: VariantId | null) => void; onBlackjack: () => void; onTableau?: () => void }) {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">
@@ -25,6 +25,17 @@ export function Solo({ onBack, onPick, onBlackjack }: { onBack: () => void; onPi
           </li>
         ))}
       </ul>
+
+      {onTableau && (
+        <>
+          <h2 className="mb-2 mt-8 text-sm font-semibold uppercase tracking-widest text-gold-400">Nouveauté</h2>
+          <ul aria-label="Le Tableau">
+            <li>
+              <Tile title="Le Tableau" tag="Cinq colonnes, trois à gagner" text="Posez vos cartes une à une dans cinq colonnes et battez celles de l’adversaire. Entraînement contre l’IA, ou partie privée avec un ami." onClick={onTableau} primary />
+            </li>
+          </ul>
+        </>
+      )}
 
       <h2 className="mb-2 mt-8 text-sm font-semibold uppercase tracking-widest text-gold-400">Casino</h2>
       <Panel className="relative flex items-center gap-4 border-gold-500/40 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-4">

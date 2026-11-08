@@ -49,3 +49,7 @@ export type { BjProfile, BjChallenge, BjAchievement, BjActive, BjHistoryItem, Bj
 export type { BjAction, HandResult, TablePreset, TableRules, Advice, Odds, BjRoundView, PlayerHand } from '@poker/engine';
 export type { BjTableDto, BjTableReply, BjSeatDto, SeatKind, TableStatus } from '@poker/server/src/blackjack/types';
 export type { TableRoundView } from '@poker/engine';
+
+// Le Tableau : types du serveur (le navigateur n'embarque aucune règle ; il affiche ce que le serveur décide).
+export type { TbGameDto, TbHistoryEntry, TbMode, TbStatus, TbPlayerDto } from '@poker/server/src/tableau/service';
+export type { TableauView, TableauResult, ColumnHand, ColumnVerdict, AiLevel, Placement as TableauPlacement, Seat as TableauSeat } from '@poker/engine';

@@ -10,6 +10,8 @@ import { optionalAccount, registerAccountRoutes, registerPresence } from './acco
 import { registerBlackjackRoutes } from './blackjack/routes';
 import type { BlackjackService } from './blackjack/service';
 import type { BlackjackTables } from './blackjack/tables';
+import { registerTableauRoutes } from './tableau/routes';
+import type { TableauService } from './tableau/service';
 import type { AccountService } from './accounts/service';
 import type { RoomManager } from './roomManager';
 import { renderIndex } from './sharePreview';
@@ -37,6 +39,8 @@ export interface ServerOptions {
   blackjack?: BlackjackService;
   /** Tables de Blackjack à plusieurs (nécessite `blackjack`). */
   blackjackTables?: BlackjackTables;
+  /** Parties du Tableau (nécessite `accounts`). */
+  tableau?: TableauService;
   /** Adresse publique du jeu (APP_URL ou celle fournie par Render), pour l'aperçu des liens partagés. */
   publicUrl?: string;
   /** Inscription / connexion / mot de passe oublié : tentatives par IP. */
@@ -196,9 +200,10 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     return reply.status(201).send(opts.manager.joinRoom(req.params.code, req.body, account));
   });
   if (opts.accounts) registerAccountRoutes(app, opts.accounts, { now, authRateLimit: opts.authRateLimit });
+  if (opts.accounts && opts.tableau) registerTableauRoutes(app, opts.tableau, opts.accounts, { now });
   if (opts.accounts && opts.blackjack) registerBlackjackRoutes(app, opts.blackjack, opts.accounts, { now, tables: opts.blackjackTables });
 
-  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/users', '/invites', '/blackjack'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
+  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
 
   if (opts.webDist && existsSync(opts.webDist)) {
     // Fichiers avec hash dans leur nom (assets Vite) : cache long ; `index.html` : jamais mis en cache (sert
