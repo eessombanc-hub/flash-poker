@@ -141,16 +141,6 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
           {shownBoard.map((c, i) => (c ? <PlayingCard key={i} code={c} size="sm" fourColor={fourColor} /> : <span key={i} className="aspect-[5/7] w-12 rounded-[9px] border border-dashed border-ivory-100/25" />))}
         </div>
       )}
-      {(record.summary?.teats ?? 0) > 0 && <p className="mt-3 text-center text-xs text-ivory-200/80">Manche jouée avec {record.summary!.teats === 1 ? 'une tétine' : '2 tétines'}.</p>}
-      {(record.summary?.sideBets ?? []).length > 0 && (
-        <ul className="mt-3 space-y-1 rounded-xl border border-gold-500/30 bg-gold-500/5 p-3 text-sm text-ivory-100" aria-label="Paris extérieurs">
-          {record.summary!.sideBets!.map((b) => (
-            <li key={`${b.line}-${b.amount}`}>
-              Ligne {b.line}, {b.amount.toLocaleString('fr-FR')} jetons par joueur : {b.refunded || b.winners.length === 0 ? 'mises rendues' : `${b.winners.map((w) => nick(view, w)).join(' + ')} ${b.winners.length > 1 ? 'se partagent' : 'remporte'} la cagnotte`}
-            </li>
-          ))}
-        </ul>
-      )}
       {showdown && (
         <ul className="mt-4 space-y-2" aria-label="Mains dévoilées">
           {Object.entries(showdown).map(([pid, h]) => (
@@ -261,7 +251,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
                 <td className="hidden py-1.5 text-right tabular-nums text-ivory-200/80 sm:table-cell">{formatChips(game.stakeChips)}</td>
                 <td className="py-1.5 text-right tabular-nums text-ivory-50"><span className="sm:hidden">{payout.toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatChips(payout)}</span></td>
                 <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}><span className="sm:hidden">{net > 0 ? '+' : net < 0 ? '−' : ''}{Math.abs(net).toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatSignedChips(net)}</span></td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net + (o.sideBets?.[p.player] ?? 0)).toLocaleString('fr-FR')}</td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net).toLocaleString('fr-FR')}</td>
               </tr>
             );
           })}
