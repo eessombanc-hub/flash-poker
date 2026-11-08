@@ -93,7 +93,7 @@ export const fr = {
 
   // Menu du Tableau
   'tb.eyebrow': 'Variante',
-  'tb.intro': 'Deux joueurs, cinq colonnes de cinq cartes. À chaque tour, vous piochez une carte et la posez définitivement dans l’une de vos colonnes. Chaque colonne est ensuite comparée à celle de l’adversaire : trois colonnes gagnées suffisent pour l’emporter. Pas de mise, pas de bluff : tout se joue dans le placement.',
+  'tb.intro': 'Deux joueurs, cinq colonnes de cinq cartes. À chaque tour, vous piochez une carte et la posez définitivement dans l’une de vos colonnes. Chaque colonne est ensuite comparée à celle de l’adversaire : trois colonnes gagnées suffisent pour l’emporter. Pas de mise, pas de bluff : tout se joue dans le placement. Une seule exception : la première quinte flush complétée gagne la partie sur-le-champ.',
   'tb.rules.btn': 'Règles et combinaisons',
   'tb.resume.training': 'Une partie d’entraînement est en cours ({code}).',
   'tb.resume.friendly': 'Une partie amicale est en cours ({code}).',
@@ -120,6 +120,7 @@ export const fr = {
   'tb.mode.training': 'Entraînement',
   'tb.mode.friendly': 'Amical',
   'tb.hist.hand5': ' · 5 cartes',
+  'tb.hist.sf': ' · quinte flush',
   'tb.out.win': 'Victoire',
   'tb.out.loss': 'Défaite',
   'tb.out.draw': 'Nul',
@@ -133,6 +134,7 @@ export const fr = {
   'tb.help.r5': 'À la fin, les colonnes se comparent deux à deux (I contre I, II contre II…). Trois colonnes gagnées font gagner la partie ; 2–2 avec une égalité est un match nul.',
   'tb.help.r6': 'Les couleurs de cartes ne départagent jamais deux mains égales.',
   'tb.help.r7': 'Tableau 5 cartes : comme au Tableau, une carte de départ ouvre chaque colonne, et chacun reçoit en plus 5 cartes en main. À chaque tour, vous piochez, puis vous posez soit la carte piochée, soit une carte de votre main (la piochée la remplace alors). Quand il ne reste plus qu’une carte au paquet, plus personne ne pioche : chacun termine ses colonnes avec sa main.',
+  'tb.help.r8': 'Quinte flush : la première quinte flush complétée par l’un des joueurs (quinte flush royale comprise) lui donne la victoire immédiate, sans attendre la fin de la partie ni comparer les colonnes.',
   'tb.help.combos': 'Les dix combinaisons, de la plus faible à la plus forte',
   'tb.combo.0': 'Carte haute',
   'tb.combo.1': 'Paire',
@@ -152,7 +154,7 @@ export const fr = {
   'tb.combo.5.text': 'Cinq cartes de la même couleur.',
   'tb.combo.6.text': 'Un brelan et une paire.',
   'tb.combo.7.text': 'Quatre cartes de même valeur.',
-  'tb.combo.8.text': 'Une quinte, toutes de la même couleur.',
+  'tb.combo.8.text': 'Une quinte, toutes de la même couleur. La première complétée gagne la partie immédiatement.',
   'tb.combo.9.text': 'De la quinte flush la plus haute : du 10 à l’As.',
 
   // Salle d'attente
@@ -224,6 +226,8 @@ export const fr = {
   'tb.fin.ties.other': '({n} égalités)',
   'tb.fin.youForfeit': 'Vous avez abandonné la partie.',
   'tb.fin.oppForfeit': 'Votre adversaire a quitté la partie.',
+  'tb.fin.sf.win': 'Quinte flush en colonne {c} ({hand}) : vous remportez la partie immédiatement.',
+  'tb.fin.sf.loss': 'Quinte flush de l’adversaire en colonne {c} ({hand}) : la partie s’arrête, vous perdez.',
   'tb.fair.summary': 'Vérifier l’équité du mélange',
   'tb.fair.intro': 'Avant la première carte, le serveur a publié l’empreinte de sa graine aléatoire. La graine est maintenant révélée : vous pouvez contrôler qu’elle correspond, et recalculer l’ordre des 52 cartes.',
   'tb.fair.commit': 'Empreinte publiée :',

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayingCard } from '../components/Card';
 import { CoinRain } from '../components/Scene3D';
-import { ColumnStack, ResultsTable, VerdictRow } from '../components/tableau/Board';
+import { ColumnStack, MiniHand, ResultsTable, VerdictRow } from '../components/tableau/Board';
 import { Avatar, Badge, Button, CountdownRing, Eyebrow, Modal, Panel, Segmented, inputClass } from '../components/ui';
 import type { AccountClient } from '../lib/account';
 import { useAccount, useAccountClient } from '../lib/context';
 import { useSettings } from '../lib/settings';
 import { useSound } from '../lib/sound';
 import { announce, clockSkew, COMBOS, inviteUrl, LEVELS, outcomeKey, ROMAN, secondsLeft, VARIANT_OPTIONS } from '../lib/tableau';
-import { adviceText, columnLabel, errorText } from '../lib/tbText';
+import { adviceText, columnLabel, errorText, handLabel } from '../lib/tbText';
 import { useI18n, type Key } from '../i18n';
 import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry } from '../lib/types';
 
@@ -218,7 +218,7 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
             {history.slice(0, 8).map((h) => (
               <li key={h.code} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="min-w-0 truncate text-ivory-100">
-                  {h.mode === 'training' ? t('tb.mode.training') : t('tb.mode.friendly')}{h.variant === 'hand5' ? t('tb.hist.hand5') : ''} · {h.opponentLevel ? cpuName(t, h.opponentLevel) : h.opponent}
+                  {h.mode === 'training' ? t('tb.mode.training') : t('tb.mode.friendly')}{h.variant === 'hand5' ? t('tb.hist.hand5') : ''}{h.straightFlush ? t('tb.hist.sf') : ''} · {h.opponentLevel ? cpuName(t, h.opponentLevel) : h.opponent}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="tabular-nums text-ivory-300">
@@ -243,7 +243,7 @@ function HelpModal({ onClose }: { onClose: () => void }) {
     <Modal title={t('tb.help.title')} onClose={onClose} wide>
       <h2 className="font-display text-2xl text-ivory-50">{t('tb.help.title')}</h2>
       <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-ivory-100">
-        {(['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7'] as const).map((r) => (
+        {(['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8'] as const).map((r) => (
           <li key={r}>{t(`tb.help.${r}` as Key)}</li>
         ))}
       </ul>
@@ -619,7 +619,8 @@ function Board({ dto, seat, side, look, owner, selectable, pending, onPick }: { 
 }
 
 function Finished({ dto, outcome, oppName, onExit, onAgain }: { dto: TbGameDto; outcome: 'win' | 'loss' | 'draw'; oppName: string; onExit: () => void; onAgain?: () => void }) {
-  const { t, tp } = useI18n();
+  const i18n = useI18n();
+  const { t, tp } = i18n;
   const you = dto.you;
   const r = dto.result;
   const [check, setCheck] = useState<'idle' | 'ok' | 'ko' | 'na'>('idle');
@@ -633,6 +634,7 @@ function Finished({ dto, outcome, oppName, onExit, onAgain }: { dto: TbGameDto; 
       setCheck('na');
     }
   };
+  const sf = r?.straightFlush ?? null;
   const mine = r ? r.score[you] : dto.forfeit === you ? 0 : 3;
   const theirs = r ? r.score[(1 - you) as 0 | 1] : dto.forfeit === you ? 3 : 0;
   return (
@@ -643,10 +645,17 @@ function Finished({ dto, outcome, oppName, onExit, onAgain }: { dto: TbGameDto; 
         <h2 className="mt-1 font-display text-3xl text-ivory-50" data-testid="tb-outcome">
           {outcome === 'win' ? t('tb.fin.win') : outcome === 'loss' ? t('tb.fin.loss') : t('tb.fin.draw')}
         </h2>
-        <p className="mt-1 text-lg tabular-nums text-gold-300">
-          {mine} – {theirs}
-          {r && r.ties > 0 ? <span className="ml-2 text-sm text-ivory-300">{tp('tb.fin.ties', r.ties)}</span> : null}
-        </p>
+        {sf ? (
+          <p className="mt-1 text-sm text-gold-200" data-testid="tb-sf">
+            {t(sf.seat === you ? 'tb.fin.sf.win' : 'tb.fin.sf.loss', { c: ROMAN[sf.col]!, hand: handLabel(i18n, sf.hand) })}
+            <span className="mt-2 flex justify-center"><MiniHand hand={sf.hand} /></span>
+          </p>
+        ) : (
+          <p className="mt-1 text-lg tabular-nums text-gold-300">
+            {mine} – {theirs}
+            {r && r.ties > 0 ? <span className="ml-2 text-sm text-ivory-300">{tp('tb.fin.ties', r.ties)}</span> : null}
+          </p>
+        )}
         {dto.forfeit !== null && <p className="mt-1 text-sm text-ivory-200">{dto.forfeit === you ? t('tb.fin.youForfeit') : t('tb.fin.oppForfeit')}</p>}
       </div>
       <ResultsTable dto={dto} opponentName={oppName} />

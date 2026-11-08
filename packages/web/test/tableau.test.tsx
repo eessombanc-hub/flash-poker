@@ -120,6 +120,7 @@ describe('Tableau : de bout en bout', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Règles du Tableau' });
     expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThanOrEqual(10);
     expect(within(dialog).getByText('Quinte flush royale')).toBeInTheDocument();
+    expect(within(dialog).getByText(/la première quinte flush complétée par l’un des joueurs/)).toBeInTheDocument();
   });
 
   it('entraînement : plateau à cinq colonnes, placement, conseil, puis tour de l’IA', async () => {

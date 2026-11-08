@@ -2,7 +2,7 @@ import { ALL_CARDS } from '../core/card';
 import { shuffleInPlace } from '../core/shuffle';
 import type { Rng } from '../core/rng';
 import { sha256Hex } from '../blackjack/sha256';
-import { compareColumns, evaluateColumn, type ColumnHand } from './evaluator';
+import { compareColumns, evaluateColumn, TableauCategory, type ColumnHand } from './evaluator';
 
 /**
  * LE TABLEAU — règles et distribution vérifiable.
@@ -108,13 +108,24 @@ export interface Placement {
 }
 
 export interface ColumnVerdict {
+  /** Indice de la colonne (0..4). */
+  col: number;
   a: ColumnHand;
   b: ColumnHand;
   /** Siège vainqueur de la colonne, null pour une égalité parfaite. */
   winner: Seat | null;
 }
+/** Quinte flush (dont royale) complétée en premier : elle donne la victoire immédiate à son auteur. */
+export interface StraightFlushWin {
+  seat: Seat;
+  col: number;
+  hand: ColumnHand;
+}
 export interface TableauResult {
+  /** Colonnes comparées (les cinq en fin de partie normale ; seulement les colonnes complètes des deux côtés après une quinte flush). */
   columns: ColumnVerdict[];
+  /** Non nul si la partie s'est arrêtée sur une quinte flush. */
+  straightFlush: StraightFlushWin | null;
   /** Colonnes gagnées par chaque siège. */
   score: [number, number];
   ties: number;
@@ -169,6 +180,7 @@ export class TableauGame {
   private hands: [string[], string[]];
   private placedCount: [number, number] = [0, 0];
   private draws: [number, number] = [0, 0];
+  private sfWin: StraightFlushWin | null = null;
 
   constructor(
     readonly seed: string,
@@ -209,7 +221,7 @@ export class TableauGame {
     return this.log.length;
   }
   get finished(): boolean {
-    return this.log.length >= this.totalPlies;
+    return this.sfWin !== null || this.log.length >= this.totalPlies;
   }
   get turn(): Seat | null {
     return this.finished ? null : (((this.deal.first + this.log.length) % 2) as Seat);
@@ -271,6 +283,11 @@ export class TableauGame {
     if (drawn) this.draws[seat]++;
     column.push(played);
     this.placedCount[seat]++;
+    // Règle : la première quinte flush (royale comprise) complétée gagne immédiatement la partie.
+    if (column.length === COLUMN_SIZE) {
+      const hand = evaluateColumn(column);
+      if (hand.category >= TableauCategory.StraightFlush) this.sfWin = { seat, col, hand };
+    }
     const p: Placement = { seat, col, card: played, auto };
     this.log.push(p);
     return p;
@@ -300,14 +317,15 @@ export class TableauGame {
     const score: [number, number] = [0, 0];
     let ties = 0;
     for (let c = 0; c < COLUMNS; c++) {
+      if (this.cols[0]![c]!.length < COLUMN_SIZE || this.cols[1]![c]!.length < COLUMN_SIZE) continue; // partie arrêtée par une quinte flush
       const a = evaluateColumn(this.cols[0]![c]!);
       const b = evaluateColumn(this.cols[1]![c]!);
       const winner: Seat | null = a.rank > b.rank ? 0 : a.rank < b.rank ? 1 : null;
       if (winner === null) ties++;
       else score[winner]++;
-      columns.push({ a, b, winner });
+      columns.push({ col: c, a, b, winner });
     }
-    return { columns, score, ties, winner: decide(score[0], score[1]) };
+    return { columns, straightFlush: this.sfWin, score, ties, winner: this.sfWin ? this.sfWin.seat : decide(score[0], score[1]) };
   }
 
   /** Vue d'un siège : jamais le paquet ni la main de l'adversaire, ni sa carte piochée, ni vos cartes à venir. */

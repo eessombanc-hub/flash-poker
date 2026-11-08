@@ -103,7 +103,7 @@ export function VerdictRow({ verdicts, you, final }: { verdicts: TbGameDto['verd
   );
 }
 
-function MiniHand({ hand, dim }: { hand: ColumnHand; dim?: boolean }) {
+export function MiniHand({ hand, dim }: { hand: ColumnHand; dim?: boolean }) {
   const i18n = useI18n();
   return (
     <span className={`flex gap-0.5 ${dim ? 'opacity-70' : ''}`} aria-label={handLabel(i18n, hand)}>
@@ -122,7 +122,7 @@ export function ResultsTable({ dto, opponentName }: { dto: TbGameDto; opponentNa
   const you = dto.you;
   const opp = (1 - you) as 0 | 1;
   const r = dto.result;
-  if (!r) return null;
+  if (!r || r.columns.length === 0) return null;
   return (
     <ol className="space-y-2" aria-label={t('tb.res.detail')}>
       {r.columns.map((v, i) => {
@@ -139,7 +139,7 @@ export function ResultsTable({ dto, opponentName }: { dto: TbGameDto; opponentNa
             className={`rounded-2xl border p-2.5 ${tone}`}
           >
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="font-display text-lg text-ivory-50">{t('tb.res.column', { c: ROMAN[i]! })}</span>
+              <span className="font-display text-lg text-ivory-50">{t('tb.res.column', { c: ROMAN[v.col]! })}</span>
               <Badge tone={outcome === 'win' ? 'green' : outcome === 'loss' ? 'red' : 'amber'}>{outcome === 'win' ? t('tb.res.won') : outcome === 'loss' ? t('tb.res.lost') : t('tb.res.tie')}</Badge>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">

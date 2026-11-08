@@ -103,6 +103,8 @@ Variante à deux joueurs : cinq colonnes de cinq cartes, posées une à une et d
 
 **Reprise et déconnexion.** L'état est la graine plus le journal des coups, rejoués à l'identique après un redémarrage. Aucun minuteur serveur : chaque requête fait d'abord avancer l'horloge (coups de l'IA arrivés à échéance, délais dépassés). Après 3 délais manqués consécutifs, une partie amicale est perdue par forfait ; une partie d'entraînement est mise en pause et reprend au retour du joueur.
 
+**Quinte flush (les deux variantes).** Le premier joueur qui complète une quinte flush (royale comprise) dans une colonne gagne la partie immédiatement : le jeu s'arrête, sans comparer les colonnes restantes. Le résultat expose alors `straightFlush` (siège, colonne, main) et seules les colonnes complètes des deux côtés sont détaillées.
+
 **Variante « Tableau 5 cartes ».** Comme en variante classique, une carte de départ ouvre chaque colonne ; chaque joueur reçoit en plus 5 cartes en main, prélevées sur son paquet (qui compte alors 16 cartes ; le mélange des 52 cartes et la preuve d'équité sont inchangés). À chaque tour, le joueur pioche puis pose soit la carte piochée, soit une carte de sa main (la piochée la remplace). Au bout de 15 pioches il reste une carte au paquet, qui ne se pioche jamais : plus personne ne pioche et chacun termine ses colonnes avec les 5 cartes de sa main (20 placements par joueur, 40 coups). Passé le délai de 30 s, la carte piochée est posée dans la première colonne libre (ou, sans pioche, la première carte de la main). La main de l'adversaire n'est jamais transmise. L'IA choisit la carte et la colonne : l'Expert départage ses huit meilleurs coups par simulation.
 
 **Intelligence artificielle.** Elle ne reçoit que la vue de son siège (équité).

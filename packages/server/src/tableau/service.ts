@@ -97,6 +97,8 @@ export interface TbHistoryEntry {
   /** 'win' | 'loss' | 'draw' du point de vue du joueur. */
   outcome: 'win' | 'loss' | 'draw';
   forfeit: boolean;
+  /** Partie arrêtée par une quinte flush (victoire immédiate). */
+  straightFlush: boolean;
 }
 
 type Who = { userId: string; nickname: string; avatar: string | null };
@@ -401,6 +403,7 @@ export class TableauService {
         code: room.code, mode: room.mode, variant: room.variant ?? 'classic', at: room.finishedAt ?? room.updatedAt, opponent: opp.nickname, opponentLevel: opp.level,
         score: room.forfeit !== null ? [seat === room.forfeit ? 0 : 3, seat === room.forfeit ? 3 : 0] : score,
         outcome: winner === null ? 'draw' : winner === seat ? 'win' : 'loss', forfeit: room.forfeit !== null,
+        straightFlush: room.forfeit === null && !!result?.straightFlush,
       });
       if (out.length >= limit) break;
     }
