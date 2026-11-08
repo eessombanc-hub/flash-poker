@@ -16,7 +16,7 @@ export const CARD_BACK_OPTIONS: { id: CardBack; label: string }[] = [
 
 /** Ambiances de fond : `swatch` = pastille d'aperçu (fond 950, fond 700, accent 500) ; `meta` = couleur de la barre du navigateur. */
 export const AMBIANCE_OPTIONS: { id: Ambiance; label: string; hint: string; meta: string; swatch: [string, string, string] }[] = [
-  { id: 'saphir', label: 'Saphir', hint: 'Sobre et rassurant, esprit banque privée', meta: '#081a3d', swatch: ['#081a3d', '#1f4588', '#4779c9'] },
+  { id: 'cognac', label: 'Cognac', hint: 'Marron brillant et élégant, esprit banque privée', meta: '#26150c', swatch: ['#26150c', '#74462a', '#be824c'] },
   { id: 'emeraude', label: 'Émeraude', hint: 'Le vert des salles de jeu, en plus profond', meta: '#051c16', swatch: ['#051c16', '#16503e', '#388c6e'] },
   { id: 'cuir', label: 'Cuir', hint: 'Cercle de jeu, brun chaud et feutré', meta: '#201513', swatch: ['#201513', '#493327', '#7e5c41'] },
   { id: 'carbone', label: 'Carbone', hint: 'Noir et or, esprit « high roller »', meta: '#0b0b0e', swatch: ['#0b0b0e', '#2a2a33', '#5a5a6a'] },

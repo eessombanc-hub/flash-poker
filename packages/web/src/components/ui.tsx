@@ -177,7 +177,7 @@ export function CountdownRing({ secondsLeft, total = 30, size = 56, label }: { s
 }
 
 // ---------- Fenêtres et notifications ----------
-export function Modal({ title, onClose, children, wide = false }: { title: string; onClose?: () => void; children: ReactNode; wide?: boolean }) {
+export function Modal({ title, onClose, children, wide = false, compact = false }: { title: string; onClose?: () => void; children: ReactNode; wide?: boolean; compact?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.focus();
@@ -187,7 +187,7 @@ export function Modal({ title, onClose, children, wide = false }: { title: strin
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-2 backdrop-blur-sm sm:items-center sm:p-3" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
       <motion.div
         ref={ref}
         tabIndex={-1}
@@ -196,7 +196,7 @@ export function Modal({ title, onClose, children, wide = false }: { title: strin
         aria-label={title}
         initial={{ y: 24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className={`max-h-[92vh] w-full overflow-y-auto rounded-[28px] border border-gold-500/30 bg-ink-800 p-5 shadow-panel outline-none sm:p-7 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
+        className={`w-full overflow-y-auto border border-gold-500/30 bg-ink-800 shadow-panel outline-none ${compact ? 'max-h-[98dvh] rounded-3xl p-4 sm:p-5' : 'max-h-[92vh] rounded-[28px] p-5 sm:p-7'} ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
       >
         {children}
       </motion.div>

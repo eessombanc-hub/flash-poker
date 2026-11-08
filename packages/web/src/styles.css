@@ -4,13 +4,13 @@
 
 /* Ambiances : six teintes de fond (triplets RVB) ; l'or, l'ivoire et le vert du tapis ne changent pas. */
 :root,
-:root[data-ambiance='saphir'] {
-  --ink-950: 8 26 61;
-  --ink-900: 13 37 85;
-  --ink-800: 21 51 110;
-  --ink-700: 31 69 136;
-  --ink-600: 47 90 168;
-  --ink-500: 71 121 201;
+:root[data-ambiance='cognac'] {
+  --ink-950: 38 21 12;
+  --ink-900: 58 33 19;
+  --ink-800: 84 49 27;
+  --ink-700: 116 70 38;
+  --ink-600: 150 95 52;
+  --ink-500: 190 130 76;
 }
 :root[data-ambiance='emeraude'] {
   --ink-950: 5 28 22;

@@ -151,7 +151,7 @@ aléatoires. 6-1 et Le 10 : ils retournent leur carte quand c'est leur tour. Var
 variantes jouables ; assurance toujours refusée et jamais proposée. Choix de règles à valider : aucune règle du jeu
 n'est modifiée, le CPU n'utilise que les commandes ouvertes à un joueur humain.
 
-**Ambiances et effets 3D.** Les Paramètres proposent six ambiances de fond (saphir par défaut, émeraude, cuir, carbone, bordeaux, violet nuit), appliquées par des variables CSS (`--ink-*` dans `styles.css`, choix retenu dans `localStorage` et reporté sur la barre du navigateur). L'accueil présente un éventail de cartes en volume qui suit le pointeur (un clic retourne une carte) ; à la fin d'une manche, les cartes gagnantes se retournent une à une ; à la fin de la partie, le trophée pivote et des pièces d'or tombent en tournant. Tout est en CSS (perspective et rotations, via Framer Motion), sans bibliothèque 3D, et reste immobile si `prefers-reduced-motion` est actif (`components/Scene3D.tsx`).
+**Ambiances et effets 3D.** Les Paramètres proposent six ambiances de fond (cognac par défaut, émeraude, cuir, carbone, bordeaux, violet nuit), appliquées par des variables CSS (`--ink-*` dans `styles.css`, choix retenu dans `localStorage` et reporté sur la barre du navigateur). L'accueil présente un éventail de cartes en volume qui suit le pointeur (un clic retourne une carte) ; à la fin d'une manche, les cartes gagnantes se retournent une à une ; à la fin de la partie, le trophée pivote et des pièces d'or tombent en tournant. Tout est en CSS (perspective et rotations, via Framer Motion), sans bibliothèque 3D, et reste immobile si `prefers-reduced-motion` est actif (`components/Scene3D.tsx`).
 
 ## Plan de tests
 

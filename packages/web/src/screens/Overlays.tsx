@@ -120,12 +120,12 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
   }, [left, onClose, interacted]);
 
   return (
-    <Modal title={`Résultat de la manche ${record.roundNo}`} onClose={onClose} wide>
+    <Modal title={`Résultat de la manche ${record.roundNo}`} onClose={onClose} wide compact>
       <div onPointerDown={() => setInteracted(true)} onWheel={() => setInteracted(true)}>
       <Eyebrow>
         Manche {record.roundNo}, {variantName(record.variant)}
       </Eyebrow>
-      <h2 className="mt-1 font-display text-2xl text-ivory-50 sm:text-3xl" aria-live="polite">
+      <h2 className="font-display text-xl leading-tight text-ivory-50 sm:text-2xl" aria-live="polite">
         {awardText(record, view)}
       </h2>
       <WinnerBanner record={record} view={view} />
@@ -141,11 +141,21 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
           {shownBoard.map((c, i) => (c ? <PlayingCard key={i} code={c} size="sm" fourColor={fourColor} /> : <span key={i} className="aspect-[5/7] w-12 rounded-[9px] border border-dashed border-ivory-100/25" />))}
         </div>
       )}
+      {(record.summary?.teats ?? 0) > 0 && <p className="mt-3 text-center text-xs text-ivory-200/80">Manche jouée avec {record.summary!.teats === 1 ? 'une tétine' : '2 tétines'}.</p>}
+      {(record.summary?.sideBets ?? []).length > 0 && (
+        <ul className="mt-3 space-y-1 rounded-xl border border-gold-500/30 bg-gold-500/5 p-3 text-sm text-ivory-100" aria-label="Paris extérieurs">
+          {record.summary!.sideBets!.map((b) => (
+            <li key={`${b.line}-${b.amount}`}>
+              Ligne {b.line}, {b.amount.toLocaleString('fr-FR')} jetons par joueur : {b.refunded || b.winners.length === 0 ? 'mises rendues' : `${b.winners.map((w) => nick(view, w)).join(' + ')} ${b.winners.length > 1 ? 'se partagent' : 'remporte'} la cagnotte`}
+            </li>
+          ))}
+        </ul>
+      )}
       {showdown && (
-        <ul className="mt-4 space-y-2" aria-label="Mains dévoilées">
+        <ul className="mt-2 grid gap-1.5 md:grid-cols-2" aria-label="Mains dévoilées">
           {Object.entries(showdown).map(([pid, h]) => (
-            <li key={pid} className={`flex flex-wrap items-center gap-3 rounded-xl px-3 py-2 ${pid === winner ? 'bg-gold-500/15 ring-1 ring-gold-400' : 'bg-ink-900/60'}`}>
-              <span className="w-24 truncate font-medium text-ivory-50">{nick(view, pid)}</span>
+            <li key={pid} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-1 ${pid === winner ? 'bg-gold-500/15 ring-1 ring-gold-400' : 'bg-ink-900/60'}`}>
+              <span className="w-16 truncate font-medium text-ivory-50">{nick(view, pid)}</span>
               <span className="flex -space-x-2">
                 {h.cards.map((c, i) => (
                   <RevealCard key={c} code={c} size="xs" index={i} />
@@ -159,10 +169,10 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
       )}
       {lines.length > 0 && <LinesRecap lines={lines} view={view} scale={60} />}
 
-      <h3 className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-gold-400">Scores</h3>
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <h3 className="mb-1 mt-3 text-xs font-semibold uppercase tracking-widest text-gold-400">Scores</h3>
+      <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {players.map((p) => (
-          <li key={p.player} className="flex items-center justify-between rounded-lg bg-ink-900/60 px-3 py-2 text-sm">
+          <li key={p.player} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg bg-ink-900/60 px-2.5 py-1.5 text-sm">
             <span className="flex items-center gap-2 text-ivory-50">
               {nick(view, p.player)}
               {(record.points[p.player] ?? 0) > 0 && <Badge tone="gold">+{record.points[p.player]}</Badge>}
@@ -172,7 +182,7 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
         ))}
       </ul>
       {/* Téléphone : le bouton reste visible en bas de la fenêtre, même quand le contenu défile. */}
-      <div className={`flex items-center justify-end gap-3 sticky -bottom-5 z-10 -mx-5 -mb-5 mt-6 border-t border-ivory-100/10 bg-ink-800 px-5 pb-8 pt-3 sm:static sm:mx-0 sm:mb-0 sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0`}>
+      <div className={`flex items-center justify-end gap-3 sticky -bottom-4 z-10 -mx-4 -mb-4 mt-3 border-t border-ivory-100/10 bg-ink-800 px-4 pb-6 pt-2 sm:static sm:mx-0 sm:mb-0 sm:mt-3 sm:border-0 sm:bg-transparent sm:p-0`}>
         {left !== null && !interacted && <span className="text-xs text-ivory-300/60">Fermeture dans {left} s</span>}
         <Button onClick={onClose}>{final ? 'Voir le résultat final' : 'Continuer'}</Button>
       </div>
@@ -251,7 +261,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
                 <td className="hidden py-1.5 text-right tabular-nums text-ivory-200/80 sm:table-cell">{formatChips(game.stakeChips)}</td>
                 <td className="py-1.5 text-right tabular-nums text-ivory-50"><span className="sm:hidden">{payout.toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatChips(payout)}</span></td>
                 <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}><span className="sm:hidden">{net > 0 ? '+' : net < 0 ? '−' : ''}{Math.abs(net).toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatSignedChips(net)}</span></td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net).toLocaleString('fr-FR')}</td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net + (o.sideBets?.[p.player] ?? 0)).toLocaleString('fr-FR')}</td>
               </tr>
             );
           })}
@@ -356,9 +366,9 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
   if (!winner || !combo) return null;
   const cards = winningCards(record);
   return (
-    <div className="relative mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/50 bg-gradient-to-r from-gold-500/20 to-transparent px-3 py-2.5" data-testid="vainqueur-manche">
+    <div className="relative mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/50 bg-gradient-to-r from-gold-500/20 to-transparent px-3 py-1.5" data-testid="vainqueur-manche">
       <Shine />
-      <SpinTrophy size={44} />
+      <SpinTrophy size={38} />
       <div className="min-w-[10rem] flex-1">
         <p className="text-xs uppercase tracking-widest text-gold-300">Vainqueur de la manche</p>
         <p className="font-display text-xl text-ivory-50">

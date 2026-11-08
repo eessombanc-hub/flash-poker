@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { AMBIANCE_OPTIONS } from './theme';
 
 export type FeltColor = 'vert' | 'bleu' | 'bordeaux' | 'anthracite';
-export type Ambiance = 'saphir' | 'emeraude' | 'cuir' | 'carbone' | 'bordeaux' | 'violet';
+export type Ambiance = 'cognac' | 'emeraude' | 'cuir' | 'carbone' | 'bordeaux' | 'violet';
 export type CardBack = 'losange' | 'rayures' | 'etoile';
 
 interface Settings {
@@ -23,7 +23,7 @@ interface Settings {
   setAmbiance: (v: Ambiance) => void;
 }
 const KEY = 'poker.settings.v1';
-const DEFAULTS: Stored = { fourColor: false, sound: true, feltColor: 'vert', cardBack: 'losange', ambiance: 'saphir' };
+const DEFAULTS: Stored = { fourColor: false, sound: true, feltColor: 'vert', cardBack: 'losange', ambiance: 'cognac' };
 const Ctx = createContext<Settings>({
   ...DEFAULTS,
   setFourColor: () => undefined,
@@ -40,7 +40,7 @@ interface Stored {
   cardBack: CardBack;
   ambiance: Ambiance;
 }
-const AMBIANCES: Ambiance[] = ['saphir', 'emeraude', 'cuir', 'carbone', 'bordeaux', 'violet'];
+const AMBIANCES: Ambiance[] = ['cognac', 'emeraude', 'cuir', 'carbone', 'bordeaux', 'violet'];
 const FELT_COLORS: FeltColor[] = ['vert', 'bleu', 'bordeaux', 'anthracite'];
 const CARD_BACKS: CardBack[] = ['losange', 'rayures', 'etoile'];
 function load(): Stored {

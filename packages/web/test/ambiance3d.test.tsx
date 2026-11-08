@@ -21,13 +21,13 @@ function renderSettings() {
 }
 
 describe('ambiances de couleurs', () => {
-  it('propose six ambiances, saphir par défaut, appliquée à la page', () => {
+  it('propose six ambiances, cognac par défaut, appliquée à la page', () => {
     renderSettings();
     expect(AMBIANCE_OPTIONS).toHaveLength(6);
     const group = screen.getByRole('radiogroup', { name: 'Ambiance' });
     expect(group.querySelectorAll('[role=radio]')).toHaveLength(6);
-    expect(screen.getByRole('radio', { name: /^Saphir/ })).toHaveAttribute('aria-checked', 'true');
-    expect(document.documentElement.dataset.ambiance).toBe('saphir');
+    expect(screen.getByRole('radio', { name: /^Cognac/ })).toHaveAttribute('aria-checked', 'true');
+    expect(document.documentElement.dataset.ambiance).toBe('cognac');
   });
 
   it('change d’ambiance, la retient et met à jour la couleur de la barre du navigateur', () => {
@@ -48,7 +48,7 @@ describe('ambiances de couleurs', () => {
   it('ignore une valeur enregistrée inconnue', () => {
     localStorage.setItem(KEY, JSON.stringify({ ambiance: 'fluo' }));
     renderSettings();
-    expect(document.documentElement.dataset.ambiance).toBe('saphir');
+    expect(document.documentElement.dataset.ambiance).toBe('cognac');
   });
 });
 

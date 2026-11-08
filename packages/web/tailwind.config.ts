@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss';
 
-// Design tokens : saphir / vert poker / or. Aucune police distante : la sobriété d'une banque privée
+// Design tokens : cognac / vert poker / or. Aucune police distante : la sobriété d'une banque privée
 // passe par une typographie à empattements pour les titres et le sans-serif du système pour l'interface.
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -8,7 +8,7 @@ export default {
     extend: {
       colors: {
         // Fond du jeu, du plus profond (950) à la teinte d'accent des bordures (500). Les valeurs viennent de
-        // l'ambiance choisie dans les Paramètres (variables CSS, voir styles.css) ; saphir par défaut.
+        // l'ambiance choisie dans les Paramètres (variables CSS, voir styles.css) ; cognac par défaut.
         ink: { 950: 'rgb(var(--ink-950) / <alpha-value>)', 900: 'rgb(var(--ink-900) / <alpha-value>)', 800: 'rgb(var(--ink-800) / <alpha-value>)', 700: 'rgb(var(--ink-700) / <alpha-value>)', 600: 'rgb(var(--ink-600) / <alpha-value>)', 500: 'rgb(var(--ink-500) / <alpha-value>)' },
         felt: { 900: '#06261c', 800: '#0a3325', 700: '#0e4130', 600: '#13543f', 500: '#1a6b51' },
         gold: { 300: '#e6cf9c', 400: '#d8b872', 500: '#c9a25a', 600: '#a9843f', 700: '#846531' },
