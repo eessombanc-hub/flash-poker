@@ -3,6 +3,7 @@ import { CryptoRng } from '@poker/engine';
 import { AccountDb } from './accounts/db';
 import { resolveMailer } from './accounts/mailer';
 import { AccountService } from './accounts/service';
+import { BlackjackService } from './blackjack/service';
 import { buildServer } from './http';
 import { RoomManager } from './roomManager';
 import { RealScheduler } from './scheduler';
@@ -37,13 +38,19 @@ if (testTimers) console.warn(`⚠ Minuteurs allongés à ${phaseSeconds} s (mode
 // E-mails (mot de passe oublié, favori connecté) : variables SMTP_* (voir accounts/mailer.ts) ; sans elles, rien ne part.
 const accountsPath = process.env.STORE === 'memory' ? ':memory:' : (process.env.ACCOUNTS_DB_PATH ?? join(dirname(process.env.DB_PATH ?? './data/flashpoker.db'), 'comptes.db'));
 const mailer = resolveMailer(process.env);
-const accounts = new AccountService(new AccountDb(accountsPath), mailer, { appUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL });
+const accountsDb = new AccountDb(accountsPath);
+const accounts = new AccountService(accountsDb, mailer, { appUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL });
 console.log(mailer.enabled ? 'E-mails activés (SMTP)' : 'E-mails désactivés : SMTP non configuré (mot de passe oublié indisponible)');
+const blackjack = new BlackjackService(accountsDb);
 const manager = new RoomManager({
   rng: new CryptoRng(),
   scheduler,
   store,
-  accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g), canAfford: (id, stake) => accounts.canAfford(id, stake) },
+  accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => {
+      accounts.recordGame(g);
+      // Progression commune : le poker nourrit la même XP que le Blackjack.
+      for (const p of g.players) if (p.accountId && g.seated.includes(p.playerId)) blackjack.awardXp(p.accountId, 40 + (g.outcome.winner === p.playerId ? 60 : 0));
+    }, canAfford: (id, stake) => accounts.canAfford(id, stake) },
   ...(testTimers ? { timers: { durationMs: phaseSeconds * 1000, warningMs: 10_000 } } : {}),
 });
 await manager.restoreFromStore();
@@ -56,6 +63,7 @@ const httpMax = Number(process.env.HTTP_RATE_LIMIT ?? 30);
 const server = await buildServer({
   manager,
   accounts,
+  blackjack,
   publicUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL,
   corsOrigin: process.env.CORS_ORIGIN,
   webDist: process.env.WEB_DIST,

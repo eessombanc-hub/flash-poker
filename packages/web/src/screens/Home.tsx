@@ -6,12 +6,12 @@ import { ApiError, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { HeroScene } from '../components/Scene3D';
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { CardsIcon, ChipsIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
+import { CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 import { SettingsBody } from '../components/SettingsBody';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onCreate, onJoin, onTrain, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; notice?: string | null; account?: ReactNode }) {
+export function Home({ onCreate, onJoin, onTrain, onBlackjack, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; notice?: string | null; account?: ReactNode }) {
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
   return (
@@ -57,6 +57,31 @@ export function Home({ onCreate, onJoin, onTrain, notice, account }: { onCreate:
           <ActionTile icon={<TrophyIcon size={58} />} title="S’entraîner contre le CPU" text="Seul à la table, contre un à cinq adversaires gérés par l’ordinateur. Aucune mise." onClick={onTrain} />
           <ActionTile icon={<RulesIcon size={58} />} title="Mémo des règles" text="Les huit variantes et les règles communes, en un coup d’œil." onClick={() => setRules(true)} />
         </section>
+
+        {/* Blackjack : rubrique à part, distincte des variantes de poker */}
+        {onBlackjack && (
+          <section aria-label="Blackjack" className="mt-4">
+            <div className="relative flex flex-col gap-3 overflow-hidden rounded-3xl border border-gold-500/40 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <span aria-hidden="true"><CoinIcon size={58} /></span>
+                <div>
+                  <Eyebrow>Casino</Eyebrow>
+                  <h2 className="font-display text-2xl text-ivory-50">
+                    <button type="button" onClick={onBlackjack} className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none" aria-describedby="bj-tile-d">
+                      Blackjack
+                    </button>
+                  </h2>
+                  <p id="bj-tile-d" className="mt-0.5 max-w-xl text-sm text-ivory-200/85">
+                    Seul face au croupier : six tables, défis quotidiens, niveaux et classement. Un compte est nécessaire.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start rounded-full border border-gold-400/60 px-4 py-2 text-sm font-semibold text-gold-300 sm:self-center" aria-hidden="true">
+                Jouer
+              </span>
+            </div>
+          </section>
+        )}
 
         {/* Atouts */}
         <ul className="mt-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4" aria-label="En bref">

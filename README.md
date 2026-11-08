@@ -47,6 +47,39 @@ packages/web/               React 19 + Vite + Tailwind + Framer Motion + Zustand
 ├── panels/     Fermé 1/2, Aviation/Avia 6, 6-3 (zéro aide), 6-1, Morpion (zéro aide), Le 10, choix de variante, assurance
 └── screens/    accueil, création/arrivée, salle d'attente, table (ovale desktop, colonne mobile), résultats, départage, fin de partie
 
+## Blackjack (module indépendant du poker)
+
+Rubrique « Casino » de l'accueil, séparée des huit variantes. Un joueur contre le croupier, avec un compte (jetons, niveau, défis et manche en cours sont enregistrés côté serveur).
+
+**Séparation des couches**
+
+| Couche | Emplacement | Rôle |
+|---|---|---|
+| Règles | `engine/src/blackjack/rules.ts` | `TableRules`, tables prédéfinies (Découverte, Classique, Jeu unique, Atlantic, Haut niveau) et table libre |
+| Moteur | `engine/src/blackjack/{hand,round,shoe,sha256}.ts` | totaux, manche (Hit, Stand, Double, Split, Surrender), sabot vérifiable, rejeu |
+| Aide | `engine/src/blackjack/{strategy,odds}.ts` | stratégie de base et probabilités exactes (niveaux pédagogiques) |
+| Progression | `engine/src/blackjack/progress.ts` | niveaux, XP, défis quotidiens, objectifs |
+| Données | `server/src/blackjack/service.ts`, tables `bj_*` de `accounts/db.ts` | profil, manche active, historique, défis, objectifs, classement |
+| API | `server/src/blackjack/routes.ts` | `/me/blackjack*`, `/blackjack/leaderboard` |
+| Interface | `web/src/screens/Blackjack.tsx`, `web/src/components/blackjack/` | salon, table, panneaux |
+| Droits | `web/src/lib/entitlements.ts` | point d'extension de la monétisation |
+
+**Équité vérifiable.** Avant la première décision, le serveur publie `SHA-256("flashpoker-blackjack-v1:commit:" + graine)`. Le sabot est une fonction pure de la graine et du nombre de jeux (flux SHA-256 en mode compteur, tirage sans biais, mélange de Fisher-Yates). À la fin de la manche, la graine est révélée : le navigateur recalcule l'engagement et le joueur peut reconstruire le sabot. Un sabot neuf est tiré à chaque manche ; aucune table n'est truquée, seules les règles diffèrent.
+
+**Cartes cachées.** Le sabot et la carte cachée du croupier ne quittent jamais le serveur (`roundView`). Le client n'envoie que l'action choisie.
+
+**Reprise.** La manche active est stockée sous la forme graine + mise + suite d'actions ; elle est reconstruite par rejeu, sans état fragile. Une manche abandonnée plus de 12 h est conclue en « Rester ».
+
+**Jetons.** Solde propre au Blackjack (1 000 au départ), recharge à 500 sous 5 jetons après 30 minutes, jamais en cours de manche. Jetons virtuels sans valeur monétaire.
+
+**Progression commune.** L'XP est partagée avec le poker (40 par partie terminée, 60 de plus pour le vainqueur) ; chaque niveau rapporte `100 × niveau` jetons de Blackjack. Trois défis quotidiens par joueur (jour de Paris), dix objectifs.
+
+**Règles gérées.** Totaux souples, Blackjack naturel, égalité, croupier sur 17 (tire ou non sur 17 soft), Blackjack 3:2 ou 6:5, doublement (tout total, 9-11, 10-11), doublement après séparation, 2 à 4 mains, séparation des As (une carte chacun, re-séparation en option), abandon tardif, vérification du Blackjack du croupier sur As ou 10. L'assurance n'est volontairement pas proposée.
+
+**Monétisation (préparée, non active).** Le module n'implique aucun argent réel. `entitlements.ts` distingue le jeu complet, toujours gratuit, des options futures (cosmétiques, statistiques avancées, compétitions à récompenses virtuelles, retrait de publicité). Aujourd'hui tout est accordé ; brancher un abonnement revient à remplacer `plan()`.
+
+**Limite connue.** Sur l'hébergement gratuit de Render, le disque est éphémère : les comptes, jetons et statistiques disparaissent à chaque redéploiement. Un disque persistant (ou une base externe) est nécessaire pour de vrais testeurs.
+
 ## Protocole
 
 **HTTP** — `POST /rooms` (création, 201 : `{code, playerId, token}`), `POST /rooms/:code/join` (arrivée), `GET /health`.
@@ -162,6 +195,7 @@ n'est modifiée, le CPU n'utilise que les commandes ouvertes à un joueur humain
 | Game Manager | rotation, objectif, assurance, arrivées, exclusions, minuteurs, snapshot/restore, 100 parties aléatoires (60 complètes + 40 avec arrivées et exclusions) |
 | RoomManager (horloge simulée) | lobby, validation, jetons, identité, secret des messages, minuteurs, reconnexion, arrivées, exclusions, persistance, hygiène |
 | Réseau (vrais sockets) | HTTP, authentification, partie de bout en bout, secret sur le réseau, reconnexion, multi-onglets, exclusion, débit |
+| Blackjack | moteur : 46 tests (SHA-256 contre `node:crypto`, composition et uniformité du sabot, totaux, Blackjack, séparation, doublement, abandon, rejeu, 2 000 manches simulées) ; serveur : 19 tests (manches, reprise, équité, jetons, niveaux, défis, objectifs, classement, accès réservé) ; web : 17 tests dont un parcours complet sur vrai serveur |
 | Robustesse | ≈ 60 mutations volontaires des règles : toutes détectées, sauf 3 mutants équivalents (doubles gardes / mutation inerte) |
 
 ## Interface (Phase 6)

@@ -13,10 +13,12 @@ import { Table } from './screens/Table';
 // Écrans de compte chargés à la demande : la première page (accueil, table) s'affiche plus vite sur téléphone.
 const loadAuth = () => import('./screens/Auth');
 const loadSpace = () => import('./screens/Space');
+const loadBlackjack = () => import('./screens/Blackjack');
 const AuthScreen = lazy(() => loadAuth().then((m) => ({ default: m.AuthScreen })));
+const Blackjack = lazy(() => loadBlackjack().then((m) => ({ default: m.Blackjack })));
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 
-type Screen = 'home' | 'create' | 'join' | 'train' | 'space' | { auth: AuthMode };
+type Screen = 'home' | 'create' | 'join' | 'train' | 'space' | 'blackjack' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -141,7 +143,7 @@ export function App() {
   }, [client]);
   useEffect(() => {
     // Écrans de compte préchargés en tâche de fond, une fois l'accueil affiché : ils s'ouvrent ensuite sans attente.
-    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace()]).catch(() => undefined), 1500);
+    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace(), loadBlackjack()]).catch(() => undefined), 1500);
     return () => clearTimeout(t);
   }, []);
 
@@ -163,6 +165,7 @@ export function App() {
     else content = <Table />;
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
+  else if (screen === 'blackjack') content = <Blackjack onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} />;
   else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
   else if (screen === 'train') content = <TrainingRoom onBack={() => setScreen('home')} />;
   else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={joinCode} />;
@@ -171,6 +174,7 @@ export function App() {
       <Home
         onCreate={() => setScreen('create')}
         onTrain={() => setScreen('train')}
+        onBlackjack={() => setScreen('blackjack')}
         onJoin={(code) => {
           setJoinCode(code ?? '');
           setScreen('join');

@@ -87,6 +87,64 @@ export class AccountDb {
         amount INTEGER NOT NULL,
         PRIMARY KEY (user_id, at)
       );
+      CREATE TABLE IF NOT EXISTS bj_profile (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        chips INTEGER NOT NULL,
+        xp INTEGER NOT NULL DEFAULT 0,
+        rounds INTEGER NOT NULL DEFAULT 0,
+        hands INTEGER NOT NULL DEFAULT 0,
+        hands_won INTEGER NOT NULL DEFAULT 0,
+        hands_lost INTEGER NOT NULL DEFAULT 0,
+        hands_pushed INTEGER NOT NULL DEFAULT 0,
+        blackjacks INTEGER NOT NULL DEFAULT 0,
+        doubles_won INTEGER NOT NULL DEFAULT 0,
+        splits_won INTEGER NOT NULL DEFAULT 0,
+        net_chips INTEGER NOT NULL DEFAULT 0,
+        streak INTEGER NOT NULL DEFAULT 0,
+        best_streak INTEGER NOT NULL DEFAULT 0,
+        max_chips INTEGER NOT NULL,
+        last_refill_at INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS bj_active (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        table_id TEXT NOT NULL,
+        rules TEXT NOT NULL,
+        bet INTEGER NOT NULL,
+        seed TEXT NOT NULL,
+        commitment TEXT NOT NULL,
+        start_chips INTEGER NOT NULL,
+        actions TEXT NOT NULL,
+        started_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS bj_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        ended_at INTEGER NOT NULL,
+        table_id TEXT NOT NULL,
+        bet INTEGER NOT NULL,
+        net INTEGER NOT NULL,
+        wagered INTEGER NOT NULL,
+        seed TEXT NOT NULL,
+        commitment TEXT NOT NULL,
+        rules TEXT NOT NULL,
+        actions TEXT NOT NULL,
+        summary TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS bj_history_by_user ON bj_history (user_id, ended_at);
+      CREATE TABLE IF NOT EXISTS bj_challenges (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        challenge_id TEXT NOT NULL,
+        progress INTEGER NOT NULL DEFAULT 0,
+        done INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day, challenge_id)
+      );
+      CREATE TABLE IF NOT EXISTS bj_achievements (
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        achievement_id TEXT NOT NULL,
+        at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, achievement_id)
+      );
       CREATE TABLE IF NOT EXISTS notify_log (
         user_id TEXT NOT NULL,
         fav_id TEXT NOT NULL,

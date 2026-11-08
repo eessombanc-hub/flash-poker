@@ -8,6 +8,7 @@ export * from './evaluation/omahaEvaluator';
 export * from './evaluation/visibleEvaluator';
 export * from './evaluation/ranking';
 export * from './variants';
+export * from './blackjack';
 export * from './game/positions';
 export * from './game/gameManager';
 export * from './game/insurance';

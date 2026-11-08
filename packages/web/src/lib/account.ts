@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
+import type { BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
@@ -160,6 +161,13 @@ export class AccountClient {
   stats = () => this.request<{ variants: VariantStats[]; games: number; gamesWon: number }>('GET', '/me/stats');
   wallet = () => this.request<Wallet>('GET', '/me/wallet');
   bankroll = () => this.request<Bankroll>('GET', '/me/bankroll');
+  // ----- Blackjack -----
+  blackjack = () => this.request<BjOverview>('GET', '/me/blackjack');
+  blackjackHistory = () => this.request<{ history: BjHistoryItem[] }>('GET', '/me/blackjack/history').then((r) => r.history);
+  blackjackStart = (input: { table: string; bet: number; rules?: TableRules }) => this.request<{ active: BjActive; result: BjResult | null }>('POST', '/me/blackjack/round', input);
+  blackjackAct = (action: BjAction) => this.request<{ active: BjActive; result: BjResult | null }>('POST', '/me/blackjack/action', { action });
+  blackjackHelp = () => this.request<{ advice: Advice | null; odds: Odds }>('GET', '/me/blackjack/help');
+  blackjackLeaderboard = (by: BjLeaderboardKind) => this.request<{ entries: BjLeaderboardEntry[] }>('GET', `/blackjack/leaderboard?by=${by}`).then((r) => r.entries);
   favoriteRounds = () => this.request<{ rounds: FavoriteRound[] }>('GET', '/me/favorite-rounds').then((r) => r.rounds);
   addFavoriteRound = (gameId: string, roundNo: number) => this.request('POST', '/me/favorite-rounds', { gameId, roundNo });
   removeFavoriteRound = (gameId: string, roundNo: number) => this.request('DELETE', `/me/favorite-rounds/${encodeURIComponent(gameId)}/${roundNo}`);

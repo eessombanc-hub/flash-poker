@@ -7,6 +7,8 @@ import { ServerError } from './errors';
 import { authSchema, excludeSchema, approveAssistanceSchema, type Outgoing } from './protocol';
 import { RateLimiter } from './rateLimiter';
 import { optionalAccount, registerAccountRoutes, registerPresence } from './accounts/routes';
+import { registerBlackjackRoutes } from './blackjack/routes';
+import type { BlackjackService } from './blackjack/service';
 import type { AccountService } from './accounts/service';
 import type { RoomManager } from './roomManager';
 import { renderIndex } from './sharePreview';
@@ -30,6 +32,8 @@ export interface ServerOptions {
   webDist?: string;
   /** Comptes joueurs (facultatif) : connexion, espace personnel, favoris, présence. */
   accounts?: AccountService;
+  /** Module Blackjack (nécessite `accounts`). */
+  blackjack?: BlackjackService;
   /** Adresse publique du jeu (APP_URL ou celle fournie par Render), pour l'aperçu des liens partagés. */
   publicUrl?: string;
   /** Inscription / connexion / mot de passe oublié : tentatives par IP. */
@@ -189,8 +193,9 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     return reply.status(201).send(opts.manager.joinRoom(req.params.code, req.body, account));
   });
   if (opts.accounts) registerAccountRoutes(app, opts.accounts, { now, authRateLimit: opts.authRateLimit });
+  if (opts.accounts && opts.blackjack) registerBlackjackRoutes(app, opts.blackjack, opts.accounts, { now });
 
-  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/users', '/invites'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
+  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/users', '/invites', '/blackjack'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
 
   if (opts.webDist && existsSync(opts.webDist)) {
     // Fichiers avec hash dans leur nom (assets Vite) : cache long ; `index.html` : jamais mis en cache (sert
