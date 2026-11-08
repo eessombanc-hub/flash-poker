@@ -52,4 +52,4 @@ export type { TableRoundView } from '@poker/engine';
 
 // Le Tableau : types du serveur (le navigateur n'embarque aucune règle ; il affiche ce que le serveur décide).
 export type { TbGameDto, TbHistoryEntry, TbMode, TbStatus, TbPlayerDto } from '@poker/server/src/tableau/service';
-export type { TableauView, TableauResult, ColumnHand, ColumnVerdict, AiLevel, Placement as TableauPlacement, Seat as TableauSeat } from '@poker/engine';
+export type { TableauView, TableauResult, ColumnHand, ColumnVerdict, AiLevel, TableauVariant, Placement as TableauPlacement, Seat as TableauSeat } from '@poker/engine';

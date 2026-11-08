@@ -10,6 +10,7 @@ const nick = z.string().transform((v) => v.replace(/[^\p{L}\p{N} _.'-]/gu, '').t
 const createSchema = z.object({
   mode: z.enum(['training', 'friendly']),
   level: z.enum(['beginner', 'intermediate', 'expert']).optional(),
+  variant: z.enum(['classic', 'hand5']).optional(),
   nickname: nick.optional(),
 });
 
@@ -38,7 +39,7 @@ export function registerTableauRoutes(app: FastifyInstance, tb: TableauService, 
   app.post('/tableau/games', async (req, reply) => {
     const p = createSchema.safeParse(req.body);
     if (!p.success) throw new ServerError('BAD_REQUEST', 'Partie invalide');
-    return reply.status(201).send(tb.create(me(req, p.data.nickname), { mode: p.data.mode, level: p.data.level }));
+    return reply.status(201).send(tb.create(me(req, p.data.nickname), { mode: p.data.mode, level: p.data.level, variant: p.data.variant }));
   });
   app.get('/me/tableau/active', async (req) => ({ active: tb.activeCode(me(req).userId) }));
   app.get('/me/tableau/history', async (req) => ({ history: tb.history(me(req).userId) }));
@@ -48,9 +49,9 @@ export function registerTableauRoutes(app: FastifyInstance, tb: TableauService, 
     return tb.join(code(req), me(req, body.success ? body.data.nickname : undefined));
   });
   app.post<{ Params: { code: string } }>('/tableau/games/:code/place', async (req) => {
-    const p = z.object({ col: z.number().int().min(0).max(4) }).safeParse(req.body);
+    const p = z.object({ col: z.number().int().min(0).max(4), card: z.string().regex(/^[2-9TJQKA][cdhs]$/).optional() }).safeParse(req.body);
     if (!p.success) throw new ServerError('BAD_REQUEST', 'Colonne invalide');
-    return tb.place(code(req), me(req).userId, p.data.col);
+    return tb.place(code(req), me(req).userId, p.data.col, p.data.card);
   });
   app.get<{ Params: { code: string } }>('/tableau/games/:code/advice', async (req) => tb.advice(code(req), me(req).userId));
   app.post<{ Params: { code: string } }>('/tableau/games/:code/leave', async (req) => tb.leave(code(req), me(req).userId));

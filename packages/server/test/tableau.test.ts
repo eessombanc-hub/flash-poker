@@ -363,6 +363,59 @@ describe('Tableau — partie amicale (code d’invitation)', () => {
   });
 });
 
+describe('Tableau 5 cartes — serveur', () => {
+  it('entraînement : colonnes vides, main de 5 cartes, partie de 25 coups par joueur jusqu’au résultat', () => {
+    const env = setup();
+    let v = env.tb.create(A, { mode: 'training', level: 'intermediate', variant: 'hand5' });
+    expect(v.variant).toBe('hand5');
+    expect(v.view!.hand).toHaveLength(5);
+    expect(v.view!.remaining[v.you]).toBe(25);
+    for (let i = 0; i < 600 && v.status === 'playing'; i++) {
+      if (v.view!.turn === v.you) {
+        const card = i % 2 === 0 ? v.view!.hand[0]! : (v.view!.yourCard ?? v.view!.hand[1]!);
+        v = env.tb.place(v.code, A.userId, v.view!.legal[0]!, card);
+      } else {
+        env.tick(5_000);
+        v = env.tb.get(v.code, A.userId);
+      }
+    }
+    expect(v.status).toBe('finished');
+    expect(v.view!.placed).toEqual([25, 25]);
+    expect(v.view!.hand).toHaveLength(0);
+    expect(verifyTableauReveal(v.reveal!)).toBe(true);
+    expect(env.tb.history(A.userId)[0]!.variant).toBe('hand5');
+  });
+
+  it('carte hors main refusée ; délai dépassé = carte piochée en première colonne libre ; reprise identique', () => {
+    const env = setup();
+    let v = env.tb.create(A, { mode: 'training', level: 'beginner', variant: 'hand5' });
+    while (v.view!.turn !== v.you) {
+      env.tick(5_000);
+      v = env.tb.get(v.code, A.userId);
+    }
+    expect(() => env.tb.place(v.code, A.userId, 0, '2c' === v.view!.hand[0] ? '3c' : '2c')).toThrow();
+    const drawn = v.view!.yourCard!;
+    env.tick(TURN_MS + GRACE_MS + 10);
+    const after = env.tb.get(v.code, A.userId);
+    expect(after.view!.columns[v.you]![0]).toContain(drawn);
+    const fresh = new TableauService(env.store, env.bj, { now: env.now });
+    const r = fresh.get(v.code, A.userId);
+    expect(r.view!.hand).toEqual(after.view!.hand);
+    expect(r.view!.columns).toEqual(after.view!.columns);
+  });
+
+  it('amical : la main de chacun reste privée', () => {
+    const env = setup();
+    const c = env.tb.create(A, { mode: 'friendly', variant: 'hand5' });
+    env.tb.join(c.code, B);
+    const a = env.tb.get(c.code, A.userId);
+    const b = env.tb.get(c.code, B.userId);
+    expect(a.view!.hand).toHaveLength(5);
+    for (const card of b.view!.hand) expect(JSON.stringify(a).includes(`"${card}"`)).toBe(false);
+    for (const card of a.view!.hand) expect(JSON.stringify(b).includes(`"${card}"`)).toBe(false);
+  });
+});
+
 describe('Tableau — HTTP', () => {
   it('routes : identité requise, création, état, placement, adversaire invité, historique', async () => {
     const { LogMailer } = await import('../src/accounts/mailer');

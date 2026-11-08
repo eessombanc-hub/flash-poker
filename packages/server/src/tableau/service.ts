@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import {
-  adviseColumn, AI_LEVELS, chooseColumn, compareColumns, CryptoRng, describePartial, evaluateColumn, TableauError, TableauGame, tableauCommitment, thinkDelayMs, TURN_MS,
-  type AiLevel, type ColumnHand, type Placement, type Rng, type Seat, type TableauResult, type TableauView,
+  adviseColumn, AI_LEVELS, chooseMove, TABLEAU_VARIANTS, compareColumns, CryptoRng, describePartial, evaluateColumn, TableauError, TableauGame, tableauCommitment, thinkDelayMs, TURN_MS,
+  type AiLevel, type TableauVariant, type ColumnHand, type Placement, type Rng, type Seat, type TableauResult, type TableauView,
 } from '@poker/engine';
 import type { AccountDb } from '../accounts/db';
 import { ServerError } from '../errors';
@@ -33,11 +33,13 @@ interface Player {
 interface Room {
   code: string;
   mode: TbMode;
+  /** Variante : classique, ou « Tableau 5 cartes » (main de 5 cartes). Absent = classique (anciennes parties). */
+  variant?: TableauVariant;
   seed: string;
   commitment: string;
   seats: [Player, Player | null];
   status: TbStatus;
-  log: { seat: Seat; col: number; auto: boolean }[];
+  log: { seat: Seat; col: number; auto: boolean; card?: string }[];
   turnSince: number;
   /** Délai de réflexion de l'IA pour le coup en cours. */
   cpuDelay: number;
@@ -60,6 +62,7 @@ export interface TbPlayerDto {
 export interface TbGameDto {
   code: string;
   mode: TbMode;
+  variant: TableauVariant;
   status: TbStatus;
   version: number;
   serverNow: number;
@@ -86,6 +89,7 @@ export interface TbGameDto {
 export interface TbHistoryEntry {
   code: string;
   mode: TbMode;
+  variant: TableauVariant;
   at: number;
   opponent: string;
   opponentLevel: AiLevel | null;
@@ -139,7 +143,7 @@ export class TableauService {
       const row = this.db.prepare('SELECT data FROM tb_game WHERE code = ?').get(code) as { data: string } | undefined;
       if (!row) throw new ServerError('NOT_FOUND', 'Partie introuvable');
       const room = JSON.parse(row.data) as Room;
-      e = { room, game: TableauGame.replay(room.seed, room.log) };
+      e = { room, game: TableauGame.replay(room.seed, room.log, room.variant ?? 'classic') };
       this.cache.set(code, e);
     }
     return e;
@@ -177,9 +181,9 @@ export class TableauService {
     room.cpuDelay = s !== null && room.seats[s]?.kind === 'cpu' ? (this.opts.cpuDelayMs ?? thinkDelayMs(room.seats[s]!.level ?? 'beginner', this.rng)) : 0;
   }
 
-  private apply(room: Room, game: TableauGame, seat: Seat, col: number, auto: boolean, at: number): void {
-    game.place(seat, col, auto);
-    room.log.push({ seat, col, auto });
+  private apply(room: Room, game: TableauGame, seat: Seat, col: number, auto: boolean, at: number, card?: string): void {
+    const p = game.place(seat, col, auto, card);
+    room.log.push({ seat, col, auto, card: p.card });
     if (game.finished) this.finish(room, game, at);
     else this.begin(room, game, at);
   }
@@ -219,8 +223,8 @@ export class TableauService {
       if (p.kind === 'cpu') {
         const due = room.turnSince + room.cpuDelay;
         if (now < due) break;
-        const col = chooseColumn(game.view(s), p.level ?? 'beginner', { rng: this.rng, maxSims: this.opts.aiSims, budgetMs: this.opts.aiBudgetMs ?? 350 });
-        this.apply(room, game, s, col, false, due);
+        const mv = chooseMove(game.view(s), p.level ?? 'beginner', { rng: this.rng, maxSims: this.opts.aiSims, budgetMs: this.opts.aiBudgetMs ?? 350 });
+        this.apply(room, game, s, mv.col, false, due, mv.card);
       } else {
         const limit = room.turnSince + TURN_MS + GRACE_MS;
         if (now < limit) break;
@@ -234,7 +238,7 @@ export class TableauService {
           }
           break;
         }
-        this.apply(room, game, s, game.autoColumn(s), true, room.turnSince + TURN_MS);
+        this.apply(room, game, s, game.autoColumn(s), true, room.turnSince + TURN_MS, game.autoCard(s));
       }
     }
   }
@@ -261,7 +265,7 @@ export class TableauService {
     return a ? { code: a.room.code, mode: a.room.mode, status: a.room.status } : null;
   }
 
-  create(who: Who, req: { mode: TbMode; level?: AiLevel }): TbGameDto {
+  create(who: Who, req: { mode: TbMode; level?: AiLevel; variant?: TableauVariant }): TbGameDto {
     this.sweep();
     const existing = this.activeOf(who.userId);
     if (existing) {
@@ -270,18 +274,20 @@ export class TableauService {
       this.drop(r.code); // entraînement ou salle d'attente non démarrée : remplacée
     }
     const level = req.level ?? 'intermediate';
+    const variant = req.variant ?? 'classic';
+    if (!TABLEAU_VARIANTS.includes(variant)) throw new ServerError('BAD_REQUEST', 'Variante inconnue');
     if (req.mode === 'training' && !AI_LEVELS.includes(level)) throw new ServerError('BAD_REQUEST', 'Niveau inconnu');
     const seed = this.opts.seed ? this.opts.seed() : randomBytes(32).toString('hex');
     const now = this.now();
     const human: Player = { kind: 'human', userId: who.userId, nickname: who.nickname, avatar: who.avatar, level: null, idle: 0 };
     const cpu: Player = { kind: 'cpu', userId: null, nickname: CPU_NAMES[level], avatar: null, level, idle: 0 };
     const room: Room = {
-      code: this.newCode(), mode: req.mode, seed, commitment: tableauCommitment(seed),
+      code: this.newCode(), mode: req.mode, variant, seed, commitment: tableauCommitment(seed),
       seats: [human, req.mode === 'training' ? cpu : null],
       status: req.mode === 'training' ? 'playing' : 'waiting', log: [], turnSince: now, cpuDelay: 0, paused: false, forfeit: null,
       createdAt: now, finishedAt: null, version: 0, updatedAt: now, xpDone: false,
     };
-    const game = new TableauGame(seed);
+    const game = new TableauGame(seed, variant);
     if (room.status === 'playing') this.begin(room, game, now);
     this.cache.set(room.code, { room, game });
     this.save(room);
@@ -323,7 +329,7 @@ export class TableauService {
     return this.dto(room, game, seat);
   }
 
-  place(codeRaw: string, userId: string, col: number): TbGameDto {
+  place(codeRaw: string, userId: string, col: number, card?: string): TbGameDto {
     const { room, game } = this.load(codeRaw);
     const seat = this.seatOf(room, userId);
     if (seat === null) throw new ServerError('FORBIDDEN', 'Vous ne participez pas à cette partie');
@@ -338,7 +344,7 @@ export class TableauService {
       throw new ServerError('WRONG_STATE', room.status === 'waiting' ? 'En attente d’un adversaire' : 'La partie est terminée');
     }
     try {
-      this.apply(room, game, seat, col, false, this.now());
+      this.apply(room, game, seat, col, false, this.now(), card);
     } catch (e) {
       if (e instanceof TableauError) throw new ServerError('RULE', e.message, e.code);
       throw e;
@@ -349,7 +355,7 @@ export class TableauService {
     return this.dto(room, game, seat);
   }
 
-  advice(codeRaw: string, userId: string): { col: number; text: string } {
+  advice(codeRaw: string, userId: string): { col: number; card: string; text: string } {
     const { room, game } = this.load(codeRaw);
     const seat = this.seatOf(room, userId);
     if (seat === null) throw new ServerError('FORBIDDEN', 'Vous ne participez pas à cette partie');
@@ -384,13 +390,13 @@ export class TableauService {
       if (room.status !== 'finished') continue;
       const seat = this.seatOf(room, userId);
       if (seat === null) continue;
-      const game = TableauGame.replay(room.seed, room.log);
+      const game = TableauGame.replay(room.seed, room.log, room.variant ?? 'classic');
       const result = game.result();
       const opp = room.seats[(1 - seat) as Seat]!;
       const winner = room.forfeit !== null ? ((1 - room.forfeit) as Seat) : (result?.winner ?? null);
       const score = result ? (seat === 0 ? result.score : ([result.score[1], result.score[0]] as [number, number])) : ([0, 0] as [number, number]);
       out.push({
-        code: room.code, mode: room.mode, at: room.finishedAt ?? room.updatedAt, opponent: opp.nickname, opponentLevel: opp.level,
+        code: room.code, mode: room.mode, variant: room.variant ?? 'classic', at: room.finishedAt ?? room.updatedAt, opponent: opp.nickname, opponentLevel: opp.level,
         score: room.forfeit !== null ? [seat === room.forfeit ? 0 : 3, seat === room.forfeit ? 3 : 0] : score,
         outcome: winner === null ? 'draw' : winner === seat ? 'win' : 'loss', forfeit: room.forfeit !== null,
       });
@@ -408,7 +414,7 @@ export class TableauService {
     const complete = finished && game.finished;
     const last = game.log.at(-1) ?? null;
     return {
-      code: room.code, mode: room.mode, status: room.status, version: room.version, serverNow: this.now(), you,
+      code: room.code, mode: room.mode, variant: room.variant ?? 'classic', status: room.status, version: room.version, serverNow: this.now(), you,
       players: room.seats.map((p, i) => (p ? { nickname: p.nickname, avatar: p.avatar, kind: p.kind, level: p.level, you: i === you } : null)),
       commitment: room.commitment,
       view: room.status === 'waiting' ? null : game.view(you),

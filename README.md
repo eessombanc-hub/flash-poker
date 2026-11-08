@@ -103,6 +103,8 @@ Variante à deux joueurs : cinq colonnes de cinq cartes, posées une à une et d
 
 **Reprise et déconnexion.** L'état est la graine plus le journal des coups, rejoués à l'identique après un redémarrage. Aucun minuteur serveur : chaque requête fait d'abord avancer l'horloge (coups de l'IA arrivés à échéance, délais dépassés). Après 3 délais manqués consécutifs, une partie amicale est perdue par forfait ; une partie d'entraînement est mise en pause et reprend au retour du joueur.
 
+**Variante « Tableau 5 cartes ».** Colonnes vides au départ et 5 cartes en main (les mêmes 5 cartes de départ que la variante classique, la distribution et la preuve d'équité sont donc identiques). À chaque tour, le joueur pioche puis pose soit la carte piochée, soit une carte de sa main (la piochée la remplace). Au bout de 20 pioches il reste une carte au paquet, qui ne se pioche jamais : plus personne ne pioche et chacun termine ses colonnes avec les 5 cartes de sa main (25 placements par joueur, 50 coups). Passé le délai de 30 s, la carte piochée est posée dans la première colonne libre (ou, sans pioche, la première carte de la main). La main de l'adversaire n'est jamais transmise. L'IA choisit la carte et la colonne : l'Expert départage ses huit meilleurs coups par simulation.
+
 **Intelligence artificielle.** Elle ne reçoit que la vue de son siège (équité).
 - Débutant : se place près d'une carte de même valeur sinon remplit à gauche, et se trompe une fois sur trois.
 - Intermédiaire : estime la force future de chaque colonne d'après les cartes non encore vues et place la carte où le gain est le plus grand ; la carte inutile va dans la colonne sacrifiée.

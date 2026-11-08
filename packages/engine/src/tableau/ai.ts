@@ -173,7 +173,7 @@ function tableauCat(cards: readonly Card[]): number {
 // Vue -> contexte
 
 function unseenCards(view: TableauView): Card[] {
-  const seen = new Set<string>();
+  const seen = new Set<string>(view.hand);
   for (const side of view.columns) for (const col of side) for (const c of col) seen.add(c);
   if (view.yourCard) seen.add(view.yourCard);
   return ALL_CARDS.filter((c) => !seen.has(c.code));
@@ -183,34 +183,61 @@ function legalOf(view: TableauView): number[] {
   return view.legal.length ? view.legal : view.columns[view.you]!.map((c, i) => (c.length < COLUMN_SIZE ? i : -1)).filter((i) => i >= 0);
 }
 
+/** Cartes jouables à ce tour : la carte piochée, puis la main (variante 5 cartes). */
+function optionsOf(view: TableauView): string[] {
+  return [...(view.yourCard ? [view.yourCard] : []), ...view.hand];
+}
+
+/** Un coup : la carte jouée et la colonne choisie. */
+export interface TableauMove {
+  card: string;
+  col: number;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Niveaux
 
-function beginner(view: TableauView, o: AiOptions): number {
+function beginner(view: TableauView, o: AiOptions): TableauMove {
   const legal = legalOf(view);
-  if (o.rng.int(1000) < (o.blunder ?? 1 / 3) * 1000) return legal[o.rng.int(legal.length)]!;
+  const opts = optionsOf(view);
+  if (o.rng.int(1000) < (o.blunder ?? 1 / 3) * 1000) return { card: opts[o.rng.int(opts.length)]!, col: legal[o.rng.int(legal.length)]! };
   const mine = view.columns[view.you]!;
-  const card = cardOf(view.yourCard!);
-  for (const i of legal) if (mine[i]!.some((c) => cardOf(c).rank === card.rank)) return i;
-  // sinon : la colonne la moins remplie, la plus à gauche
-  return legal.reduce((best, i) => (mine[i]!.length < mine[best]!.length ? i : best), legal[0]!);
+  for (const code of opts) {
+    const card = cardOf(code);
+    for (const i of legal) if (mine[i]!.some((c) => cardOf(c).rank === card.rank)) return { card: code, col: i };
+  }
+  // sinon : la carte piochée (ou la première de la main) dans la colonne la moins remplie, la plus à gauche
+  return { card: opts[0]!, col: legal.reduce((best, i) => (mine[i]!.length < mine[best]!.length ? i : best), legal[0]!) };
 }
 
-function gains(view: TableauView): { col: number; gain: number; base: number }[] {
+interface Gain extends TableauMove {
+  gain: number;
+  base: number;
+  rank: number;
+}
+function gains(view: TableauView): Gain[] {
   const pool = poolOf(unseenCards(view));
   const mine = view.columns[view.you]!;
-  const card = cardOf(view.yourCard!);
-  return legalOf(view).map((col) => {
-    const cur = mine[col]!.map(cardOf);
-    const base = columnPotential(cur, pool);
-    return { col, base, gain: columnPotential([...cur, card], pool) - base };
-  });
+  const out: Gain[] = [];
+  for (const code of optionsOf(view)) {
+    const card = cardOf(code);
+    for (const col of legalOf(view)) {
+      const cur = mine[col]!.map(cardOf);
+      const base = columnPotential(cur, pool);
+      out.push({ card: code, col, base, rank: card.rank, gain: columnPotential([...cur, card], pool) - base });
+    }
+  }
+  return out;
 }
 
-function intermediate(view: TableauView): number {
-  const g = gains(view);
-  g.sort((a, b) => b.gain - a.gain || a.base - b.base || a.col - b.col);
-  return g[0]!.col;
+function sortGains(g: Gain[]): Gain[] {
+  // meilleur gain ; à gain égal, on joue la carte la plus faible dans la colonne la plus faible
+  return g.sort((a, b) => b.gain - a.gain || a.rank - b.rank || a.base - b.base || a.col - b.col);
+}
+
+function intermediate(view: TableauView): TableauMove {
+  const g = sortGains(gains(view))[0]!;
+  return { card: g.card, col: g.col };
 }
 
 // Expert : simulations -------------------------------------------------------------------------------------------
@@ -246,70 +273,76 @@ function outcome(you: Card[][], opp: Card[][]): number {
   return (w === 0 ? 1 : w === null ? 0.5 : 0) + 0.04 * (a - b);
 }
 
-function expert(view: TableauView, o: AiOptions): number {
-  const legal = legalOf(view);
-  if (legal.length === 1) return legal[0]!;
+function expert(view: TableauView, o: AiOptions): TableauMove {
   const me = view.you;
   const opp = (1 - me) as 0 | 1;
+  const ranked = sortGains(gains(view));
+  if (ranked.length === 1) return { card: ranked[0]!.card, col: ranked[0]!.col };
+  const cands = ranked.slice(0, 8); // les huit coups les plus prometteurs sont départagés par simulation
   const unseen = unseenCards(view);
-  const myNeed = view.remaining[me] - 1; // cartes à venir à placer par l'IA
-  const oppNeed = view.remaining[opp];
+  const opts = optionsOf(view);
   const myCols = view.columns[me]!.map((c) => c.map(cardOf));
   const oppCols = view.columns[opp]!.map((c) => c.map(cardOf));
-  const card = cardOf(view.yourCard!);
+  const myTotal = view.remaining[me] - 1; // cartes qu'il reste à placer après ce coup
+  const oppNeed = view.remaining[opp];
   const t0 = Date.now();
   const budget = o.budgetMs ?? 350;
   const maxSims = o.maxSims ?? 240;
-  const score = new Map<number, number>(legal.map((c) => [c, 0]));
-  const prior = new Map(gains(view).map((g) => [g.col, g.gain]));
+  const score = cands.map(() => 0);
   let sims = 0;
   const pool = [...unseen];
   while (sims < maxSims && (sims < 8 || Date.now() - t0 < budget)) {
     sims++;
     shuffleInPlace(pool, o.rng);
-    const mine = pool.slice(0, myNeed);
-    const theirs = pool.slice(myNeed, myNeed + oppNeed);
-    for (const first of legal) {
+    cands.forEach((cand, k) => {
+      // cartes déjà connues (main, carte piochée non jouée) puis cartes de pioche tirées au hasard
+      const known = opts.filter((c) => c !== cand.card).map(cardOf);
+      const mine = [...known, ...pool.slice(0, Math.max(0, myTotal - known.length))];
+      const theirs = pool.slice(Math.max(0, myTotal - known.length), Math.max(0, myTotal - known.length) + oppNeed);
       const A = myCols.map((c) => [...c]);
       const B = oppCols.map((c) => [...c]);
-      A[first]!.push(card);
+      A[cand.col]!.push(cardOf(cand.card));
       let mi = 0;
       let oi = 0;
-      // adversaire, puis alternance, jusqu'à épuisement des deux côtés
       let oppToMove = true;
-      while (mi < myNeed || oi < oppNeed) {
+      while (mi < mine.length || oi < oppNeed) {
         if (oppToMove) {
           if (oi < oppNeed) {
             const c = theirs[oi++]!;
             B[greedyCol(B, c)]!.push(c);
           }
-        } else if (mi < myNeed) {
+        } else if (mi < mine.length) {
           const c = mine[mi++]!;
           A[greedyCol(A, c)]!.push(c);
         }
         oppToMove = !oppToMove;
       }
-      score.set(first, score.get(first)! + outcome(A, B));
-    }
+      score[k] = score[k]! + outcome(A, B);
+    });
   }
-  let best = legal[0]!;
+  let best = 0;
   let bestV = -Infinity;
-  for (const c of legal) {
-    const v = score.get(c)! / sims + 1e-4 * (prior.get(c) ?? 0);
+  cands.forEach((c, k) => {
+    const v = score[k]! / sims + 1e-4 * c.gain;
     if (v > bestV) {
       bestV = v;
-      best = c;
+      best = k;
     }
-  }
-  return best;
+  });
+  return { card: cands[best]!.card, col: cands[best]!.col };
 }
 
-/** Colonne choisie par l'IA du niveau demandé, d'après la seule vue de son siège (il faut que ce soit son tour). */
-export function chooseColumn(view: TableauView, level: AiLevel, options: AiOptions): number {
-  if (view.yourCard === null) throw new RangeError('Ce n’est pas le tour de ce siège');
+/** Coup de l'IA (carte et colonne), d'après la seule vue de son siège (il faut que ce soit son tour). */
+export function chooseMove(view: TableauView, level: AiLevel, options: AiOptions): TableauMove {
+  if (view.legal.length === 0 || optionsOf(view).length === 0) throw new RangeError('Ce n’est pas le tour de ce siège');
   if (level === 'beginner') return beginner(view, options);
   if (level === 'intermediate') return intermediate(view);
   return expert(view, options);
+}
+
+/** Variante classique : seule la colonne se choisit. */
+export function chooseColumn(view: TableauView, level: AiLevel, options: AiOptions): number {
+  return chooseMove(view, level, options).col;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -317,26 +350,28 @@ export function chooseColumn(view: TableauView, level: AiLevel, options: AiOptio
 
 export interface TableauAdvice {
   col: number;
+  /** Carte à jouer (utile dans la variante 5 cartes). */
+  card: string;
   /** Phrase d'explication en français. */
   text: string;
 }
 
 /** Conseil de placement (niveau intermédiaire) avec une explication lisible par un débutant. */
 export function adviseColumn(view: TableauView): TableauAdvice {
-  const col = intermediate(view);
-  const card = view.yourCard!;
+  const { col, card } = intermediate(view);
   const before = view.columns[view.you]![col]!;
   const after = [...before, card];
   const c = cardOf(card);
+  const fromHand = view.hand.includes(card) ? ' de votre main' : '';
   const name = `${c.rank === 14 ? 'As' : c.rank === 13 ? 'Roi' : c.rank === 12 ? 'Dame' : c.rank === 11 ? 'Valet' : c.rank}`;
   const result = describePartial(after);
   const gain = before.length > 0 && describePartial(before) !== result;
   const text = gain
-    ? `Placez le ${name} en colonne ${col + 1} : elle devient « ${result} ».`
+    ? `Placez le ${name}${fromHand} en colonne ${col + 1} : elle devient « ${result} ».`
     : before.length === 0
-      ? `Placez le ${name} en colonne ${col + 1} : c’est une colonne encore vide.`
-      : `Le ${name} n’améliore aucune colonne : posez-le en colonne ${col + 1}, votre colonne la plus faible, pour garder vos meilleures colonnes intactes.`;
-  return { col, text };
+      ? `Placez le ${name}${fromHand} en colonne ${col + 1} : c’est une colonne encore vide.`
+      : `Le ${name}${fromHand} n’améliore aucune colonne : posez-le en colonne ${col + 1}, votre colonne la plus faible, pour garder vos meilleures colonnes intactes.`;
+  return { col, card, text };
 }
 
 /** Commentaire après un placement : ce que la carte a changé dans la colonne. */

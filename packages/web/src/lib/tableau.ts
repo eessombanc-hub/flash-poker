@@ -2,7 +2,13 @@
  * LE TABLEAU côté navigateur : textes et utilitaires d'affichage. Aucune règle ici — le serveur décide de tout
  * (distribution, tours, délais, résultats) ; le navigateur n'embarque ni le moteur ni les cartes cachées.
  */
-import type { AiLevel, TbGameDto } from './types';
+import type { AiLevel, TableauVariant, TbGameDto } from './types';
+
+export const VARIANT_OPTIONS: readonly { id: TableauVariant; label: string; text: string }[] = [
+  { id: 'classic', label: 'Le Tableau', text: 'Une carte de départ par colonne, puis vous posez chaque carte piochée.' },
+  { id: 'hand5', label: 'Tableau 5 cartes', text: 'Colonnes vides et 5 cartes en main : à chaque tour, posez la carte piochée ou une carte de votre main. À la fin du paquet, la main termine vos colonnes.' },
+];
+export const variantLabel = (v: TableauVariant): string => VARIANT_OPTIONS.find((x) => x.id === v)?.label ?? '';
 
 export const LEVELS: readonly { id: AiLevel; label: string; text: string }[] = [
   { id: 'beginner', label: 'Débutant', text: 'Joue simplement et se trompe parfois : idéal pour découvrir les combinaisons.' },

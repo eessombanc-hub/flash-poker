@@ -147,6 +147,7 @@ export function App() {
   const [resetToken] = useState(takeResetToken);
   const [invite] = useState(takeInviteCode);
   const [tableauCode] = useState(takeTableauCode);
+  const [tableauVariant, setTableauVariant] = useState<'classic' | 'hand5'>('classic');
   const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
   const [trainVariant, setTrainVariant] = useState<VariantId | undefined>(undefined);
   const [joinCode, setJoinCode] = useState<string>(initialCode);
@@ -187,7 +188,7 @@ export function App() {
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} />;
-  else if (screen === 'tableau') content = <Tableau onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} />;
+  else if (screen === 'tableau') content = <Tableau onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} initialVariant={tableauVariant} />;
   else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
   else if (screen === 'solo')
     content = (
@@ -198,7 +199,7 @@ export function App() {
           setScreen('train');
         }}
         onBlackjack={() => setScreen('blackjack')}
-        onTableau={() => setScreen('tableau')}
+        onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
       />
     );
   else if (screen === 'train') content = <TrainingRoom onBack={() => setScreen('solo')} variant={trainVariant} />;
@@ -209,7 +210,7 @@ export function App() {
         onCreate={() => setScreen('create')}
         onTrain={() => setScreen('solo')}
         onBlackjack={() => setScreen('blackjack')}
-        onTableau={() => setScreen('tableau')}
+        onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
         onJoin={(code) => {
           setJoinCode(code ?? '');
           setScreen('join');

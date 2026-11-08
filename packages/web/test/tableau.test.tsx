@@ -85,16 +85,22 @@ describe('Tableau : accès depuis les menus', () => {
     const user = userEvent.setup();
     const { unmount } = render(
       <ClientProvider client={fakeClient(null).client}>
-        <Home onCreate={noop} onJoin={noop} onTrain={noop} onTableau={onTableau} />
+        <Home onCreate={noop} onJoin={noop} onTrain={noop} onBlackjack={noop} onTableau={onTableau} />
       </ClientProvider>,
     );
     await user.click(screen.getByRole('button', { name: 'Le Tableau' }));
-    expect(onTableau).toHaveBeenCalledTimes(1);
+    expect(onTableau).toHaveBeenLastCalledWith('classic');
+    await user.click(screen.getByRole('button', { name: 'Tableau 5 cartes' }));
+    expect(onTableau).toHaveBeenLastCalledWith('hand5');
+    // rangées sous le Blackjack, comme un jeu à part (et non parmi les variantes de poker)
+    const bj = screen.getByRole('region', { name: 'Blackjack' });
+    const tb = screen.getByRole('region', { name: 'Le Tableau' });
+    expect(bj.compareDocumentPosition(tb) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     unmount();
     const again = vi.fn();
     render(<Solo onBack={noop} onPick={noop} onBlackjack={noop} onTableau={again} />);
-    await user.click(screen.getByRole('button', { name: 'Le Tableau' }));
-    expect(again).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: 'Tableau 5 cartes' }));
+    expect(again).toHaveBeenLastCalledWith('hand5');
   });
 });
 
@@ -216,4 +222,37 @@ describe('Tableau : de bout en bout', () => {
       expect(drawn.filter(Boolean)).toHaveLength(1);
     });
   }, 30000);
+
+  it('Tableau 5 cartes : main visible, carte de la main ou piochée, partie jusqu’au résultat', async () => {
+    const { make } = await serverAndClients();
+    const account = make();
+    const user = userEvent.setup();
+    render(
+      <AccountProvider account={account}>
+        <Tableau onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    expect(await screen.findByRole('radio', { name: 'Tableau 5 cartes', checked: false })).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Tableau 5 cartes' }));
+    await user.click(screen.getByRole('button', { name: 'Lancer l’entraînement' }));
+    const hand = await screen.findByTestId('tb-hand');
+    expect(within(hand).queryAllByRole('img').length + within(hand).queryAllByRole('button').length).toBe(5);
+    expect(screen.getAllByTestId('tb-remaining')[1]!.textContent).toBe('25');
+    const mine = screen.getByTestId('tb-board-mine');
+    const stop = Date.now() + 90_000;
+    let n = 0;
+    while (Date.now() < stop && !screen.queryByTestId('tb-outcome')) {
+      const cols = within(mine).queryAllByRole('button');
+      const cards = within(screen.getByTestId('tb-hand')).queryAllByRole('button');
+      if (cols.length > 0 && cards.length > 0) {
+        if (n++ % 2 === 0) await user.click(cards[0]!);
+        await user.click(cols[0]!);
+        const confirmBtn = screen.queryByRole('button', { name: /Poser en colonne/ });
+        if (confirmBtn) await user.click(confirmBtn);
+      }
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    expect(await screen.findByTestId('tb-outcome', undefined, { timeout: 20000 })).toHaveTextContent(/Victoire|Défaite|Match nul/);
+    expect(screen.getAllByTestId('tb-remaining').map((e) => e.textContent)).toEqual(['0', '0']);
+  }, 120000);
 });

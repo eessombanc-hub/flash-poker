@@ -8,8 +8,8 @@ import type { AccountClient } from '../lib/account';
 import { useAccount, useAccountClient } from '../lib/context';
 import { useSettings } from '../lib/settings';
 import { useSound } from '../lib/sound';
-import { announce, clockSkew, COMBOS, inviteUrl, LEVELS, levelLabel, outcomeWord, ROMAN, secondsLeft } from '../lib/tableau';
-import type { AiLevel, TbGameDto, TbHistoryEntry } from '../lib/types';
+import { announce, clockSkew, COMBOS, inviteUrl, LEVELS, levelLabel, outcomeWord, ROMAN, secondsLeft, VARIANT_OPTIONS, variantLabel } from '../lib/tableau';
+import type { AiLevel, TableauVariant, TbGameDto, TbHistoryEntry } from '../lib/types';
 
 const NICK_KEY = 'poker.tb.nick.v1';
 const CONFIRM_KEY = 'poker.tb.confirm.v1';
@@ -31,7 +31,7 @@ const writeStore = (k: string, v: string): void => {
 const errText = (e: unknown): string => (e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.');
 
 /** Point d'entrée : menu des modes, puis la partie. Ouvert à tous (invité ou connecté). */
-export function Tableau({ onBack, onLogin, initialCode }: { onBack: () => void; onLogin: () => void; initialCode?: string }) {
+export function Tableau({ onBack, onLogin, initialCode, initialVariant = 'classic' }: { onBack: () => void; onLogin: () => void; initialCode?: string; initialVariant?: TableauVariant }) {
   const client = useAccountClient();
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
@@ -60,7 +60,7 @@ export function Tableau({ onBack, onLogin, initialCode }: { onBack: () => void; 
                 </button>
               </p>
             )}
-            <Menu client={client} guest={!me} initialCode={initialCode} onGame={setGame} />
+            <Menu client={client} guest={!me} initialCode={initialCode} initialVariant={initialVariant} onGame={setGame} />
           </>
         )}
       </main>
@@ -71,8 +71,9 @@ export function Tableau({ onBack, onLogin, initialCode }: { onBack: () => void; 
 // ---------------------------------------------------------------------------------------------------------------
 // Menu
 
-function Menu({ client, guest, initialCode, onGame }: { client: AccountClient; guest: boolean; initialCode?: string; onGame: (g: TbGameDto) => void }) {
+function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: AccountClient; guest: boolean; initialCode?: string; initialVariant: TableauVariant; onGame: (g: TbGameDto) => void }) {
   const [level, setLevel] = useState<AiLevel>('intermediate');
+  const [variant, setVariant] = useState<TableauVariant>(initialVariant);
   const [nick, setNick] = useState(() => readStore(NICK_KEY));
   const [code, setCode] = useState(initialCode ?? '');
   const [busy, setBusy] = useState(false);
@@ -118,6 +119,12 @@ function Menu({ client, guest, initialCode, onGame }: { client: AccountClient; g
         </Button>
       </section>
 
+      <Panel className="p-4">
+        <p className="mb-2 text-sm font-medium text-ivory-100">Variante</p>
+        <Segmented value={variant} options={VARIANT_OPTIONS.map((v) => v.id)} format={variantLabel} onChange={setVariant} label="Variante du Tableau" />
+        <p className="mt-2 text-xs text-ivory-300/85">{VARIANT_OPTIONS.find((v) => v.id === variant)?.text}</p>
+      </Panel>
+
       {active && (
         <Panel className="flex flex-wrap items-center justify-between gap-3 border-gold-400/60 p-4">
           <p className="text-sm text-ivory-100">
@@ -146,21 +153,21 @@ function Menu({ client, guest, initialCode, onGame }: { client: AccountClient; g
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Panel className="p-5">
-          <h2 className="font-display text-xl text-ivory-50">Entraînement</h2>
+          <h2 className="font-display text-xl text-ivory-50">Contre l’ordinateur</h2>
           <p className="mt-1 text-sm text-ivory-200/85">Une partie contre l’ordinateur, sans enjeu, avec conseils de placement.</p>
           <div className="mt-3">
             <Segmented value={level} options={LEVELS.map((l) => l.id)} format={(id) => levelLabel(id)} onChange={setLevel} label="Niveau de l’adversaire" />
           </div>
           <p className="mt-2 min-h-[2.5rem] text-xs text-ivory-300/80">{LEVELS.find((l) => l.id === level)?.text}</p>
-          <Button className="mt-3 w-full" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'training', level, nickname }))}>
+          <Button className="mt-3 w-full" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'training', level, variant, nickname }))}>
             Lancer l’entraînement
           </Button>
         </Panel>
 
         <Panel className="p-5">
-          <h2 className="font-display text-xl text-ivory-50">Partie amicale</h2>
-          <p className="mt-1 text-sm text-ivory-200/85">Un code ou un lien à envoyer à un ami. Aucune incidence sur un classement.</p>
-          <Button className="mt-3 w-full" variant="secondary" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'friendly', nickname }))}>
+          <h2 className="font-display text-xl text-ivory-50">Contre un humain</h2>
+          <p className="mt-1 text-sm text-ivory-200/85">Partie privée : envoyez un code ou un lien à un ami. Aucune incidence sur un classement.</p>
+          <Button className="mt-3 w-full" variant="secondary" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'friendly', variant, nickname }))}>
             Créer une partie privée
           </Button>
           <form
@@ -206,7 +213,7 @@ function Menu({ client, guest, initialCode, onGame }: { client: AccountClient; g
             {history.slice(0, 8).map((h) => (
               <li key={h.code} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="min-w-0 truncate text-ivory-100">
-                  {h.mode === 'training' ? 'Entraînement' : 'Amical'} · {h.opponent}
+                  {h.mode === 'training' ? 'Entraînement' : 'Amical'}{h.variant === 'hand5' ? ' · 5 cartes' : ''} · {h.opponent}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="tabular-nums text-ivory-300">
@@ -236,6 +243,9 @@ function HelpModal({ onClose }: { onClose: () => void }) {
         <li>Il y a 20 places libres pour 21 cartes : on ne défausse jamais, et la dernière carte du paquet n’est pas jouée.</li>
         <li>À la fin, les colonnes se comparent deux à deux (I contre I, II contre II…). Trois colonnes gagnées font gagner la partie ; 2–2 avec une égalité est un match nul.</li>
         <li>Les couleurs de cartes ne départagent jamais deux mains égales.</li>
+        <li>
+          <strong>Tableau 5 cartes</strong> : les colonnes sont vides et chacun reçoit 5 cartes en main. À chaque tour, vous piochez, puis vous posez soit la carte piochée, soit une carte de votre main (la piochée la remplace alors). Quand il ne reste plus qu’une carte au paquet, plus personne ne pioche : chacun termine ses colonnes avec sa main.
+        </li>
       </ul>
       <h3 className="mt-4 font-display text-lg text-ivory-50">Les dix combinaisons, de la plus faible à la plus forte</h3>
       <ol className="mt-2 space-y-2">
@@ -272,6 +282,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
   const latest = useRef(initial);
   const [left, setLeft] = useState(() => secondsLeft(initial, skew.current));
   const [pending, setPending] = useState<number | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [advice, setAdvice] = useState<{ col: number; text: string } | null>(null);
@@ -290,6 +301,10 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
   const you = dto.you;
   const opp = (1 - you) as 0 | 1;
   const myTurn = dto.status === 'playing' && view?.turn === you && !dto.paused;
+  const hand5 = view?.variant === 'hand5';
+  // Carte à jouer : celle que vous avez touchée, sinon la piochée, sinon la première de la main.
+  const options = view ? [...(view.yourCard ? [view.yourCard] : []), ...view.hand] : [];
+  const card = picked && options.includes(picked) ? picked : (options[0] ?? null);
 
   // Sondage : serré quand on attend l'adversaire, plus lent pendant notre tour.
   useEffect(() => {
@@ -324,6 +339,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       if (dto.lastMove && dto.lastMove.seat !== you) snd.play('select');
       seenPly.current = view.ply;
       setPending(null);
+      setPicked(null);
       setAdvice(null);
     }
     if (myTurn && !wasMyTurn.current) {
@@ -346,10 +362,11 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
     setBusy(true);
     setError('');
     try {
-      const d = await client.tbPlace(dto.code, col);
+      const d = await client.tbPlace(dto.code, col, hand5 ? (card ?? undefined) : undefined);
       snd.play('confirm');
       apply(d);
       setPending(null);
+      setPicked(null);
       setAdvice(null);
     } catch (e) {
       setError(errText(e));
@@ -380,7 +397,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
     const url = inviteUrl(dto.code);
     return (
       <Panel className="mx-auto max-w-md p-6 text-center">
-        <Eyebrow>Partie amicale</Eyebrow>
+        <Eyebrow>Partie amicale · {variantLabel(dto.variant)}</Eyebrow>
         <h1 className="mt-1 font-display text-2xl text-ivory-50">En attente de votre ami</h1>
         <p className="mt-3 text-sm text-ivory-200/90">Envoyez-lui ce code, ou le lien d’invitation :</p>
         <p className="my-3 font-display text-4xl tracking-[0.2em] text-gold-300" data-testid="tb-code">
@@ -427,7 +444,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       </p>
 
       {/* Adversaire */}
-      <PlayerBar name={opponent?.nickname ?? 'Adversaire'} avatar={opponent?.avatar ?? null} badge={opponent?.kind === 'cpu' ? `Niveau ${levelLabel(opponent.level)}` : 'Ami · partie amicale'} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
+      <PlayerBar name={opponent?.nickname ?? 'Adversaire'} avatar={opponent?.avatar ?? null} badge={`${opponent?.kind === 'cpu' ? `Niveau ${levelLabel(opponent.level)}` : 'Ami · partie amicale'}${hand5 ? ` · main ${view.handCount[opp]}` : ''}`} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
 
       <Board dto={dto} seat={opp} side="theirs" look={look} owner={opponent?.nickname ?? 'Adversaire'} selectable={false} pending={null} onPick={() => undefined} />
 
@@ -448,7 +465,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
               {dto.paused ? (
                 <span className="text-amber-200">Partie en pause. Jouez pour reprendre.</span>
               ) : myTurn ? (
-                <span className="font-semibold text-gold-200">{confirm ? 'Touchez une colonne, puis confirmez.' : 'Touchez une colonne pour poser la carte.'}</span>
+                <span className="font-semibold text-gold-200">{hand5 ? 'Choisissez une carte (piochée ou en main), puis une colonne.' : confirm ? 'Touchez une colonne, puis confirmez.' : 'Touchez une colonne pour poser la carte.'}</span>
               ) : (
                 <span className="text-ivory-300">{opponent?.kind === 'cpu' ? `${opponent.nickname.split(' ')[0]} réfléchit…` : 'Votre adversaire joue…'}</span>
               )}
@@ -471,7 +488,10 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
                 onClick={() =>
                   void client
                     .tbAdvice(dto.code)
-                    .then(setAdvice)
+                    .then((a) => {
+                      setAdvice(a);
+                      if (hand5) setPicked(a.card);
+                    })
                     .catch((e) => setError(errText(e)))
                 }
               >
@@ -495,10 +515,22 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
 
       {/* Vous */}
       <Board dto={dto} seat={you} side="mine" look={look} owner="Vous" selectable={myTurn && !busy} pending={pending} onPick={(c) => void place(c)} />
+      {hand5 && (
+        <div className="rounded-2xl border border-gold-500/25 bg-ink-800/70 p-2" data-testid="tb-hand">
+          <p className="mb-1 text-center text-xs text-ivory-300/85">
+            Votre main{view.pile[you] === 0 ? ' · plus de pioche : terminez vos colonnes avec ces cartes' : ` · ${view.pile[you]} pioche${view.pile[you] > 1 ? 's' : ''} restante${view.pile[you] > 1 ? 's' : ''}`}
+          </p>
+          <div className="flex justify-center gap-1.5 sm:gap-2">
+            {view.hand.map((c) => (
+              <PlayingCard key={c} code={c} size="md" fourColor={fourColor} selected={myTurn && card === c} disabled={!myTurn} onClick={myTurn ? () => { setPicked(c); setPending(null); } : undefined} hint="Carte de votre main" />
+            ))}
+          </div>
+        </div>
+      )}
       <PlayerBar name={mine?.nickname ?? 'Vous'} avatar={mine?.avatar ?? null} badge="Vous" remaining={view.remaining[you]} score={myScore} active={myTurn} />
 
       {finished ? (
-        <Finished dto={dto} outcome={outcome} onExit={onExit} onAgain={dto.mode === 'training' ? () => client.tbCreate({ mode: 'training', level: (dto.players[opp]?.level ?? 'intermediate') as AiLevel }).then((d) => { latest.current = d; skew.current = clockSkew(d); seenPly.current = 0; setDto(d); setError(''); }).catch((e) => setError(errText(e))) : undefined} />
+        <Finished dto={dto} outcome={outcome} onExit={onExit} onAgain={dto.mode === 'training' ? () => client.tbCreate({ mode: 'training', level: (dto.players[opp]?.level ?? 'intermediate') as AiLevel, variant: dto.variant }).then((d) => { latest.current = d; skew.current = clockSkew(d); seenPly.current = 0; setDto(d); setError(''); }).catch((e) => setError(errText(e))) : undefined} />
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <label className="flex items-center gap-2 text-xs text-ivory-200">

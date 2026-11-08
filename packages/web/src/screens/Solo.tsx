@@ -4,7 +4,7 @@ import { VARIANTS } from '../lib/labels';
 import type { VariantId } from '../lib/types';
 
 /** Menu « Jouer en solo » : chaque variante de poker contre le CPU, ou le Blackjack face au croupier. */
-export function Solo({ onBack, onPick, onBlackjack, onTableau }: { onBack: () => void; onPick: (variant: VariantId | null) => void; onBlackjack: () => void; onTableau?: () => void }) {
+export function Solo({ onBack, onPick, onBlackjack, onTableau }: { onBack: () => void; onPick: (variant: VariantId | null) => void; onBlackjack: () => void; onTableau?: (variant: 'classic' | 'hand5') => void }) {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">
@@ -26,17 +26,6 @@ export function Solo({ onBack, onPick, onBlackjack, onTableau }: { onBack: () =>
         ))}
       </ul>
 
-      {onTableau && (
-        <>
-          <h2 className="mb-2 mt-8 text-sm font-semibold uppercase tracking-widest text-gold-400">Nouveauté</h2>
-          <ul aria-label="Le Tableau">
-            <li>
-              <Tile title="Le Tableau" tag="Cinq colonnes, trois à gagner" text="Posez vos cartes une à une dans cinq colonnes et battez celles de l’adversaire. Entraînement contre l’IA, ou partie privée avec un ami." onClick={onTableau} primary />
-            </li>
-          </ul>
-        </>
-      )}
-
       <h2 className="mb-2 mt-8 text-sm font-semibold uppercase tracking-widest text-gold-400">Casino</h2>
       <Panel className="relative flex items-center gap-4 border-gold-500/40 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-4">
         <CoinIcon size={54} />
@@ -47,6 +36,19 @@ export function Solo({ onBack, onPick, onBlackjack, onTableau }: { onBack: () =>
           <p className="text-sm text-ivory-200/85">Face au croupier : tables, défis quotidiens, niveaux, ou à plusieurs de 1 à 6 places, humains et CPU. Aucun compte nécessaire.</p>
         </div>
       </Panel>
+      {onTableau && (
+        <>
+          <h2 className="mb-2 mt-8 text-sm font-semibold uppercase tracking-widest text-gold-400">Le Tableau</h2>
+          <ul className="grid gap-3 sm:grid-cols-2" aria-label="Le Tableau">
+            <li>
+              <Tile title="Le Tableau" tag="Cinq colonnes, trois à gagner" text="Posez chaque carte piochée dans l’une de vos cinq colonnes. Entraînement contre l’IA, trois niveaux." onClick={() => onTableau('classic')} />
+            </li>
+            <li>
+              <Tile title="Tableau 5 cartes" tag="Avec une main de 5 cartes" text="Posez la carte piochée ou une carte de votre main. Entraînement contre l’IA, trois niveaux." onClick={() => onTableau('hand5')} />
+            </li>
+          </ul>
+        </>
+      )}
     </main>
   );
 }

@@ -11,7 +11,7 @@ import { SettingsBody } from '../components/SettingsBody';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: () => void; notice?: string | null; account?: ReactNode }) {
+export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
   return (
@@ -58,31 +58,6 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
           <ActionTile icon={<RulesIcon size={58} />} title="Mémo des règles" text="Les huit variantes et les règles communes, en un coup d’œil." onClick={() => setRules(true)} />
         </section>
 
-        {/* Le Tableau : variante à part, deux joueurs, cinq colonnes */}
-        {onTableau && (
-          <section aria-label="Le Tableau" className="mt-4">
-            <div className="relative flex flex-col gap-3 overflow-hidden rounded-3xl border border-gold-400/50 bg-gradient-to-r from-ink-800 via-felt-900 to-felt-800 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <span aria-hidden="true"><CardsIcon size={58} /></span>
-                <div>
-                  <Eyebrow>Nouveauté</Eyebrow>
-                  <h2 className="font-display text-2xl text-ivory-50">
-                    <button type="button" onClick={onTableau} className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none" aria-describedby="tb-tile-d">
-                      Le Tableau
-                    </button>
-                  </h2>
-                  <p id="tb-tile-d" className="mt-0.5 max-w-xl text-sm text-ivory-200/85">
-                    Cinq colonnes de cinq cartes, posées une à une : battez trois colonnes de votre adversaire. Contre l’IA ou entre amis, sans mise.
-                  </p>
-                </div>
-              </div>
-              <span className="self-start rounded-full border border-gold-400/60 px-4 py-2 text-sm font-semibold text-gold-300 sm:self-center" aria-hidden="true">
-                Jouer
-              </span>
-            </div>
-          </section>
-        )}
-
         {/* Blackjack : rubrique à part, distincte des variantes de poker */}
         {onBlackjack && (
           <section aria-label="Blackjack" className="mt-4">
@@ -105,6 +80,31 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
                 Jouer
               </span>
             </div>
+          </section>
+        )}
+
+        {/* Le Tableau et le Tableau 5 cartes : jeux à part, au même rang que le Blackjack, contre l'ordinateur ou un ami */}
+        {onTableau && (
+          <section aria-label="Le Tableau" className="mt-4 grid gap-3 sm:grid-cols-2">
+            {([
+              ['classic', 'Le Tableau', 'Cinq colonnes de cinq cartes, posées une à une : battez trois colonnes de votre adversaire.'],
+              ['hand5', 'Tableau 5 cartes', 'Même principe, avec une main de 5 cartes : posez la carte piochée ou l’une des vôtres.'],
+            ] as const).map(([id, title, text]) => (
+              <div key={id} className="relative flex items-center gap-4 overflow-hidden rounded-3xl border border-gold-400/50 bg-gradient-to-r from-ink-800 via-felt-900 to-felt-800 p-5 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-gold-400">
+                <span aria-hidden="true"><CardsIcon size={52} /></span>
+                <div>
+                  <Eyebrow>Contre l’ordinateur ou un ami</Eyebrow>
+                  <h2 className="font-display text-2xl text-ivory-50">
+                    <button type="button" onClick={() => onTableau(id)} className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none" aria-describedby={`tb-${id}-d`}>
+                      {title}
+                    </button>
+                  </h2>
+                  <p id={`tb-${id}-d`} className="mt-0.5 text-sm text-ivory-200/85">
+                    {text}
+                  </p>
+                </div>
+              </div>
+            ))}
           </section>
         )}
 
