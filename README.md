@@ -113,7 +113,7 @@ Des parties appariées (sièges échangés) vérifient la hiérarchie des niveau
 
 **Tests.** Énumération des 2 598 960 mains (répartition officielle des catégories retrouvée), départages, distribution, parties complètes, délais, reprise, synchronisation, absence de fuite, bout en bout avec un vrai serveur.
 
-**Prévu aux étapes suivantes.** Étape 2 : onze ligues, mode Classé, statistiques et défis. Étape 3 : tournois. Les droits (`lib/entitlements.ts`) restent le point d'extension de la monétisation : cosmétique et confort uniquement, jamais d'avantage de jeu.
+**Prévu aux étapes suivantes.** Étape 2 : dix ligues, mode Classé, statistiques et défis. Étape 3 : tournois. Les droits (`lib/entitlements.ts`) restent le point d'extension de la monétisation : cosmétique et confort uniquement, jamais d'avantage de jeu.
 
 ## Protocole
 

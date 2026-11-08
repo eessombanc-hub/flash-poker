@@ -191,7 +191,7 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
           <h2 className="font-display text-xl text-ivory-50">
             Classé <Badge tone="amber">à venir</Badge>
           </h2>
-          <p className="mt-1 text-sm text-ivory-200/85">Affrontements contre de vrais joueurs, points de classement et onze ligues. Disponible à la prochaine étape.</p>
+          <p className="mt-1 text-sm text-ivory-200/85">Affrontements contre de vrais joueurs, points de classement et dix ligues. Disponible à la prochaine étape.</p>
         </Panel>
         <Panel className="border-dashed p-5 opacity-80">
           <h2 className="font-display text-xl text-ivory-50">
