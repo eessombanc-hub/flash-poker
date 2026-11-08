@@ -3,6 +3,7 @@ import { AccountDb } from '@poker/server/src/accounts/db';
 import { LogMailer } from '@poker/server/src/accounts/mailer';
 import { AccountService } from '@poker/server/src/accounts/service';
 import { BlackjackService } from '@poker/server/src/blackjack/service';
+import { BlackjackTables } from '@poker/server/src/blackjack/tables';
 import { buildServer } from '@poker/server/src/http';
 import { RoomManager } from '@poker/server/src/roomManager';
 import { ManualScheduler } from '@poker/server/src/scheduler';
@@ -195,14 +196,20 @@ async function serverAndAccount() {
   const db = new AccountDb(':memory:');
   const accounts = new AccountService(db, new LogMailer(true, () => undefined), { log: () => undefined });
   const blackjack = new BlackjackService(db);
+  const blackjackTables = new BlackjackTables(db, blackjack);
   const manager = new RoomManager({ rng: new SeededRng(3), scheduler, accounts: { isReservedNickname: (n) => accounts.isReservedNickname(n), onGameFinished: (g) => accounts.recordGame(g) } });
-  const server = await buildServer({ manager, accounts, blackjack, now: () => scheduler.now(), onError: () => undefined, httpRateLimit: { max: 1000, windowMs: 60_000 } });
+  const server = await buildServer({ manager, accounts, blackjack, blackjackTables, now: () => scheduler.now(), onError: () => undefined, httpRateLimit: { max: 1000, windowMs: 60_000 } });
   await server.app.listen({ port: 0, host: '127.0.0.1' });
   const url = `http://127.0.0.1:${(server.app.server.address() as { port: number }).port}`;
   cleanups.push(() => server.close());
   const account = new AccountClient({ baseUrl: url, storage: memoryStorage() });
   cleanups.push(() => account.dispose());
-  return { account };
+  const another = () => {
+    const a = new AccountClient({ baseUrl: url, storage: memoryStorage() });
+    cleanups.push(() => a.dispose());
+    return a;
+  };
+  return { account, another };
 }
 
 describe('Blackjack : de bout en bout', () => {
@@ -281,4 +288,61 @@ describe('Blackjack : de bout en bout', () => {
     expect(await screen.findByRole('group', { name: 'Actions' }, { timeout: 4000 })).toBeInTheDocument();
     expect(screen.getByTestId('total-0').textContent).toBeTruthy();
   });
+});
+
+describe('Blackjack : à plusieurs', () => {
+  it('créer une table avec un CPU, miser, jouer, voir le bilan', async () => {
+    const { account } = await serverAndAccount();
+    const user = userEvent.setup();
+    render(
+      <AccountProvider account={account}>
+        <Blackjack onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    await screen.findByTestId('bj-chips');
+    await user.click(screen.getByRole('tab', { name: 'À plusieurs' }));
+    await user.click(screen.getByRole('button', { name: 'Seul' }));
+    await user.click(within(screen.getByRole('radiogroup', { name: 'Place 2' })).getByRole('radio', { name: 'CPU' }));
+    await user.type(screen.getByLabelText('Votre pseudo'), 'Ana');
+    await user.click(screen.getByRole('button', { name: /Créer la table/ }));
+    expect(await screen.findByTestId('bj-table-code')).toHaveTextContent(/^BJ-/);
+    await user.click(screen.getByRole('button', { name: /Lancer la partie/ }));
+    await user.click(await screen.findByRole('button', { name: /^Miser/ }));
+    // Le CPU joue à son rythme ; on reste dès que c'est notre tour.
+    await waitFor(
+      async () => {
+        const stand = screen.queryByRole('button', { name: 'Rester' });
+        if (stand && !stand.hasAttribute('disabled')) await user.click(stand);
+        expect(screen.getByTestId('round-net')).toBeInTheDocument();
+      },
+      { timeout: 12000, interval: 300 },
+    );
+    expect(screen.getByTestId('table-seats').querySelectorAll('li')).toHaveLength(2);
+    expect(await screen.findByRole('button', { name: /Manche suivante/ })).toBeInTheDocument();
+  }, 20000);
+
+  it('rejoindre avec un code : place humaine, attente du lancement', async () => {
+    const { account, another } = await serverAndAccount();
+    const host = another();
+    const created = await host.bjTableCreate({ table: 'decouverte', seats: ['human', 'human', 'cpu'], nickname: 'Hôte' });
+    const user = userEvent.setup();
+    render(
+      <AccountProvider account={account}>
+        <Blackjack onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    await screen.findByTestId('bj-chips');
+    await user.click(screen.getByRole('tab', { name: 'À plusieurs' }));
+    await user.type(screen.getByLabelText('Votre pseudo'), 'Invitée');
+    await user.type(screen.getByLabelText('Code de la table'), created.code);
+    await user.click(screen.getByRole('button', { name: 'Rejoindre' }));
+    expect(await screen.findByText(/En attente du lancement par l’hôte/)).toBeInTheDocument();
+    expect(screen.getByText('Hôte')).toBeInTheDocument();
+    expect(screen.getByText('Invitée')).toBeInTheDocument();
+    // Table inconnue : message d'erreur lisible
+    await user.click(screen.getByRole('button', { name: 'Quitter la table' }));
+    await user.type(await screen.findByLabelText('Code de la table'), 'BJ-ZZZZ');
+    await user.click(screen.getByRole('button', { name: 'Rejoindre' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+  }, 20000);
 });

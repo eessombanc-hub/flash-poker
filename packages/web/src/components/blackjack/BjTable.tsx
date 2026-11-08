@@ -49,7 +49,7 @@ export function ChipStack({ amount, size = 30 }: { amount: number; size?: number
   );
 }
 
-function HandView({ hand, index, isActive, compact, settled, speed, fourColor, cardBack }: { hand: PlayerHand; index: number; isActive: boolean; compact: boolean; settled: boolean; speed: Speed; fourColor: boolean; cardBack: 'losange' | 'rayures' | 'etoile' }) {
+export function HandView({ hand, index, isActive, compact, settled, speed, fourColor, cardBack }: { hand: PlayerHand; index: number; isActive: boolean; compact: boolean; settled: boolean; speed: Speed; fourColor: boolean; cardBack: 'losange' | 'rayures' | 'etoile' }) {
   const fast = speed === 'rapide';
   return (
     <div

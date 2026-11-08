@@ -8,7 +8,7 @@ export type HandResult = 'BLACKJACK' | 'WIN' | 'PUSH' | 'LOSE' | 'BUST' | 'SURRE
 
 export class BjError extends Error {
   constructor(
-    readonly code: 'ILLEGAL_ACTION' | 'ROUND_OVER' | 'BAD_BET' | 'INSUFFICIENT_CHIPS',
+    readonly code: 'ILLEGAL_ACTION' | 'ROUND_OVER' | 'BAD_BET' | 'INSUFFICIENT_CHIPS' | 'BAD_TABLE' | 'NOT_YOUR_TURN',
     message: string,
   ) {
     super(message);
@@ -48,7 +48,7 @@ export interface BjRound {
   wagered: number;
 }
 
-function draw(r: BjRound): string {
+export function drawCard(r: { shoe: string[]; pos: number }): string {
   const c = r.shoe[r.pos++];
   if (c === undefined) throw new Error('Sabot épuisé'); // impossible : un jeu suffit largement pour une manche
   return c;
@@ -66,15 +66,15 @@ export function startFromShoe(rules: TableRules, bet: number, shoe: string[]): B
   if (!Number.isInteger(bet) || bet < 1) throw new BjError('BAD_BET', 'La mise doit être un entier positif');
   const r: BjRound = { rules, bet, shoe: [...shoe], pos: 0, hands: [newHand(bet)], active: 0, dealer: [], phase: 'PLAYER', dealerBlackjack: false, actions: [], net: 0, wagered: bet };
   const h = r.hands[0]!;
-  h.cards.push(draw(r));
-  r.dealer.push(draw(r));
-  h.cards.push(draw(r));
-  r.dealer.push(draw(r));
+  h.cards.push(drawCard(r));
+  r.dealer.push(drawCard(r));
+  h.cards.push(drawCard(r));
+  r.dealer.push(drawCard(r));
   const up = cardValue(r.dealer[0]!);
   r.dealerBlackjack = (up === 10 || up === 11) && isNaturalBlackjack(r.dealer);
   if (r.dealerBlackjack || isNaturalBlackjack(h.cards)) {
     h.done = true;
-    settle(r);
+    settleHands(r);
   }
   return r;
 }
@@ -111,7 +111,7 @@ function advance(r: BjRound): void {
   if (r.active >= r.hands.length) {
     r.active = Math.max(0, r.hands.length - 1);
     dealerPlay(r);
-    settle(r);
+    settleHands(r);
   }
 }
 
@@ -121,11 +121,12 @@ function dealerPlay(r: BjRound): void {
   for (;;) {
     const v = handValue(r.dealer);
     if (v.total > 17 || (v.total === 17 && !(v.soft && r.rules.dealerHitsSoft17))) return;
-    r.dealer.push(draw(r));
+    r.dealer.push(drawCard(r));
   }
 }
 
-function settle(r: BjRound): void {
+/** Règle les mains d'un joueur contre le croupier (`r.dealer` et `r.dealerBlackjack` doivent être définitifs). */
+export function settleHands(r: BjRound): void {
   const dv = handValue(r.dealer);
   r.net = 0;
   for (const h of r.hands) {
@@ -144,15 +145,15 @@ function settle(r: BjRound): void {
   r.phase = 'DONE';
 }
 
-/** Applique une action sur la main active et renvoie la nouvelle manche (l'originale n'est pas modifiée). */
-export function applyAction(prev: BjRound, action: BjAction, chips = Number.POSITIVE_INFINITY): BjRound {
-  if (prev.phase !== 'PLAYER') throw new BjError('ROUND_OVER', 'La manche est terminée');
-  if (!legalActions(prev, chips).includes(action)) throw new BjError('ILLEGAL_ACTION', `Action impossible : ${action}`);
-  const r = structuredClone(prev);
+/**
+ * Applique une action à la main active (modifie `r`), sans jamais faire jouer le croupier. Partagé par la manche
+ * solo (`applyAction`) et la table à plusieurs (`table.ts`), pour que les règles ne soient écrites qu'une fois.
+ */
+export function applyToHands(r: BjRound, action: BjAction): void {
   const h = r.hands[r.active]!;
   switch (action) {
     case 'HIT': {
-      h.cards.push(draw(r));
+      h.cards.push(drawCard(r));
       const v = handValue(h.cards);
       if (v.total >= 21) h.done = true;
       break;
@@ -164,7 +165,7 @@ export function applyAction(prev: BjRound, action: BjAction, chips = Number.POSI
       r.wagered += h.bet;
       h.bet *= 2;
       h.doubled = true;
-      h.cards.push(draw(r));
+      h.cards.push(drawCard(r));
       h.done = true;
       break;
     case 'SURRENDER':
@@ -179,13 +180,22 @@ export function applyAction(prev: BjRound, action: BjAction, chips = Number.POSI
       h.splitAces = aces;
       r.hands.splice(r.active + 1, 0, second);
       r.wagered += h.bet;
-      h.cards.push(draw(r));
-      second.cards.push(draw(r));
+      h.cards.push(drawCard(r));
+      second.cards.push(drawCard(r));
       for (const x of [h, second]) if (x.splitAces || handValue(x.cards).total === 21) x.done = true;
       break;
     }
   }
   r.actions.push(action);
+  while (r.active < r.hands.length && r.hands[r.active]!.done) r.active++;
+}
+
+/** Applique une action sur la main active et renvoie la nouvelle manche (l'originale n'est pas modifiée). */
+export function applyAction(prev: BjRound, action: BjAction, chips = Number.POSITIVE_INFINITY): BjRound {
+  if (prev.phase !== 'PLAYER') throw new BjError('ROUND_OVER', 'La manche est terminée');
+  if (!legalActions(prev, chips).includes(action)) throw new BjError('ILLEGAL_ACTION', `Action impossible : ${action}`);
+  const r = structuredClone(prev);
+  applyToHands(r, action);
   advance(r);
   return r;
 }

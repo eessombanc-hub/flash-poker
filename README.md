@@ -76,6 +76,14 @@ Rubrique « Casino » de l'accueil, séparée des huit variantes. Un joueur cont
 
 **Règles gérées.** Totaux souples, Blackjack naturel, égalité, croupier sur 17 (tire ou non sur 17 soft), Blackjack 3:2 ou 6:5, doublement (tout total, 9-11, 10-11), doublement après séparation, 2 à 4 mains, séparation des As (une carte chacun, re-séparation en option), abandon tardif, vérification du Blackjack du croupier sur As ou 10. L'assurance n'est volontairement pas proposée.
 
+**Tables à plusieurs (1 à 6 places).** Onglet « À plusieurs » : l'hôte choisit la table (ou la table libre) et désigne chaque place, humaine ou CPU. Les humains rejoignent avec un code `BJ-XXXX` (compte ou invité) ; les places humaines restées libres sont retirées au lancement. Tous les joueurs affrontent le même croupier, avec un sabot commun tiré d'une graine publiée par empreinte avant la distribution. Chaque place joue à son tour, le croupier joue une fois. Les règles d'une place sont celles de la manche solo (`applyToHands` est partagé), l'orchestration est dans `engine/src/blackjack/table.ts`.
+
+- Chaque humain mise avec ses propres jetons et gagne XP, défis et objectifs comme en solo. Les CPU suivent la stratégie de base avec un solde propre à la table.
+- Rythme : mises 40 s (la mise précédente est reprise à défaut), tour humain 30 s (« Rester » automatique), un CPU joue toutes les 1,1 s, manche suivante automatique après 25 s. Tout avance à la demande à chaque requête : pas de minuteur serveur, la reprise après redémarrage est gratuite (état en base, manche reconstruite par rejeu).
+- Un joueur qui quitte en cours de manche reste sur « Rester » jusqu'à la fin ; la table se ferme quand le dernier humain part ou après 6 h d'inactivité.
+- Mise à jour par sondage chaque seconde (`GET /blackjack/tables/:code?v=version` renvoie `{unchanged}` quand rien ne change), sans WebSocket supplémentaire.
+- Limite : les probabilités du niveau « indices » ne tiennent pas compte des cartes des autres places.
+
 **Monétisation (préparée, non active).** Le module n'implique aucun argent réel. `entitlements.ts` distingue le jeu complet, toujours gratuit, des options futures (cosmétiques, statistiques avancées, compétitions à récompenses virtuelles, retrait de publicité). Aujourd'hui tout est accordé ; brancher un abonnement revient à remplacer `plan()`.
 
 **Limite connue.** Sur l'hébergement gratuit de Render, le disque est éphémère : les comptes, jetons et statistiques disparaissent à chaque redéploiement. Un disque persistant (ou une base externe) est nécessaire pour de vrais testeurs.
@@ -195,7 +203,7 @@ n'est modifiée, le CPU n'utilise que les commandes ouvertes à un joueur humain
 | Game Manager | rotation, objectif, assurance, arrivées, exclusions, minuteurs, snapshot/restore, 100 parties aléatoires (60 complètes + 40 avec arrivées et exclusions) |
 | RoomManager (horloge simulée) | lobby, validation, jetons, identité, secret des messages, minuteurs, reconnexion, arrivées, exclusions, persistance, hygiène |
 | Réseau (vrais sockets) | HTTP, authentification, partie de bout en bout, secret sur le réseau, reconnexion, multi-onglets, exclusion, débit |
-| Blackjack | moteur : 46 tests (SHA-256 contre `node:crypto`, composition et uniformité du sabot, totaux, Blackjack, séparation, doublement, abandon, rejeu, 2 000 manches simulées) ; serveur : 19 tests (manches, reprise, équité, jetons, niveaux, défis, objectifs, classement, accès réservé) ; web : 17 tests dont un parcours complet sur vrai serveur |
+| Blackjack | moteur : 46 tests (SHA-256 contre `node:crypto`, composition et uniformité du sabot, totaux, Blackjack, séparation, doublement, abandon, rejeu, 2 000 manches simulées) ; serveur : 19 tests (manches, reprise, équité, jetons, niveaux, défis, objectifs, classement, accès réservé) ; web : 20 tests dont des parcours complets sur vrai serveur ; tables à plusieurs : 10 tests moteur (dont 2 000 tables simulées) et 12 tests serveur |
 | Robustesse | ≈ 60 mutations volontaires des règles : toutes détectées, sauf 3 mutants équivalents (doubles gardes / mutation inerte) |
 
 ## Interface (Phase 6)

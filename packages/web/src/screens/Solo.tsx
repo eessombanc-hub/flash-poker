@@ -33,7 +33,7 @@ export function Solo({ onBack, onPick, onBlackjack }: { onBack: () => void; onPi
           <button type="button" onClick={onBlackjack} className="text-left font-display text-xl text-ivory-50 after:absolute after:inset-0 after:rounded-[28px] after:content-[''] focus:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-gold-400">
             Blackjack
           </button>
-          <p className="text-sm text-ivory-200/85">Face au croupier : tables, défis quotidiens, niveaux. Aucun compte nécessaire.</p>
+          <p className="text-sm text-ivory-200/85">Face au croupier : tables, défis quotidiens, niveaux, ou à plusieurs de 1 à 6 places, humains et CPU. Aucun compte nécessaire.</p>
         </div>
       </Panel>
     </main>

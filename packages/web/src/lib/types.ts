@@ -47,3 +47,5 @@ export type {
 // Blackjack : mêmes types que le serveur (module indépendant du poker).
 export type { BjProfile, BjChallenge, BjAchievement, BjActive, BjHistoryItem, BjResult, BjOverview, BjLeaderboardEntry, BjLeaderboardKind } from '@poker/server/src/blackjack/types';
 export type { BjAction, HandResult, TablePreset, TableRules, Advice, Odds, BjRoundView, PlayerHand } from '@poker/engine';
+export type { BjTableDto, BjTableReply, BjSeatDto, SeatKind, TableStatus } from '@poker/server/src/blackjack/types';
+export type { TableRoundView } from '@poker/engine';

@@ -103,3 +103,58 @@ export interface BjLeaderboardEntry {
   winRate: number;
 }
 export type BjLeaderboardKind = 'xp' | 'chips';
+
+// ---------- Tables à plusieurs (1 à 6 places, humains et CPU) ----------
+export type SeatKind = 'human' | 'cpu';
+export type TableStatus = 'LOBBY' | 'BETTING' | 'PLAYING' | 'DONE';
+
+export interface BjSeatDto {
+  idx: number;
+  kind: SeatKind;
+  /** Place humaine encore libre (en attente d'un joueur). */
+  open: boolean;
+  nickname: string;
+  avatar: string | null;
+  /** Solde affiché (jetons virtuels). */
+  chips: number;
+  ready: boolean;
+  /** Mise de la prochaine manche (ou de la manche en cours). */
+  bet: number;
+  /** Ne participe pas à la manche en cours (arrivé en cours de route, solde trop bas, parti). */
+  sittingOut: boolean;
+  you: boolean;
+}
+
+export interface BjTableDto {
+  code: string;
+  version: number;
+  status: TableStatus;
+  tableId: string;
+  tableName: string;
+  rules: import('@poker/engine').TableRules;
+  limits: { minBet: number; maxBet: number };
+  seats: BjSeatDto[];
+  hostSeat: number;
+  /** Ma place, ou null (spectateur). */
+  me: number | null;
+  roundNo: number;
+  round: null | {
+    view: import('@poker/engine').TableRoundView;
+    /** Place de la table (idx) de chaque joueur de la manche, dans l'ordre de `view.seats`. */
+    participants: number[];
+    /** Place dont c'est le tour, ou -1. */
+    turnSeat: number;
+    deadlineAt: number | null;
+    legal: BjAction[];
+    commitment: string;
+    /** Graine révélée une fois la manche terminée. */
+    seed: string | null;
+  };
+  /** Mon bilan de la manche terminée (jetons, XP, niveau, défis). */
+  result: BjResult | null;
+  /** Échéance de la phase de mise ou de l'enchaînement automatique, le cas échéant. */
+  phaseDeadlineAt: number | null;
+  now: number;
+}
+
+export type BjTableReply = BjTableDto | { unchanged: true; version: number };

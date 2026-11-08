@@ -1,7 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
-import type { BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
+import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
@@ -185,6 +185,16 @@ export class AccountClient {
     return this.request<T>(method, path, body, { 'x-bj-guest': this.guestId() });
   }
   blackjack = () => this.bj<BjOverview>('GET', '/me/blackjack');
+  // ----- Tables à plusieurs -----
+  bjTableCreate = (input: { table: string; seats: SeatKind[]; bet?: number; rules?: TableRules; nickname?: string }) => this.bj<BjTableDto>('POST', '/blackjack/tables', input);
+  bjTableGet = (code: string, version?: number) => this.bj<BjTableReply>('GET', `/blackjack/tables/${encodeURIComponent(code)}${version === undefined ? '' : `?v=${version}`}`);
+  bjTableJoin = (code: string, nickname?: string) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/join`, { nickname });
+  bjTableLeave = (code: string) => this.bj<{ left: true }>('POST', `/blackjack/tables/${encodeURIComponent(code)}/leave`, {});
+  bjTableStart = (code: string) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/start`, {});
+  bjTableBet = (code: string, bet: number) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/bet`, { bet });
+  bjTableAct = (code: string, action: BjAction) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/action`, { action });
+  bjTableNext = (code: string) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/next`, {});
+  bjTableHelp = (code: string) => this.bj<{ advice: Advice | null; odds: Odds }>('GET', `/blackjack/tables/${encodeURIComponent(code)}/help`);
   blackjackHistory = () => this.bj<{ history: BjHistoryItem[] }>('GET', '/me/blackjack/history').then((r) => r.history);
   blackjackStart = (input: { table: string; bet: number; rules?: TableRules }) => this.bj<{ active: BjActive; result: BjResult | null }>('POST', '/me/blackjack/round', input);
   blackjackAct = (action: BjAction) => this.bj<{ active: BjActive; result: BjResult | null }>('POST', '/me/blackjack/action', { action });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Eyebrow, Field, Panel, Segmented, inputClass } from '../components/ui';
 import { CoinIcon } from '../components/Icons3D';
+import { MultiTables } from '../components/blackjack/MultiTables';
 import { BjTable, ChipStack, type HelpData } from '../components/blackjack/BjTable';
 import { ChallengesPanel, HistoryPanel, LeaderboardPanel, LevelBar, StatsPanel } from '../components/blackjack/Panels';
 import { ApiError } from '../lib/api';
@@ -11,9 +12,9 @@ import { useSettings } from '../lib/settings';
 import { Sound } from '../lib/sound';
 import type { BjAction, BjActive, BjOverview, BjResult, TablePreset, TableRules } from '../lib/types';
 
-type Tab = 'jouer' | 'progression' | 'classement' | 'historique';
-const TABS: readonly Tab[] = ['jouer', 'progression', 'classement', 'historique'];
-const TAB_LABEL: Record<Tab, string> = { jouer: 'Jouer', progression: 'Progression', classement: 'Classement', historique: 'Historique' };
+type Tab = 'jouer' | 'plusieurs' | 'progression' | 'classement' | 'historique';
+const TABS: readonly Tab[] = ['jouer', 'plusieurs', 'progression', 'classement', 'historique'];
+const TAB_LABEL: Record<Tab, string> = { jouer: 'Solo', plusieurs: 'À plusieurs', progression: 'Progression', classement: 'Classement', historique: 'Historique' };
 const FREE_ID = 'libre';
 const FREE_LIMITS = { minBet: 1, maxBet: 1000 };
 
@@ -169,6 +170,7 @@ function Game() {
     void refresh();
   };
 
+  const onSettled = useCallback(() => void refresh(), [refresh]);
   const profile = overview?.profile;
   const chips = profile?.chips ?? 0;
   const inProgress = active && active.round.phase === 'PLAYER';
@@ -243,6 +245,7 @@ function Game() {
               sound={sound}
             />
           ))}
+        {tab === 'plusieurs' && <MultiTables tables={overview?.tables ?? []} freeRules={prefs.rules} pedagogy={prefs.pedagogy} speed={prefs.speed} chips={chips} onSettled={onSettled} />}
         {tab === 'progression' && (profile ? <div className="space-y-4"><StatsPanel profile={profile} /><ChallengesPanel challenges={overview!.challenges} achievements={overview!.achievements} /></div> : <p className="text-sm text-ivory-300/70">Chargement…</p>)}
         {tab === 'classement' && <LeaderboardPanel />}
         {tab === 'historique' && <HistoryPanel items={overview?.history ?? []} />}

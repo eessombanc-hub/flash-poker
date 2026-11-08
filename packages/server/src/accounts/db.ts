@@ -63,6 +63,11 @@ const BJ_SCHEMA = `
         done INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (user_id, day, challenge_id)
       );
+      CREATE TABLE IF NOT EXISTS bj_table (
+        code TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS bj_achievements (
         user_id TEXT NOT NULL,
         achievement_id TEXT NOT NULL,

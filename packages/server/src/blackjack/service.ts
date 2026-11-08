@@ -32,6 +32,27 @@ export class BlackjackService {
     private readonly opts: { now?: () => number; seed?: () => string } = {},
   ) {}
 
+  /** Renseigné par le service des tables partagées : vrai si le joueur est en pleine manche à une table. */
+  busyCheck: (userId: string) => boolean = () => false;
+
+  /** Solde et niveau du joueur (recharge gratuite comprise), pour s'asseoir à une table partagée. */
+  playerInfo(userId: string): { chips: number; level: number } {
+    const row = this.refill(userId, this.row(userId));
+    return { chips: row.chips as number, level: levelFromXp(row.xp as number) };
+  }
+  hasActiveRound(userId: string): boolean {
+    this.concludeStale(userId);
+    return !!this.active(userId);
+  }
+  /** Fin d'une manche de table pour un joueur : mêmes jetons, XP, défis, objectifs et historique que la manche solo. */
+  settleSeat(userId: string, rec: { startChips: number; table: string; bet: number; seed: string; commitment: string; rules: TableRules; actions: BjAction[] }, round: BjRound): BjResult {
+    return this.finish(
+      userId,
+      { start_chips: rec.startChips, table_id: rec.table, bet: rec.bet, seed: rec.seed, commitment: rec.commitment, rules: JSON.stringify(rec.rules), actions: JSON.stringify(rec.actions) },
+      round,
+    );
+  }
+
   private get db() {
     return this.store.db;
   }
@@ -181,6 +202,7 @@ export class BlackjackService {
   startRound(userId: string, input: { table: string; rules?: TableRules; bet: number }): { active: BjActive; result: BjResult | null } {
     this.concludeStale(userId);
     if (this.active(userId)) throw new ServerError('WRONG_STATE', 'Une manche est déjà en cours : reprenez-la');
+    if (this.busyCheck(userId)) throw new ServerError('WRONG_STATE', 'Vous êtes en pleine manche à une table partagée');
     const table = resolveTable(input.table, input.rules);
     if (!table) throw new ServerError('BAD_REQUEST', 'Table ou règles invalides');
     const row = this.refill(userId, this.row(userId));

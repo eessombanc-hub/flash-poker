@@ -4,6 +4,7 @@ import { AccountDb } from './accounts/db';
 import { resolveMailer } from './accounts/mailer';
 import { AccountService } from './accounts/service';
 import { BlackjackService } from './blackjack/service';
+import { BlackjackTables } from './blackjack/tables';
 import { buildServer } from './http';
 import { RoomManager } from './roomManager';
 import { RealScheduler } from './scheduler';
@@ -42,6 +43,7 @@ const accountsDb = new AccountDb(accountsPath);
 const accounts = new AccountService(accountsDb, mailer, { appUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL });
 console.log(mailer.enabled ? 'E-mails activés (SMTP)' : 'E-mails désactivés : SMTP non configuré (mot de passe oublié indisponible)');
 const blackjack = new BlackjackService(accountsDb);
+const blackjackTables = new BlackjackTables(accountsDb, blackjack);
 const manager = new RoomManager({
   rng: new CryptoRng(),
   scheduler,
@@ -64,6 +66,7 @@ const server = await buildServer({
   manager,
   accounts,
   blackjack,
+  blackjackTables,
   publicUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL,
   corsOrigin: process.env.CORS_ORIGIN,
   webDist: process.env.WEB_DIST,
