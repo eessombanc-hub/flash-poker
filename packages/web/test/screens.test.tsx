@@ -48,6 +48,21 @@ describe('salle d’attente', () => {
     await user.click(screen.getByRole('button', { name: 'Quitter la salle' }));
     expect(calls.leave).toBe(1);
   });
+  it('joueur : le bouton Retour quitte la salle', async () => {
+    const user = userEvent.setup();
+    const { calls } = renderWith(<Lobby />, lobby(2, 'PLAYER'));
+    await user.click(screen.getByRole('button', { name: '← Retour' }));
+    expect(calls.leave).toBe(1);
+  });
+  it('hôte : le bouton Retour demande confirmation avant d’annuler', async () => {
+    const user = userEvent.setup();
+    const { calls } = renderWith(<Lobby />, lobby(2));
+    await user.click(screen.getByRole('button', { name: '← Retour' }));
+    expect(calls.cancel).toBe(0);
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Annuler la partie' }));
+    expect(calls.cancel).toBe(1);
+  });
   describe('assistance : vote en salle d’attente', () => {
     const withAssist = (n: number, votes: Record<string, boolean | null>, role: 'HOST' | 'PLAYER' = 'PLAYER') =>
       lobby(n, role, {

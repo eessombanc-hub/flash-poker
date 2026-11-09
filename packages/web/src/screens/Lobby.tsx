@@ -2,12 +2,13 @@ import { LockIcon } from '../components/Icons3D';
 import { useState } from 'react';
 import { useClient, useGame } from '../lib/context';
 import { formatChips, STARTING_CHIPS } from '../lib/format';
-import { Avatar, Badge, Button, Eyebrow, Panel, Title } from '../components/ui';
+import { Avatar, Badge, Button, Eyebrow, Modal, Panel, Title } from '../components/ui';
 
 export function Lobby() {
   const client = useClient();
   const view = useGame((s) => s.view)!;
   const [copied, setCopied] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const isHost = view.you.role === 'HOST';
   const mine = view.players.find((p) => p.id === view.you.playerId);
   const allApproved = view.players.every((p) => p.assistanceApproved === true);
@@ -40,6 +41,19 @@ export function Lobby() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
+      <Button variant="ghost" onClick={() => (isHost ? setConfirmCancel(true) : void client.leaveLobby())} className="mb-4 -ml-3">
+        ← Retour
+      </Button>
+      {confirmCancel && (
+        <Modal title="Annuler la partie" onClose={() => setConfirmCancel(false)}>
+          <h2 className="font-display text-2xl text-ivory-50">Annuler la partie ?</h2>
+          <p className="mt-3 text-sm text-ivory-200/85">En tant qu’hôte, votre retour annule la salle pour tous les joueurs déjà présents.</p>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setConfirmCancel(false)}>Rester</Button>
+            <Button variant="danger" onClick={() => client.cancelRoom()}>Annuler la partie</Button>
+          </div>
+        </Modal>
+      )}
       <Panel className="p-6 sm:p-8">
         <Eyebrow>Salle d’attente</Eyebrow>
         <Title className="mt-1 text-3xl">{view.name}</Title>

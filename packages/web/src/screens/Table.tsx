@@ -66,7 +66,7 @@ const ANNOUNCE_TONE = { warning: 'text-amber-100', success: 'text-jade-100', inf
  * Ordinateur : l'annonce du moment s'affiche DANS la barre, à la place des pastilles. Téléphone : elle remplace le
  * bandeau de la variante sur le tapis (voir `TableCenter`). Elle ne recouvre jamais le menu ni les cartes.
  */
-function TopBar({ onScores, onRules, onOptions }: { onScores: () => void; onRules: () => void; onOptions: () => void }) {
+function TopBar({ onScores, onRules, onOptions, onBack }: { onScores: () => void; onRules: () => void; onOptions: () => void; onBack: () => void }) {
   const { view, game, round } = useTable();
   const news = useContext(NewsContext);
   const newsText = news && (
@@ -79,7 +79,10 @@ function TopBar({ onScores, onRules, onOptions }: { onScores: () => void; onRule
       <span className="sr-only" aria-live="polite" role="status">
         {news?.text ?? ''}
       </span>
-      <div className="flex min-w-0 flex-1 items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <button type="button" onClick={onBack} aria-label="Retour à l’accueil" className="shrink-0 rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
+          ← Retour
+        </button>
         <div className="min-w-0">
           <p className="truncate font-display text-base text-ivory-50 sm:text-lg">{view.name}</p>
           <p className="flex min-w-0 font-mono text-[11px] tracking-widest text-gold-400 sm:text-xs">
@@ -300,7 +303,7 @@ export function Table() {
   const { view, game, me } = useTable();
   const feed = useGame((s) => s.feed);
   const { sound } = useSettings();
-  const [modal, setModal] = useState<null | 'scores' | 'rules' | 'options'>(null);
+  const [modal, setModal] = useState<null | 'scores' | 'rules' | 'options' | 'quit'>(null);
   const [result, setResult] = useState<RoundRecord | null>(null);
   const [finalOpen, setFinalOpen] = useState(game.phase === 'GAME_OVER');
   const seen = useRef(game.history.length);
@@ -342,7 +345,7 @@ export function Table() {
   return (
     <NewsContext.Provider value={news}>
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-2 py-1.5 sm:px-3 sm:py-2 lg:max-w-[100rem]">
-      <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} />
+      <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} onBack={() => (over ? client.leave() : setModal('quit'))} />
       {/* Téléphone et tablette : table au-dessus, actions en dessous. Écran large : côte à côte, pour que la table,
           votre main et les boutons tiennent ensemble dans la hauteur de l'écran, sans défiler. */}
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 lg:flex-row lg:gap-4">
@@ -359,6 +362,16 @@ export function Table() {
       {!result && over && finalOpen && game.outcome && <GameOverModal view={view} onClose={() => setFinalOpen(false)} onLeave={() => client.leave()} />}
       {modal === 'scores' && <ScoreModal view={view} onClose={() => setModal(null)} />}
       {modal === 'rules' && <RulesModal onClose={() => setModal(null)} />}
+      {modal === 'quit' && (
+        <Modal title="Quitter la partie" onClose={() => setModal(null)}>
+          <h2 className="font-display text-2xl text-ivory-50">Quitter la partie ?</h2>
+          <p className="mt-3 text-sm text-ivory-200/85">La partie est en cours. Vous revenez à l’accueil ; elle se poursuit sans vous si d’autres joueurs sont présents.</p>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setModal(null)}>Rester à la table</Button>
+            <Button variant="danger" onClick={() => client.leave()}>Quitter</Button>
+          </div>
+        </Modal>
+      )}
       {modal === 'options' && (
         <Modal title="Options" onClose={() => setModal(null)}>
           <h2 className="font-display text-2xl text-ivory-50">Options</h2>

@@ -27,11 +27,16 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
   const ready = useAccount((s) => s.ready);
   // À la table, l'écran est réservé au jeu : bandeaux et en-têtes se réduisent pour que tout tienne sans défiler.
   const [playing, setPlaying] = useState(false);
+  // Le bouton Retour remonte d'une étape (table → salon → autres onglets) avant de quitter vers l'accueil.
+  const stepBack = useRef<(() => boolean) | null>(null);
+  const back = () => {
+    if (!stepBack.current?.()) onBack();
+  };
   return (
     <div className="min-h-[calc(100dvh-3rem)]">
       <header className={`mx-auto flex max-w-4xl items-center justify-between px-4 ${playing ? 'py-2' : 'py-4'}`}>
-        <button type="button" onClick={onBack} className="rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
-          ← Accueil
+        <button type="button" onClick={back} className="rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
+          ← Retour
         </button>
         <p className="flex items-center gap-2 font-display text-xl tracking-wide text-ivory-50">
           <CoinIcon size={30} />
@@ -52,7 +57,7 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
                 </button>
               </p>
             )}
-            <Game onPlaying={setPlaying} />
+            <Game onPlaying={setPlaying} stepBack={stepBack} />
           </>
         )}
       </main>
@@ -60,7 +65,7 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
   );
 }
 
-function Game({ onPlaying }: { onPlaying?: (playing: boolean) => void } = {}) {
+function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void; stepBack?: { current: (() => boolean) | null } } = {}) {
   const account = useAccountClient()!;
   const { sound } = useSettings();
   const [prefs, setPrefs] = useState<BjPrefs>(loadPrefs);
@@ -171,6 +176,24 @@ function Game({ onPlaying }: { onPlaying?: (playing: boolean) => void } = {}) {
     setError(null);
     void refresh();
   };
+
+  useEffect(() => {
+    if (!stepBack) return;
+    stepBack.current = () => {
+      if (tab === 'jouer' && view === 'table' && active) {
+        leave();
+        return true;
+      }
+      if (tab !== 'jouer') {
+        setTab('jouer');
+        return true;
+      }
+      return false;
+    };
+    return () => {
+      stepBack.current = null;
+    };
+  });
 
   const onSettled = useCallback(() => void refresh(), [refresh]);
   const profile = overview?.profile;
