@@ -76,7 +76,7 @@ export const fr = {
   'tb.noServer': 'Le Tableau nécessite le serveur de l’application.',
   'tb.guestNote': 'Vous jouez en invité : l’historique reste sur cet appareil. Avec un compte, il vous suit partout.',
   'tb.variant.classic': 'Le Tableau',
-  'tb.variant.hand5': 'Tableau 5 cartes',
+  'tb.variant.hand5': 'Le tableau 5 cartes',
   'tb.variant.classic.text': 'Une carte de départ par colonne, puis vous posez chaque carte piochée.',
   'tb.variant.hand5.text': 'Une carte ouvre chaque colonne et vous avez 5 cartes en main : à chaque tour, posez la carte piochée ou une carte de votre main. À la fin du paquet, la main termine vos colonnes.',
   'tb.variant.label': 'Variante du Tableau',

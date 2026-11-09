@@ -158,7 +158,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
   const actions = ORDER.filter((a) => a !== 'SURRENDER' || r.rules.surrender);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" onClick={onLeave} className="px-3">
           ← Tables
@@ -168,7 +168,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
         </p>
       </div>
 
-      <div className="felt relative overflow-hidden rounded-[32px] px-3 py-5 sm:px-8 sm:py-7" style={feltVars}>
+      <div className="felt relative overflow-hidden rounded-[32px] px-3 py-3 sm:px-8 sm:py-4" style={feltVars}>
         {/* Croupier */}
         <div className="flex flex-col items-center">
           <div className="mb-2 flex items-center gap-2 rounded-full border border-gold-500/40 bg-black/35 px-3.5 py-1 text-xs text-gold-200">
@@ -177,7 +177,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
             </span>
             Croupier · {r.rules.dealerHitsSoft17 ? 'tire sur 17 soft' : 'reste sur tous les 17'}
           </div>
-          <div className="flex min-h-[5.6rem] items-center sm:min-h-[6.6rem] [&>*:not(:first-child)]:-ml-6 sm:[&>*:not(:first-child)]:-ml-8" data-testid="dealer-cards">
+          <div className="flex min-h-[5.2rem] items-center sm:min-h-[5.8rem] [&>*:not(:first-child)]:-ml-6 sm:[&>*:not(:first-child)]:-ml-8" data-testid="dealer-cards">
             {dealerCards.map((c, i) => (
               <PlayingCard key={`${i}-${c ?? 'x'}`} code={hiddenHole && i === 1 ? null : c} size="md" fourColor={fourColor} back={cardBack} flip={i > 0 && !!c && done} dealIndex={speed === 'rapide' ? undefined : i + 1} />
             ))}
@@ -187,7 +187,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
           </p>
         </div>
 
-        <p className="my-3 text-center text-[11px] tracking-wide text-gold-200/70">
+        <p className="my-1.5 text-center text-[11px] tracking-wide text-gold-200/70">
           Blackjack paie {r.rules.blackjackPays === '3:2' ? '3 contre 2' : '6 contre 5'} · {r.rules.decks} jeu{r.rules.decks > 1 ? 'x' : ''}
         </p>
 

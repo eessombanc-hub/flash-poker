@@ -90,7 +90,7 @@ describe('Tableau : accès depuis les menus', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Le Tableau' }));
     expect(onTableau).toHaveBeenLastCalledWith('classic');
-    await user.click(screen.getByRole('button', { name: 'Tableau 5 cartes' }));
+    await user.click(screen.getByRole('button', { name: 'Le tableau 5 cartes' }));
     expect(onTableau).toHaveBeenLastCalledWith('hand5');
     // rangées sous le Blackjack, comme un jeu à part (et non parmi les variantes de poker)
     const bj = screen.getByRole('region', { name: 'Blackjack' });
@@ -99,7 +99,7 @@ describe('Tableau : accès depuis les menus', () => {
     unmount();
     const again = vi.fn();
     render(<Solo onBack={noop} onPick={noop} onBlackjack={noop} onTableau={again} />);
-    await user.click(screen.getByRole('button', { name: 'Tableau 5 cartes' }));
+    await user.click(screen.getByRole('button', { name: 'Le tableau 5 cartes' }));
     expect(again).toHaveBeenLastCalledWith('hand5');
   });
 });
@@ -233,8 +233,8 @@ describe('Tableau : de bout en bout', () => {
         <Tableau onBack={noop} onLogin={noop} />
       </AccountProvider>,
     );
-    expect(await screen.findByRole('radio', { name: 'Tableau 5 cartes', checked: false })).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: 'Tableau 5 cartes' }));
+    expect(await screen.findByRole('radio', { name: 'Le tableau 5 cartes', checked: false })).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Le tableau 5 cartes' }));
     await user.click(screen.getByRole('button', { name: 'Lancer l’entraînement' }));
     const hand = await screen.findByTestId('tb-hand');
     expect(within(hand).queryAllByRole('img').length + within(hand).queryAllByRole('button').length).toBe(5);

@@ -202,11 +202,11 @@ describe('assistCategory : lecture défensive de l’indicateur envoyé par le s
 
 
 describe("dealDelay : distribution en cascade d'une carte selon sa position", () => {
-  it('augmente de 60 ms par carte, sans effet, sans réduction de mouvement, ni carte qui se retourne', () => {
-    for (let i = 0; i <= 5; i++) expect(dealDelay(i, false, false)).toBeCloseTo(i === 0 ? 0 : i * 0.06, 5);
+  it('augmente de 50 ms par carte, sans effet, sans réduction de mouvement, ni carte qui se retourne', () => {
+    for (let i = 0; i <= 5; i++) expect(dealDelay(i, false, false)).toBeCloseTo(i === 0 ? 0 : i * 0.05, 5);
   });
   it("plafonnée à 12 cartes (une très grande main ne fait pas trop attendre)", () => {
-    expect(dealDelay(12, false, false)).toBeCloseTo(12 * 0.06, 5);
+    expect(dealDelay(12, false, false)).toBeCloseTo(12 * 0.05, 5);
     expect(dealDelay(20, false, false)).toBe(dealDelay(12, false, false)); // au-delà : identique au plafond
   });
   it("aucun décalage sans position fournie (élément purement décoratif)", () => {

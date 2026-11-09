@@ -31,8 +31,16 @@ export default {
       },
       keyframes: {
         pulseRing: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.55' } },
+        // Halo doré qui respire autour des cartes ou des lignes gagnantes.
+        winGlow: {
+          '0%,100%': { boxShadow: '0 0 0 1px rgba(216,184,114,.55), 0 0 10px 1px rgba(216,184,114,.25)' },
+          '50%': { boxShadow: '0 0 0 2px rgba(240,214,140,.95), 0 0 22px 5px rgba(240,214,140,.55)' },
+        },
       },
-      animation: { pulseRing: 'pulseRing 1s ease-in-out infinite' },
+      animation: {
+        pulseRing: 'pulseRing 1s ease-in-out infinite',
+        winGlow: 'winGlow 1.8s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

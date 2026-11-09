@@ -73,7 +73,7 @@ describe('comptes joueurs dans l’interface', () => {
     await user.click(await screen.findByRole('button', { name: 'Créer un compte' }));
     await user.type(screen.getByLabelText('Pseudo'), 'Emeric');
     await user.type(screen.getByLabelText('Adresse e-mail'), 'emeric@exemple.fr');
-    await user.type(screen.getByLabelText('Mot de passe'), 'motdepasse1');
+    await user.type(screen.getByLabelText('Mot de passe'), 'tapis-vert-42');
     await user.click(screen.getByRole('button', { name: 'Créer mon compte' }));
     expect(await screen.findByRole('button', { name: /Emeric/ })).toBeTruthy();
 
@@ -89,7 +89,7 @@ describe('comptes joueurs dans l’interface', () => {
   it('lien d’invitation : écran d’inscription avec l’invitant, puis favoris réciproques', async () => {
     const env = await start();
     const ana = env.make();
-    await ana.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    await ana.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     const { code } = await ana.account.invites();
     window.history.replaceState(null, '', `/?invitation=${code}`);
     const zoe = env.make();
@@ -99,7 +99,7 @@ describe('comptes joueurs dans l’interface', () => {
     expect(window.location.search).toBe(''); // lien retiré de la barre d'adresse
     await user.type(screen.getByLabelText('Pseudo'), 'Zoe');
     await user.type(screen.getByLabelText('Adresse e-mail'), 'zoe@x.fr');
-    await user.type(screen.getByLabelText('Mot de passe'), 'motdepasse1');
+    await user.type(screen.getByLabelText('Mot de passe'), 'tapis-vert-42');
     await user.click(screen.getByRole('button', { name: 'Créer mon compte' }));
     expect(await screen.findByRole('button', { name: /Zoe/ })).toBeTruthy();
     expect((await zoe.account.favorites()).map((f) => f.nickname)).toEqual(['Ana']);
@@ -113,18 +113,36 @@ describe('comptes joueurs dans l’interface', () => {
     expect(screen.getByRole('button', { name: 'Envoyer l’invitation' })).toBeTruthy(); // e-mail activé sur ce serveur de test
   });
 
+  it('mon espace : suppression du compte avec confirmation par mot de passe, puis retour à l’état déconnecté', async () => {
+    const env = await start();
+    const p = env.make();
+    await p.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
+    const user = userEvent.setup();
+    renderApp(p);
+    await user.click(await screen.findByRole('button', { name: /Ana/ }));
+    await user.click(await screen.findByRole('button', { name: 'Supprimer mon compte' }));
+    await user.type(screen.getByLabelText('Mot de passe'), 'faux-faux-faux');
+    await user.click(screen.getByRole('button', { name: 'Supprimer définitivement' }));
+    expect(await screen.findByText(/Mot de passe actuel incorrect/)).toBeTruthy();
+    await user.clear(screen.getByLabelText('Mot de passe'));
+    await user.type(screen.getByLabelText('Mot de passe'), 'tapis-vert-42');
+    await user.click(screen.getByRole('button', { name: 'Supprimer définitivement' }));
+    expect(await screen.findByRole('button', { name: /Se connecter/ })).toBeTruthy();
+    await expect(p.account.login('ana', 'tapis-vert-42')).rejects.toBeTruthy();
+  });
+
   it('un favori qui se connecte est annoncé dans l’application', async () => {
     const env = await start();
     const ana = env.make();
     const bea = env.make();
-    await bea.account.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    await bea.account.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42' });
     await bea.account.logout();
-    await ana.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    await ana.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     await ana.account.addFavorite('Bea');
     const seen: string[] = [];
     ana.account.onFavoriteOnline = (who) => seen.push(who.nickname);
     await new Promise((r) => setTimeout(r, 80)); // présence d'Ana établie
-    await bea.account.login('bea@x.fr', 'motdepasse1');
+    await bea.account.login('bea@x.fr', 'tapis-vert-42');
     await until(() => seen.includes('Bea'), 'notification reçue');
   });
 
@@ -132,8 +150,8 @@ describe('comptes joueurs dans l’interface', () => {
     const env = await start();
     const ana = env.make();
     const guest = env.make();
-    await ana.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1', avatar: 'rubis' });
-    await guest.account.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    await ana.account.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42', avatar: 'rubis' });
+    await guest.account.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42' });
     await ana.client.createRoom({ name: 'Mardi soir', maxPlayers: 2, targetPoints: 1, stakeChips: 20, nickname: 'Ana' });
     await guest.client.joinRoom(ana.client.state.session!.code, { nickname: 'Bea' });
     await until(() => ana.client.state.view?.players.length === 2, 'deux joueurs');

@@ -52,6 +52,8 @@ export interface RoomManagerDeps {
   scheduler: Scheduler;
   store?: RoomStore;
   timers?: Partial<TimerConfig>;
+  /** Nombre maximal de tables simultanées (1000 par défaut). */
+  maxRooms?: number;
   ttl?: Partial<TtlConfig>;
   /** TESTS UNIQUEMENT : paquets truqués. */
   gameHooks?: GameHooks;
@@ -155,6 +157,8 @@ export class RoomManager {
 
   createRoom(input: unknown, account?: AccountRef | null): { code: string; playerId: string; token: string } {
     const cfg = this.parse(createRoomSchema, input);
+    // Plafond global de tables simultanées (mémoire du serveur) : au-delà, on invite à réessayer plus tard.
+    if (this.rooms.size >= (this.deps.maxRooms ?? 1000)) throw new ServerError('UNAVAILABLE', 'Le serveur est très sollicité : réessayez dans quelques minutes');
     const now = this.deps.scheduler.now();
     const who = this.identity(cfg.nickname, cfg.avatar ?? null, account);
     this.assertAffordable(who.accountId, cfg.stakeChips);

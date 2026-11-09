@@ -6,6 +6,7 @@ import { Server as IOServer, type Socket } from 'socket.io';
 import { ServerError } from './errors';
 import { authSchema, excludeSchema, approveAssistanceSchema, type Outgoing } from './protocol';
 import { RateLimiter } from './rateLimiter';
+import { clientIp, securityHeaders } from './netSecurity';
 import { optionalAccount, registerAccountRoutes, registerPresence } from './accounts/routes';
 import { registerBlackjackRoutes } from './blackjack/routes';
 import type { BlackjackService } from './blackjack/service';
@@ -45,6 +46,12 @@ export interface ServerOptions {
   publicUrl?: string;
   /** Inscription / connexion / mot de passe oublié : tentatives par IP. */
   authRateLimit?: { max: number; windowMs: number };
+  /** Relais de confiance devant le serveur (voir `resolveTrustProxy`) : détermine l'adresse IP réelle des clients. */
+  trustProxy?: number;
+  /** Plafond de connexions temps réel simultanées par adresse IP (60 par défaut). */
+  maxSocketsPerIp?: number;
+  /** Route de diagnostic `/_ip` (affiche l'adresse vue par le serveur) : à n'activer que pour régler `trustProxy`. */
+  debugIp?: boolean;
   onError?: (err: unknown) => void;
 }
 
@@ -157,9 +164,16 @@ export interface BuiltServer {
 }
 
 export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
-  const app = Fastify({ bodyLimit: 10_000, logger: false });
+  // Fastify 5 refuse un nombre de relais brut (il ne valide plus le pair direct) : on exprime la règle en fonction.
+  const trust = opts.trustProxy ?? 0;
+  const app = Fastify({ bodyLimit: 10_000, logger: false, ...(trust > 0 ? { trustProxy: (_addr: string, hop: number) => hop < trust } : {}) });
   const now = opts.now ?? Date.now;
   const http = new RateLimiter(opts.httpRateLimit?.max ?? 30, opts.httpRateLimit?.windowMs ?? 60_000, now);
+
+  const headers = securityHeaders(opts.corsOrigin ? { connectExtra: opts.corsOrigin } : {});
+  app.addHook('onSend', async (_req, reply) => {
+    for (const [k, v] of Object.entries(headers)) reply.header(k, v);
+  });
 
   if (opts.corsOrigin) {
     app.addHook('onRequest', async (req, reply) => {
@@ -185,6 +199,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   };
 
   app.get('/health', async () => ({ ok: true }));
+  if (opts.debugIp) app.get('/_ip', async (req) => ({ ip: req.ip, forwardedFor: req.headers['x-forwarded-for'] ?? null, socket: req.socket.remoteAddress ?? null }));
   app.get('/rooms', async (req, reply) => {
     guard('list', req.ip); // limite le polling de la liste, distinct de la création/arrivée
     return reply.send({ rooms: opts.manager.listOpen() });
@@ -243,6 +258,23 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     maxHttpBufferSize: 10_000,
     cors: opts.corsOrigin ? { origin: opts.corsOrigin } : undefined,
   });
+  // Plafond de connexions temps réel simultanées par adresse (tous espaces de noms confondus).
+  const perIp = new Map<string, number>();
+  const maxPerIp = opts.maxSocketsPerIp ?? 60;
+  const limitPerIp = (socket: Socket, next: (err?: Error) => void): void => {
+    const ip = clientIp(socket.handshake.headers, socket.handshake.address, trust);
+    const n = perIp.get(ip) ?? 0;
+    if (n >= maxPerIp) return next(new Error('Trop de connexions'));
+    perIp.set(ip, n + 1);
+    socket.on('disconnect', () => {
+      const left = (perIp.get(ip) ?? 1) - 1;
+      if (left <= 0) perIp.delete(ip);
+      else perIp.set(ip, left);
+    });
+    next();
+  };
+  io.use(limitPerIp);
+  io.of('/compte').use(limitPerIp);
   const realtime = new RealtimeManager(io, opts.manager, opts);
   if (opts.accounts) registerPresence(io, opts.accounts);
   await app.ready();

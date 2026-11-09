@@ -25,9 +25,11 @@ const rulesLine = (r: TableRules): string =>
 export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
+  // À la table, l'écran est réservé au jeu : bandeaux et en-têtes se réduisent pour que tout tienne sans défiler.
+  const [playing, setPlaying] = useState(false);
   return (
-    <div className="min-h-screen">
-      <header className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
+    <div className="min-h-[calc(100dvh-3rem)]">
+      <header className={`mx-auto flex max-w-4xl items-center justify-between px-4 ${playing ? 'py-2' : 'py-4'}`}>
         <button type="button" onClick={onBack} className="rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
           ← Accueil
         </button>
@@ -43,14 +45,14 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
         ) : (
           <>
             {!me && (
-              <p className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gold-500/30 bg-gold-500/10 px-4 py-2.5 text-xs text-ivory-100" data-testid="bj-guest-note">
-                <span>Vous jouez en invité : jetons et progression restent sur cet appareil. Avec un compte, ils vous suivent partout et vous apparaissez au classement.</span>
+              <p className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gold-500/30 bg-gold-500/10 text-xs text-ivory-100 ${playing ? 'mb-2 px-3 py-1' : 'mb-4 px-4 py-2.5'}`} data-testid="bj-guest-note">
+                <span>{playing ? 'Invité : jetons et progression restent sur cet appareil.' : 'Vous jouez en invité : jetons et progression restent sur cet appareil. Avec un compte, ils vous suivent partout et vous apparaissez au classement.'}</span>
                 <button type="button" onClick={onLogin} className="font-semibold text-gold-300 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
                   Se connecter
                 </button>
               </p>
             )}
-            <Game />
+            <Game onPlaying={setPlaying} />
           </>
         )}
       </main>
@@ -58,7 +60,7 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
   );
 }
 
-function Game() {
+function Game({ onPlaying }: { onPlaying?: (playing: boolean) => void } = {}) {
   const account = useAccountClient()!;
   const { sound } = useSettings();
   const [prefs, setPrefs] = useState<BjPrefs>(loadPrefs);
@@ -174,10 +176,28 @@ function Game() {
   const profile = overview?.profile;
   const chips = profile?.chips ?? 0;
   const inProgress = active && active.round.phase === 'PLAYER';
+  const playing = tab === 'jouer' && view === 'table' && !!active;
+  useEffect(() => {
+    onPlaying?.(playing);
+    return () => onPlaying?.(false);
+  }, [playing, onPlaying]);
 
   return (
-    <div className="space-y-4">
-      {profile && (
+    <div className={playing ? 'space-y-2' : 'space-y-4'}>
+      {profile && playing && (
+        <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ivory-100/10 bg-ink-900/60 px-3 py-1.5 text-sm text-ivory-200" data-testid="bj-compact">
+          <span>
+            Niveau {profile.level} <span className="text-ivory-300/70">· {profile.xp ?? 0} XP</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <CoinIcon size={20} />
+            <span className="font-display text-gold-300" data-testid="bj-chips">
+              {formatChips(chips)}
+            </span>
+          </span>
+        </p>
+      )}
+      {profile && !playing && (
         <Panel className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
           <LevelBar profile={profile} />
           <div className="flex items-center gap-2 rounded-2xl border border-gold-500/40 bg-gold-500/10 px-4 py-2.5">

@@ -20,7 +20,7 @@ async function register(p: Player, nickname: string): Promise<void> {
   await p.page.getByRole('button', { name: 'Créer un compte' }).click();
   await p.page.getByLabel('Pseudo').fill(nickname);
   await p.page.getByLabel('Adresse e-mail').fill(`${nickname.toLowerCase()}@exemple.fr`);
-  await p.page.getByLabel('Mot de passe', { exact: true }).fill('motdepasse1');
+  await p.page.getByLabel('Mot de passe', { exact: true }).fill('tapis-vert-42');
   await p.page.getByRole('button', { name: 'Créer mon compte' }).click();
   await expect(p.page.getByRole('button', { name: new RegExp(nickname) })).toBeVisible();
 }
@@ -74,7 +74,7 @@ test('comptes : inscription, espace joueur, favori connecté, sur ordinateur et 
   await expect(bea.page.getByRole('button', { name: /Se connecter/ })).toBeVisible();
   await bea.page.getByRole('button', { name: /Se connecter/ }).click();
   await bea.page.getByLabel('Pseudo ou adresse e-mail').fill(`bea${stamp}@exemple.fr`);
-  await bea.page.getByLabel('Mot de passe', { exact: true }).fill('motdepasse1');
+  await bea.page.getByLabel('Mot de passe', { exact: true }).fill('tapis-vert-42');
   await bea.page.getByRole('button', { name: 'Se connecter' }).last().click();
   await expect(ana.page.getByText(new RegExp(`Bea${stamp}, un de vos joueurs favoris, vient de se connecter`))).toBeVisible();
 

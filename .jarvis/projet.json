@@ -1,0 +1,22 @@
+{
+  "demandes": [
+    {
+      "date": "2026-11-09T01:15:47",
+      "type": "amélioration",
+      "demande": "Fais un audit de sécurité simple du projet flash-poker, sans rien modifier : liste les failles ou risques probables (secrets ou clés exposés, dépendances vulnérables, authentification, données sensibles, configuration) et classe-les par gravité avec une recommandation pour chacun."
+    },
+    {
+      "date": "2026-11-09T01:23:25",
+      "type": "amélioration",
+      "demande": "Fais un audit de sécurité complet de ce projet, en lecture seule, sans rien modifier. Liste les failles probables (secrets ou clés exposés, authentification, injections, validation des entrées, dépendances vulnérables, configuration, droits d'accès), avec pour chacune sa gravité (critique, élevée, moyenne, faible), le fichier concerné et la correction recommandée. Termine par un résumé des priorités."
+    }
+  ],
+  "session_id": "be75e042-fc84-448d-b9d8-b7d66a9a93e1",
+  "dernier_resultat": {
+    "ok": true,
+    "resume": "Aucune faille critique : pas de secret dans le code (le SMTP passe par des variables d'environnement), les requêtes SQL sont paramétrées, les entrées sont validées par zod, les mots de passe sont en scrypt et les jetons hachés. Le seul point grave, de gravité élevée, se trouve dans packages/server/src/http.",
+    "cout_usd": 0.6120298000000001,
+    "tours": 10,
+    "refus": []
+  }
+}

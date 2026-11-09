@@ -78,7 +78,7 @@ export class AccountClient {
     }
     if (!res.ok) {
       const e = (data as { error?: { code?: string; message?: string; ruleCode?: string } } | null)?.error;
-      if (res.status === 401 && path === '/me') this.forget();
+      if (res.status === 401 && path === '/me' && method === 'GET') this.forget();
       throw new ApiError(e?.code ?? 'HTTP', e?.message ?? `Erreur serveur (${res.status})`, (e as { ruleCode?: string } | undefined)?.ruleCode);
     }
     return data as T;
@@ -155,6 +155,16 @@ export class AccountClient {
   }
   changePassword(current: string, next: string): Promise<unknown> {
     return this.request('POST', '/me/password', { current, next });
+  }
+
+  /** Copie de toutes les données du compte (droit d'accès et de portabilité). */
+  exportData(): Promise<unknown> {
+    return this.request('GET', '/me/export');
+  }
+  /** Suppression définitive du compte, après confirmation par le mot de passe. */
+  async deleteAccount(password: string): Promise<void> {
+    await this.request('DELETE', '/me', { password });
+    this.forget();
   }
 
   games = () => this.request<{ games: GameSummary[] }>('GET', '/me/games').then((r) => r.games);

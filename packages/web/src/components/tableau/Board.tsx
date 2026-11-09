@@ -47,9 +47,9 @@ export function ColumnStack({
             {code ? (
               <motion.span
                 className="block"
-                initial={isFresh && !reduce ? { y: side === 'mine' ? -120 : 120, scale: 1.25, opacity: 0.2 } : false}
-                animate={{ y: 0, scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                initial={isFresh && !reduce ? { y: side === 'mine' ? -150 : 150, x: side === 'mine' ? 26 : -26, rotate: side === 'mine' ? -9 : 9, scale: 1.3, opacity: 0.15 } : false}
+                animate={{ y: 0, x: 0, rotate: 0, scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 22, mass: 0.85, opacity: { duration: 0.18 } }}
               >
                 <PlayingCard code={code} size="col" fourColor={look.fourColor} dimmed={dim} highlight={forming?.includes(code)} />
               </motion.span>
@@ -133,10 +133,10 @@ export function ResultsTable({ dto, opponentName }: { dto: TbGameDto; opponentNa
         return (
           <motion.li
             key={i}
-            initial={reduce ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: reduce ? 0 : 0.35 * i, duration: 0.3 }}
-            className={`rounded-2xl border p-2.5 ${tone}`}
+            initial={reduce ? false : { opacity: 0, y: 16, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 240, damping: 24, delay: reduce ? 0 : 0.3 * i }}
+            className={`rounded-2xl border p-2.5 ${tone} ${outcome === 'win' && !reduce ? 'animate-winGlow' : ''}`}
           >
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <span className="font-display text-lg text-ivory-50">{t('tb.res.column', { c: ROMAN[v.col]! })}</span>

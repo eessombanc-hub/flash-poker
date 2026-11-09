@@ -1,3 +1,4 @@
+import { maskEmail } from '../netSecurity';
 /**
  * Envoi d'e-mails (mot de passe oublié, joueur favori connecté).
  *
@@ -26,7 +27,7 @@ export class LogMailer implements Mailer {
   constructor(readonly enabled = false, private readonly log: (s: string) => void = (s) => console.log(s)) {}
   async send(message: MailMessage): Promise<void> {
     this.sent.push(message);
-    this.log(`[e-mail non envoyé, SMTP non configuré] à ${message.to} : ${message.subject}`);
+    this.log(`[e-mail non envoyé, SMTP non configuré] à ${maskEmail(message.to)} : ${message.subject}`);
   }
 }
 

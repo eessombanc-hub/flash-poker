@@ -7,6 +7,7 @@ import { BlackjackService } from './blackjack/service';
 import { BlackjackTables } from './blackjack/tables';
 import { TableauService } from './tableau/service';
 import { buildServer } from './http';
+import { resolveTrustProxy } from './netSecurity';
 import { RoomManager } from './roomManager';
 import { RealScheduler } from './scheduler';
 import { resolveStore, SqliteRoomStore } from './store';
@@ -72,6 +73,8 @@ const server = await buildServer({
   tableau,
   publicUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL,
   corsOrigin: process.env.CORS_ORIGIN,
+  trustProxy: resolveTrustProxy(process.env),
+  debugIp: process.env.DEBUG_IP === '1',
   webDist: process.env.WEB_DIST,
   ...(Number.isInteger(httpMax) && httpMax > 0 && httpMax !== 30
     ? { httpRateLimit: { max: httpMax, windowMs: 60_000 }, authRateLimit: { max: httpMax, windowMs: 60_000 } }

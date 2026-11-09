@@ -30,6 +30,10 @@ services:
       # sur le plan gratuit). E-mails (mot de passe oublié, favori connecté) : valeurs à saisir dans Render,
       # onglet Environment, jamais écrites ici. Sans SMTP_HOST, aucun e-mail ne part et la récupération du
       # mot de passe est signalée indisponible dans l'application.
+      # Nombre de relais de confiance devant le serveur (adresse IP réelle des joueurs pour les limites de débit).
+      # Valeur 1 par défaut sur Render. Vérification : DEBUG_IP=1 puis /_ip (voir README, section Sécurité).
+      - key: TRUST_PROXY
+        value: "1"
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

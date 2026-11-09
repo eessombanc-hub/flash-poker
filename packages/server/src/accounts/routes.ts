@@ -28,6 +28,8 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
   const now = opts.now ?? Date.now;
   const auth = new RateLimiter(opts.authRateLimit?.max ?? 20, opts.authRateLimit?.windowMs ?? 15 * 60_000, now);
   const perUser = new RateLimiter(120, 60_000, now);
+  // Échecs de connexion par compte visé (en plus de la limite par adresse) : freine les essais répartis sur plusieurs IP.
+  const failedLogins = new RateLimiter(10, 15 * 60_000, now);
 
   const guard = (kind: string, ip: string): void => {
     if (!auth.hit(`${kind}:${ip}`)) throw new ServerError('RATE_LIMITED', 'Trop de tentatives, réessayez dans quelques minutes');
@@ -47,7 +49,16 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
   });
   app.post('/auth/login', async (req) => {
     guard('login', req.ip);
-    return accounts.login(req.body);
+    const who = String((req.body as { login?: unknown } | null)?.login ?? '').trim().toLowerCase().slice(0, 254);
+    if (who && !failedLogins.allows(who)) throw new ServerError('RATE_LIMITED', 'Trop de tentatives sur ce compte, réessayez dans quelques minutes');
+    try {
+      const r = await accounts.login(req.body);
+      failedLogins.clear(who);
+      return r;
+    } catch (e) {
+      if (who && e instanceof ServerError && e.code === 'UNAUTHORIZED') failedLogins.hit(who);
+      throw e;
+    }
   });
   app.post('/auth/logout', async (req) => {
     const t = bearer(req);
@@ -76,6 +87,21 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
     const account = me(req);
     guard('password', req.ip);
     await accounts.changePassword(account.id, req.body, bearer(req) ?? undefined);
+    return { ok: true };
+  });
+
+  app.get('/me/export', async (req, reply) => {
+    const data = accounts.exportData(me(req).id);
+    return reply
+      .header('content-disposition', 'attachment; filename="flash-poker-mes-donnees.json"')
+      .header('cache-control', 'no-store')
+      .type('application/json; charset=utf-8')
+      .send(JSON.stringify(data, null, 2));
+  });
+  app.delete('/me', async (req) => {
+    const account = me(req);
+    guard('delete', req.ip);
+    await accounts.deleteAccount(account.id, req.body);
     return { ok: true };
   });
 

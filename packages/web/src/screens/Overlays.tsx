@@ -2,6 +2,8 @@ import { useReducedMotion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { PlayingCard } from '../components/Card';
 import { Confetti } from '../components/Confetti';
+import { VictoryTitle, WinnerSpotlight } from '../components/Winner';
+import { Sound } from '../lib/sound';
 import { TrophyIcon } from '../components/Icons3D';
 import { CoinRain, RevealCard, Shine, SpinTrophy } from '../components/Scene3D';
 import { Avatar, Badge, Button, Eyebrow, Modal, ScorePips } from '../components/ui';
@@ -154,7 +156,7 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
       {showdown && (
         <ul className="mt-2 grid gap-1.5 md:grid-cols-2" aria-label="Mains dévoilées">
           {Object.entries(showdown).map(([pid, h]) => (
-            <li key={pid} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-1 ${pid === winner ? 'bg-gold-500/15 ring-1 ring-gold-400' : 'bg-ink-900/60'}`}>
+            <li key={pid} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-1 ${pid === winner ? 'animate-winGlow bg-gold-500/15 ring-1 ring-gold-400' : 'bg-ink-900/60'}`}>
               <span className="w-16 truncate font-medium text-ivory-50">{nick(view, pid)}</span>
               <span className="flex -space-x-2">
                 {h.cards.map((c, i) => (
@@ -196,15 +198,22 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
   const game = view.game!;
   const o = game.outcome!;
   const insured = o.insurance ? o.insurance.players : null;
+  const { sound } = useSettings();
+  useEffect(() => {
+    if (sound) Sound.victory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <Modal title="Fin de partie" wide>
       <Confetti />
       <CoinRain />
       <div className="flex items-center gap-4">
-        <SpinTrophy size={96} />
+        <WinnerSpotlight className="shrink-0">
+          <SpinTrophy size={96} />
+        </WinnerSpotlight>
         <div className="min-w-0">
           <Eyebrow>Fin de partie</Eyebrow>
-          <h2 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">Victoire {deNom(nick(view, o.winner))}</h2>
+          <VictoryTitle className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">Victoire {deNom(nick(view, o.winner))}</VictoryTitle>
           <p className="mt-1 text-gold-300">{VICTORY_LABELS[o.victoryType]}</p>
         </div>
       </div>

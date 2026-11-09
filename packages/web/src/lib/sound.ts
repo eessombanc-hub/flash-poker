@@ -118,6 +118,37 @@ function thump(from: number, to: number, duration: number, gain = 0.14, delay = 
   osc.stop(t0 + duration + 0.02);
 }
 
+/** Légère variation aléatoire : deux cartes posées à la suite ne sonnent jamais exactement pareil (naturel). */
+const jit = (v: number, pct = 0.07): number => v * (1 + (Math.random() * 2 - 1) * pct);
+
+/** Nappe chaude (accord tenu) : ondes douces, attaque lente, fin longue ; sert de fond à la victoire. */
+function pad(freqs: number[], duration: number, gain = 0.05, delay = 0): void {
+  const c = audioCtx();
+  if (!c || !bus) return;
+  const t0 = c.currentTime + delay;
+  const master = c.createGain();
+  master.gain.setValueAtTime(0, t0);
+  master.gain.linearRampToValueAtTime(gain, t0 + 0.25);
+  master.gain.setValueAtTime(gain, t0 + duration * 0.45);
+  master.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  const lp = c.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(900, t0);
+  lp.frequency.linearRampToValueAtTime(2600, t0 + duration * 0.5);
+  lp.connect(master).connect(bus);
+  for (const f of freqs) {
+    for (const detune of [-5, 5]) {
+      const osc = c.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      osc.detune.value = detune;
+      osc.connect(lp);
+      osc.start(t0);
+      osc.stop(t0 + duration + 0.05);
+    }
+  }
+}
+
 /** Clic de jeton : claquement sec + résonance brève de la céramique. */
 function chip(delay = 0, gain = 0.09, pitch = 1): void {
   noise(0.03, 3800 * pitch, 2.5, gain, delay, 'highpass');
@@ -128,8 +159,20 @@ function chip(delay = 0, gain = 0.09, pitch = 1): void {
 export const Sound = {
   /** Sélection d'une carte : petit tapotement de carte sur le feutre. */
   select: () => {
-    thump(260, 160, 0.06, 0.09);
-    noise(0.04, 2400, 1.2, 0.05);
+    thump(jit(250), 160, 0.06, 0.07);
+    noise(0.045, jit(2200), 1.1, 0.04);
+  },
+  /** Une carte glisse vers sa place (distribution, pioche) : souffle de papier, puis appui feutré. */
+  deal: () => {
+    noise(0.1, jit(1000), 0.7, 0.05, 0, 'bandpass', jit(3600));
+    noise(0.04, jit(2600), 1.2, 0.03, 0.085);
+    thump(jit(210), 130, 0.05, 0.05, 0.09);
+  },
+  /** Une carte est posée sur le tapis : tapotement feutré et une toute petite note claire, jamais criarde. */
+  place: () => {
+    thump(jit(205), 105, 0.08, 0.1);
+    noise(0.06, jit(1700), 0.9, 0.045, 0.005);
+    bell(jit(1568), 0.22, 0.016, 0.02, 0.2);
   },
   /** Une carte se retourne : glissement de papier puis claquement. */
   flip: () => {
@@ -153,6 +196,18 @@ export const Sound = {
     [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => bell(f, 0.9, 0.1, i * 0.1));
     bell(1318.5, 1.3, 0.08, 0.42, 0.8);
     [0.5, 0.56, 0.61, 0.67, 0.72].forEach((d, i) => chip(d, 0.05, 0.9 + (i % 3) * 0.12));
+  },
+  /**
+   * Victoire finale : nappe chaude qui monte, arpège de cloches, étincelles aiguës puis pluie de jetons.
+   * Plus ample que `win`, réservée à la fin d'une partie.
+   */
+  victory: () => {
+    pad([261.63, 329.63, 392], 2.6, 0.05, 0);
+    pad([523.25, 659.25], 2.2, 0.03, 0.35);
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => bell(f, 1.1, 0.085, 0.08 + i * 0.12));
+    [2093, 2637, 3136, 2349, 3520].forEach((f, i) => bell(f, 0.45, 0.022, 0.75 + i * 0.09, 0.3));
+    thump(110, 70, 0.4, 0.12, 0);
+    [0.7, 0.76, 0.81, 0.87, 0.92, 0.98, 1.03].forEach((d, i) => chip(d, 0.045, 0.9 + (i % 3) * 0.12));
   },
   /** Refus, erreur : coup sourd et bref, sans stridence. */
   error: () => {

@@ -10,7 +10,7 @@ const HOUR = 3_600_000;
 
 async function ana(t: { now: number }) {
   const accounts = new AccountService(new AccountDb(':memory:'), new LogMailer(false, () => undefined), { appUrl: 'https://jeu.test', now: () => t.now, log: () => undefined });
-  const r = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+  const r = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
   return { accounts, id: r.account.id };
 }
 

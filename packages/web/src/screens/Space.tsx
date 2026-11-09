@@ -75,7 +75,7 @@ export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; i
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[calc(100dvh-3rem)]">
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4">
         <Button variant="ghost" onClick={onBack} className="-ml-3">
           ← Accueil
@@ -141,6 +141,31 @@ function ProfileTab() {
   const [mailState, setMailState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [pwd, setPwd] = useState({ current: '', next: '' });
   const [pwdState, setPwdState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const [del, setDel] = useState({ open: false, password: '' });
+  const [dataState, setDataState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+
+  async function downloadData() {
+    try {
+      const data = await account.exportData();
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'flash-poker-mes-donnees.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      setDataState({ tone: 'ok', text: 'Le fichier de vos données a été téléchargé.' });
+    } catch (err) {
+      setDataState({ tone: 'error', text: message(err) });
+    }
+  }
+  async function deleteAccount(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await account.deleteAccount(del.password);
+    } catch (err) {
+      setDataState({ tone: 'error', text: message(err) });
+    }
+  }
 
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
@@ -225,6 +250,39 @@ function ProfileTab() {
           Changer le mot de passe
         </Button>
       </form>
+
+      <section className="space-y-4 border-t border-ivory-100/10 pt-6" aria-labelledby="sp-data">
+        <H3>Mes données</H3>
+        <p id="sp-data" className="text-sm text-ivory-100/70">
+          Vous pouvez récupérer une copie de vos données (compte, parties, statistiques, favoris) ou supprimer définitivement votre compte.
+        </p>
+        <Button variant="secondary" onClick={() => void downloadData()}>
+          Télécharger mes données
+        </Button>
+        {!del.open ? (
+          <div>
+            <Button variant="danger" onClick={() => setDel({ open: true, password: '' })}>
+              Supprimer mon compte
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={deleteAccount} className="space-y-3 rounded-lg border border-red-400/30 p-4">
+            <p className="text-sm text-ivory-100/80">Cette action est définitive : votre compte, votre historique, vos statistiques et vos jetons seront effacés. Confirmez avec votre mot de passe.</p>
+            <Field label="Mot de passe" htmlFor="sp-del">
+              <input id="sp-del" type="password" className={inputClass} value={del.password} onChange={(e) => setDel({ ...del, password: e.target.value })} autoComplete="current-password" />
+            </Field>
+            <div className="flex gap-3">
+              <Button type="submit" variant="danger" disabled={!del.password}>
+                Supprimer définitivement
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setDel({ open: false, password: '' })}>
+                Annuler
+              </Button>
+            </div>
+          </form>
+        )}
+        {dataState && <Notice tone={dataState.tone}>{dataState.text}</Notice>}
+      </section>
 
       <div className="border-t border-ivory-100/10 pt-6">
         <Button variant="danger" onClick={() => void account.logout()}>

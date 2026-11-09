@@ -123,6 +123,23 @@ Sélecteur en haut de page (français, English, Español, Deutsch, Italiano) ; l
 
 Traduit à ce jour : accueil, menu « Jouer en solo », Le Tableau et Tableau 5 cartes. Restent en français pour l'instant : tables de poker, Blackjack, comptes, mémo des règles (descriptions des variantes), paramètres.
 
+## Sons et animations
+
+Les sons sont synthétisés (Web Audio, aucun fichier) : distribution (souffle de papier puis appui feutré), pose d'une carte (tapotement doux et petite note claire), chaque son étant légèrement varié pour ne jamais se répéter à l'identique ; fanfare de victoire en fin de partie. Les cartes se posent en ressort et glissent quand la main change. Le vainqueur est mis en scène (trophée, rayons de lumière, étincelles, lueur sur le titre, halo sur les colonnes et mains gagnantes). Tout respecte le réglage « Sons » et `prefers-reduced-motion`.
+
+## Sécurité
+
+Un audit de sécurité a été mené sur le serveur et l'interface ; ses correctifs techniques sont en place.
+
+- **Adresse IP réelle** : derrière le répartiteur de Render, toutes les requêtes semblaient venir de la même adresse, donc les limites de débit étaient communes à tous les joueurs. `TRUST_PROXY` (nombre de relais de confiance, 1 par défaut sur Render, 0 ailleurs) corrige cela pour l'API comme pour le temps réel. Pour vérifier sur Render : poser `DEBUG_IP=1`, ouvrir `/_ip` (l'adresse affichée doit être la vôtre, pas celle d'un relais), puis retirer la variable. Si Render ajoute un relais supplémentaire (ce que `/_ip` montrerait), passer `TRUST_PROXY` à 2.
+- **En-têtes** : Content-Security-Policy stricte (scripts du site uniquement, aucun cadre, aucun objet), HSTS, `nosniff`, `X-Frame-Options`, Referrer-Policy, Permissions-Policy, COOP.
+- **Limitation de débit** : tables purgées automatiquement et plafonnées en nombre de clés ; ajout d'une limite par compte visé (10 échecs en 15 minutes) en plus de la limite par adresse ; plafond de 60 connexions temps réel par adresse (`maxSocketsPerIp`) et de 1000 tables simultanées (`maxRooms`).
+- **Mots de passe** : scrypt relevé à N = 65536 (OWASP). Les anciennes empreintes restent valides et sont remplacées à la prochaine connexion. Le nombre de calculs simultanés est limité à 2 (mémoire). Les mots de passe triviaux (listes de choix courants, caractères répétés) sont refusés.
+- **Données personnelles** : « Mes données » dans l'espace joueur permet de télécharger une copie complète du compte (`GET /me/export`) et de le supprimer définitivement après confirmation par mot de passe (`DELETE /me`).
+- **E-mails** : plafond global de 120 envois par heure (`MAIL_MAX_PER_HOUR`), adresses masquées dans les journaux.
+
+Reste à traiter hors code : disque persistant ou VPS (le disque gratuit de Render est effacé à chaque redémarrage) et, si l'application s'ouvre au public, confirmation de l'adresse e-mail à l'inscription et mentions légales / politique de confidentialité.
+
 ## Protocole
 
 **HTTP** — `POST /rooms` (création, 201 : `{code, playerId, token}`), `POST /rooms/:code/join` (arrivée), `GET /health`.

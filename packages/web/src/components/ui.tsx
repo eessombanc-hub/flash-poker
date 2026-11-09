@@ -194,8 +194,9 @@ export function Modal({ title, onClose, children, wide = false, compact = false 
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        initial={{ y: 24, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        initial={{ y: 28, opacity: 0, scale: 0.98 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={`w-full overflow-y-auto border border-gold-500/30 bg-ink-800 shadow-panel outline-none ${compact ? 'max-h-[98dvh] rounded-3xl p-4 sm:p-5' : 'max-h-[92vh] rounded-[28px] p-5 sm:p-7'} ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
       >
         {children}

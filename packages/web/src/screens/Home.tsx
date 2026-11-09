@@ -17,7 +17,7 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[calc(100dvh-3rem)]">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <p className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-xl tracking-wide text-ivory-50">
           <CardsIcon size={34} />

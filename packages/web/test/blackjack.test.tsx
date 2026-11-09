@@ -239,7 +239,7 @@ describe('Blackjack : de bout en bout', () => {
 
   it('distribution, tirage ou arrêt, résumé, classement et historique', async () => {
     const { account } = await serverAndAccount();
-    await account.register({ nickname: 'Croupier', email: 'c@x.fr', password: 'motdepasse1' });
+    await account.register({ nickname: 'Croupier', email: 'c@x.fr', password: 'tapis-vert-42' });
     const user = userEvent.setup();
     render(
       <AccountProvider account={account}>
@@ -275,7 +275,7 @@ describe('Blackjack : de bout en bout', () => {
 
   it('reprise : une manche interrompue est rouverte au rechargement', async () => {
     const { account } = await serverAndAccount();
-    await account.register({ nickname: 'Reprise', email: 'r@x.fr', password: 'motdepasse1' });
+    await account.register({ nickname: 'Reprise', email: 'r@x.fr', password: 'tapis-vert-42' });
     // On distribue jusqu'à obtenir une manche encore en cours (un Blackjack naturel la terminerait d'emblée).
     let started = await account.blackjackStart({ table: 'decouverte', bet: 5 });
     for (let i = 0; i < 20 && started.active.round.phase === 'DONE'; i++) started = await account.blackjackStart({ table: 'decouverte', bet: 5 });

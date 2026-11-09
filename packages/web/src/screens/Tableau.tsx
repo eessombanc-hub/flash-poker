@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayingCard } from '../components/Card';
-import { CoinRain } from '../components/Scene3D';
+import { CoinRain, SpinTrophy } from '../components/Scene3D';
 import { ColumnStack, MiniHand, ResultsTable, VerdictRow } from '../components/tableau/Board';
 import { Avatar, Badge, Button, CountdownRing, Eyebrow, Modal, Panel, Segmented, inputClass } from '../components/ui';
 import type { AccountClient } from '../lib/account';
 import { useAccount, useAccountClient } from '../lib/context';
 import { useSettings } from '../lib/settings';
 import { useSound } from '../lib/sound';
+import { FitToScreen } from '../components/FitToScreen';
+import { VictoryTitle, WinnerSpotlight } from '../components/Winner';
 import { announce, clockSkew, COMBOS, inviteUrl, LEVELS, outcomeKey, ROMAN, secondsLeft, VARIANT_OPTIONS } from '../lib/tableau';
 import { adviceText, columnLabel, errorText, handLabel } from '../lib/tbText';
 import { useI18n, type Key } from '../i18n';
@@ -40,15 +42,15 @@ export function Tableau({ onBack, onLogin, initialCode, initialVariant = 'classi
   const ready = useAccount((s) => s.ready);
   const [game, setGame] = useState<TbGameDto | null>(null);
   return (
-    <div className="min-h-screen">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+    <div className="min-h-[calc(100dvh-3rem)]">
+      <header className={`mx-auto flex items-center justify-between px-4 py-4 ${game ? 'max-w-5xl' : 'max-w-3xl'}`}>
         <button type="button" onClick={game ? () => setGame(null) : onBack} className="rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
           {game ? t('tb.back.menu') : t('common.backHome')}
         </button>
         <p className="font-display text-xl tracking-wide text-ivory-50">{t('tb.title')}</p>
         <span className="w-16" aria-hidden="true" />
       </header>
-      <main className="mx-auto max-w-3xl px-4 pb-12">
+      <main className={`mx-auto px-4 pb-12 ${game ? 'max-w-5xl' : 'max-w-3xl'}`}>
         {!client || !ready ? (
           <p className="py-10 text-center text-sm text-ivory-300/70">{client ? t('common.loading') : t('tb.noServer')}</p>
         ) : game ? (
@@ -338,7 +340,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
   const wasStatus = useRef(dto.status);
   useEffect(() => {
     if (view && view.ply !== seenPly.current) {
-      if (dto.lastMove && dto.lastMove.seat !== you) snd.play('select');
+      if (dto.lastMove && dto.lastMove.seat !== you) snd.play('place');
       seenPly.current = view.ply;
       setPending(null);
       setPicked(null);
@@ -347,9 +349,10 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
     if (myTurn && !wasMyTurn.current) {
       snd.play('yourTurn');
       snd.buzz(40);
+      window.setTimeout(() => snd.play('deal'), 420); // la carte piochée glisse vers vous
     }
     wasMyTurn.current = myTurn;
-    if (dto.status === 'finished' && wasStatus.current !== 'finished') snd.play(dto.winner === you ? 'win' : 'error');
+    if (dto.status === 'finished' && wasStatus.current !== 'finished') snd.play(dto.winner === you ? 'victory' : 'error');
     wasStatus.current = dto.status;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dto]);
@@ -365,7 +368,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
     setError('');
     try {
       const d = await client.tbPlace(dto.code, col, hand5 ? (card ?? undefined) : undefined);
-      snd.play('confirm');
+      snd.play('place');
       apply(d);
       setPending(null);
       setPicked(null);
@@ -441,18 +444,23 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
   const oppName = opponent?.kind === 'cpu' ? cpuName(t, opponent.level) : (opponent?.nickname ?? t('tb.opponent'));
 
   return (
-    <div className="space-y-3">
+    <FitToScreen enabled={!finished}>
+    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-x-5">
       <p className="sr-only" role="status" aria-live="polite">
         {announce(dto, t)}
       </p>
 
       {/* Adversaire */}
+      <div className="lg:col-start-1 lg:row-start-1">
       <PlayerBar name={oppName} avatar={opponent?.avatar ?? null} badge={`${opponent?.kind === 'cpu' ? t('tb.badge.level', { level: t(`tb.level.${opponent.level ?? 'intermediate'}` as Key) }) : t('tb.badge.friend')}${hand5 ? t('tb.badge.hand', { n: view.handCount[opp] }) : ''}`} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
+      </div>
 
-      <Board dto={dto} seat={opp} side="theirs" look={look} owner={oppName} selectable={false} pending={null} onPick={() => undefined} />
+      <div className="lg:col-start-1 lg:row-start-2">
+        <Board dto={dto} seat={opp} side="theirs" look={look} owner={oppName} selectable={false} pending={null} onPick={() => undefined} />
+      </div>
 
-      {/* Bande centrale */}
-      <div className="rounded-2xl border border-gold-500/25 bg-felt-900/70 p-3">
+      {/* Bande centrale (à droite des deux plateaux sur grand écran) */}
+      <div className="rounded-2xl border border-gold-500/25 bg-felt-900/70 p-3 lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <VerdictRow verdicts={dto.verdicts} you={you} final={finished} />
         {!finished ? (
           <div className="mt-3 flex items-center justify-center gap-4">
@@ -517,9 +525,11 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       </div>
 
       {/* Vous */}
-      <Board dto={dto} seat={you} side="mine" look={look} owner={t('tb.you')} selectable={myTurn && !busy} pending={pending} onPick={(c) => void place(c)} />
+      <div className="lg:col-start-1 lg:row-start-3">
+        <Board dto={dto} seat={you} side="mine" look={look} owner={t('tb.you')} selectable={myTurn && !busy} pending={pending} onPick={(c) => void place(c)} />
+      </div>
       {hand5 && (
-        <div className="rounded-2xl border border-gold-500/25 bg-ink-800/70 p-2" data-testid="tb-hand">
+        <div className="rounded-2xl border border-gold-500/25 bg-ink-800/70 p-2 lg:col-start-2 lg:row-start-4" data-testid="tb-hand">
           <p className="mb-1 text-center text-xs text-ivory-300/85">
             {view.pile[you] === 0 ? t('tb.hand.title.noPile') : tp('tb.hand.title.pile', view.pile[you])}
           </p>
@@ -530,8 +540,11 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
           </div>
         </div>
       )}
-      <PlayerBar name={mine?.nickname ?? t('tb.you')} avatar={mine?.avatar ?? null} badge={t('tb.you')} remaining={view.remaining[you]} score={myScore} active={myTurn} />
+      <div className="lg:col-start-1 lg:row-start-4">
+        <PlayerBar name={mine?.nickname ?? t('tb.you')} avatar={mine?.avatar ?? null} badge={t('tb.you')} remaining={view.remaining[you]} score={myScore} active={myTurn} />
+      </div>
 
+      <div className="lg:col-span-2 lg:row-start-5">
       {finished ? (
         <Finished dto={dto} outcome={outcome} oppName={oppName} onExit={onExit} onAgain={dto.mode === 'training' ? () => client.tbCreate({ mode: 'training', level: (dto.players[opp]?.level ?? 'intermediate') as AiLevel, variant: dto.variant }).then((d) => { latest.current = d; skew.current = clockSkew(d); seenPly.current = 0; setDto(d); setError(''); }).catch((e) => setError(errorText(i18n, e))) : undefined} />
       ) : (
@@ -545,6 +558,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
           </Button>
         </div>
       )}
+      </div>
 
       {leaving && (
         <Modal title={t('tb.quit')} onClose={() => setLeaving(false)}>
@@ -561,6 +575,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
         </Modal>
       )}
     </div>
+    </FitToScreen>
   );
 }
 
@@ -641,10 +656,21 @@ function Finished({ dto, outcome, oppName, onExit, onAgain }: { dto: TbGameDto; 
     <section className="relative space-y-3 rounded-3xl border border-gold-500/40 bg-ink-800/90 p-4" aria-label={t('tb.fin.aria')}>
       {outcome === 'win' && <CoinRain />}
       <div className="text-center">
+        {outcome === 'win' && (
+          <WinnerSpotlight className="mx-auto mb-1 flex w-28 justify-center">
+            <SpinTrophy size={84} />
+          </WinnerSpotlight>
+        )}
         <Eyebrow>{t('tb.fin.eyebrow')}</Eyebrow>
-        <h2 className="mt-1 font-display text-3xl text-ivory-50" data-testid="tb-outcome">
-          {outcome === 'win' ? t('tb.fin.win') : outcome === 'loss' ? t('tb.fin.loss') : t('tb.fin.draw')}
-        </h2>
+        {outcome === 'win' ? (
+          <VictoryTitle testId="tb-outcome" className="mt-1 font-display text-3xl text-ivory-50">
+            {t('tb.fin.win')}
+          </VictoryTitle>
+        ) : (
+          <h2 className="mt-1 font-display text-3xl text-ivory-50" data-testid="tb-outcome">
+            {outcome === 'loss' ? t('tb.fin.loss') : t('tb.fin.draw')}
+          </h2>
+        )}
         {sf ? (
           <p className="mt-1 text-sm text-gold-200" data-testid="tb-sf">
             {t(sf.seat === you ? 'tb.fin.sf.win' : 'tb.fin.sf.loss', { c: ROMAN[sf.col]!, hand: handLabel(i18n, sf.hand) })}

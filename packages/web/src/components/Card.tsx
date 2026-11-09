@@ -121,7 +121,7 @@ function Back({ id, back = 'losange' }: { id: string; back?: CardBackId }) {
  * sans position fournie. Plafonné à 12 cartes pour qu'une très grande main ne fasse pas trop attendre. */
 export function dealDelay(dealIndex: number | undefined, reduce: boolean, flip: boolean): number {
   if (reduce || flip || !dealIndex) return 0;
-  return Math.min(dealIndex, 12) * 0.06;
+  return Math.min(dealIndex, 12) * 0.05;
 }
 
 interface CardProps {
@@ -175,9 +175,14 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
     </svg>
   );
   const common = {
-    initial: reduce ? false : flip ? { rotateY: 90, opacity: 0.4 } : { y: -14, opacity: 0 },
-    animate: { rotateY: 0, y: selected ? (reduce ? 0 : -14) : 0, opacity: dimmed ? 0.45 : 1 },
-    transition: { duration: reduce ? 0 : 0.28, ease: 'easeOut' as const, delay: dealDelay(dealIndex, !!reduce, flip) },
+    initial: reduce ? false : flip ? { rotateY: 90, opacity: 0.4 } : { y: -22, opacity: 0, scale: 0.94, rotate: dealIndex === undefined ? 0 : ((dealIndex % 3) - 1) * 2.5 },
+    animate: { rotateY: 0, rotate: 0, scale: 1, y: selected ? (reduce ? 0 : -14) : 0, opacity: dimmed ? 0.45 : 1 },
+    // Ressort plutôt que tracé fixe : la carte se pose avec un très léger rebond, et la sélection répond sans à-coup.
+    transition: reduce
+      ? { duration: 0 }
+      : flip
+        ? { duration: 0.34, ease: [0.22, 1, 0.36, 1] as [number, number, number, number], delay: dealDelay(dealIndex, false, true) }
+        : { type: 'spring' as const, stiffness: 330, damping: 26, mass: 0.9, delay: dealDelay(dealIndex, false, false), opacity: { duration: 0.2 } },
     style: { transformPerspective: 700 },
     className: `relative inline-block shrink-0 rounded-[9px] ${WIDTH[size]} ${ring} ${className}`,
   };
@@ -185,6 +190,7 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
     return (
       <motion.button
         type="button"
+        layout="position"
         {...common}
         onClick={onClick}
         disabled={disabled}

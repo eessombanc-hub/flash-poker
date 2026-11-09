@@ -29,7 +29,7 @@ async function setup(opts: { seeds?: string[]; clock?: { t: number } } = {}) {
   const store = new AccountDb(':memory:');
   const accounts = new AccountService(store, new LogMailer(false, () => undefined), { appUrl: 'https://jeu.test', now: () => clock.t, log: () => undefined });
   const bj = new BlackjackService(store, { now: () => clock.t, seed: () => queue.shift() ?? `auto-${Math.random()}` });
-  const reg = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+  const reg = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
   return { accounts, bj, store, clock, id: reg.account.id, token: reg.token, queue };
 }
 
@@ -253,8 +253,8 @@ describe('Blackjack : progression', () => {
 describe('Blackjack : classement et accès', () => {
   it('classement par XP ou par jetons ; joueurs sans activité absents', async () => {
     const { bj, id, accounts } = await setup();
-    const b = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
-    await accounts.register({ nickname: 'Cleo', email: 'cleo@x.fr', password: 'motdepasse1' });
+    const b = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42' });
+    await accounts.register({ nickname: 'Cleo', email: 'cleo@x.fr', password: 'tapis-vert-42' });
     bj.awardXp(id, 150);
     bj.awardXp(b.account.id, 400);
     const xp = bj.leaderboard('xp');
@@ -288,7 +288,7 @@ describe('Blackjack : classement et accès', () => {
     expect((await guestReq(g2, 'GET', '/me/blackjack')).json()).toMatchObject({ profile: { chips: 1000, rounds: 0 }, active: null });
     expect(((await guestReq(g1, 'GET', '/me/blackjack')).json() as { active: unknown; profile: { rounds: number } }).active !== null || ((await guestReq(g1, 'GET', '/me/blackjack')).json() as { profile: { rounds: number } }).profile.rounds === 1).toBe(true);
     expect((await inj('GET', '/blackjack/leaderboard?by=xp')).json()).toMatchObject({ entries: [] });
-    const { token } = (await inj('POST', '/auth/register', undefined, { nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' })).json() as { token: string };
+    const { token } = (await inj('POST', '/auth/register', undefined, { nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' })).json() as { token: string };
     expect((await inj('GET', '/me/blackjack', token)).json()).toMatchObject({ profile: { chips: 1000 } });
     expect((await inj('POST', '/me/blackjack/round', token, { table: 'decouverte', bet: 'beaucoup' })).statusCode).toBe(400);
     expect((await inj('POST', '/me/blackjack/round', token, { table: 'decouverte', bet: 1, rules: { decks: 1 } })).statusCode).toBe(400);

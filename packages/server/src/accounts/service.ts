@@ -4,7 +4,9 @@ import { z } from 'zod';
 import { ServerError } from '../errors';
 import type { AccountDb } from './db';
 import { mail, type Mailer } from './mailer';
-import { hashPassword, newToken, tokenHash, verifyPassword } from './password';
+import { DUMMY_HASH, hashPassword, needsRehash, newToken, tokenHash, verifyPassword } from './password';
+import { maskEmail } from '../netSecurity';
+import { RateLimiter } from '../rateLimiter';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
@@ -13,7 +15,15 @@ const nickname = z
   .transform((s) => s.trim())
   .pipe(z.string().min(2, 'Pseudo de 2 à 20 caractères').max(20, 'Pseudo de 2 à 20 caractères').regex(/^[\p{L}\p{N} _.'-]+$/u, 'Pseudo : lettres, chiffres, espace, _ . \' -'));
 const email = z.string().transform((s) => s.trim().toLowerCase()).pipe(z.string().email('Adresse e-mail invalide').max(254));
-const password = z.string().min(8, 'Mot de passe de 8 caractères au moins').max(128);
+// Mots de passe les plus employés (liste volontairement courte : elle écarte les choix triviaux, pas davantage).
+const COMMON_PASSWORDS = new Set(
+  ['12345678', '123456789', '1234567890', '123123123', '11111111', '00000000', 'password', 'password1', 'password123', 'motdepasse', 'motdepasse1', 'azertyuiop', 'azerty123', 'azertyazerty', 'qwertyuiop', 'qwerty123', 'abcd1234', 'abc12345', 'iloveyou', 'football', 'poker123', 'pokerpoker', 'flashpoker', 'bonjour123', 'soleil123', 'doudou123', 'marseille', 'chocolat'],
+);
+const password = z
+  .string()
+  .min(8, 'Mot de passe de 8 caractères au moins')
+  .max(128)
+  .refine((p) => !COMMON_PASSWORDS.has(p.toLowerCase()) && new Set(p).size > 2, 'Ce mot de passe est trop courant : choisissez-en un autre');
 const avatar = z.string().regex(/^[a-z0-9_-]{1,32}$/).nullable().optional();
 
 export const registerSchema = z.object({ nickname, email, password, avatar, invite: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/).optional() });
@@ -23,6 +33,7 @@ export const profileSchema = z.object({ nickname: nickname.optional(), avatar, n
 export const emailChangeSchema = z.object({ email, password: z.string().min(1).max(128) });
 export const passwordChangeSchema = z.object({ current: z.string().min(1).max(128), next: password });
 export const forgotSchema = z.object({ email });
+export const deleteSchema = z.object({ password: z.string().min(1).max(128) });
 export const resetSchema = z.object({ token: z.string().min(20).max(100), password });
 
 function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
@@ -91,8 +102,10 @@ export class AccountService {
     const data = parse(loginSchema, input);
     const row = this.findBy(data.login.includes('@') ? 'email' : 'nickname', data.login);
     // Même message et même travail de calcul que le compte existe ou non : rien n'indique lequel des deux est faux.
-    const ok = await verifyPassword(data.password, (row?.pass_hash as string | undefined) ?? 'scrypt$16384$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
+    const ok = await verifyPassword(data.password, (row?.pass_hash as string | undefined) ?? DUMMY_HASH);
     if (!row || !ok) throw new ServerError('UNAUTHORIZED', 'Pseudo, e-mail ou mot de passe incorrect');
+    // Migration transparente vers les paramètres de hachage actuels.
+    if (needsRehash(row.pass_hash as string)) this.db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?').run(await hashPassword(data.password), row.id as string);
     return { token: this.openSession(row.id as string), account: this.account(row.id as string)! };
   }
 
@@ -169,6 +182,53 @@ export class AccountService {
     if (!r || !(await verifyPassword(pwd, r.pass_hash as string))) throw new ServerError('UNAUTHORIZED', 'Mot de passe actuel incorrect');
   }
 
+  // ---------- Données personnelles : export et suppression ----------
+
+  /** Tables du Blackjack et du Tableau dont les lignes portent `user_id` (hors partie en cours, qui n'a pas d'intérêt à l'export). */
+  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat'] as const;
+
+  /** Copie de toutes les données rattachées au compte, pour son titulaire (droit d'accès et de portabilité). */
+  exportData(userId: string): Record<string, unknown> {
+    const account = this.account(userId);
+    if (!account) throw new ServerError('NOT_FOUND', 'Compte introuvable');
+    const rows = (sql: string): unknown[] => this.db.prepare(sql).all(userId) as unknown[];
+    const owned: Record<string, unknown[]> = {};
+    for (const t of AccountService.OWNED_TABLES) owned[t] = rows(`SELECT * FROM ${t} WHERE user_id = ?`);
+    return {
+      exportedAt: new Date(this.now()).toISOString(),
+      account,
+      games: this.myGames(userId, 5000).map((g) => ({ id: g.id, playerId: g.playerId, netChips: g.net, won: g.won, game: g.game })),
+      favoritePlayers: rows('SELECT u.nickname, f.created_at FROM fav_players f JOIN users u ON u.id = f.fav_id WHERE f.user_id = ?'),
+      favoriteRounds: rows('SELECT game_id, round_no, created_at FROM fav_rounds WHERE user_id = ?'),
+      invitations: rows('SELECT code, email, created_at, accepted_at FROM invites WHERE inviter_id = ?'),
+      walletRefills: rows('SELECT at, amount FROM wallet_refills WHERE user_id = ?'),
+      ...owned,
+    };
+  }
+
+  /**
+   * Suppression définitive du compte (droit à l'effacement), après vérification du mot de passe. Les parties
+   * archivées dont plus aucun joueur inscrit n'a besoin sont supprimées avec lui.
+   */
+  async deleteAccount(userId: string, input: unknown): Promise<void> {
+    const data = parse(deleteSchema, input);
+    await this.checkPassword(userId, data.password);
+    const run = (sql: string): void => void this.db.prepare(sql).run(userId);
+    this.db.exec('BEGIN');
+    try {
+      for (const t of AccountService.OWNED_TABLES) run(`DELETE FROM ${t} WHERE user_id = ?`);
+      run('DELETE FROM bj_active WHERE user_id = ?');
+      run('DELETE FROM notify_log WHERE user_id = ?');
+      run('DELETE FROM notify_log WHERE fav_id = ?');
+      run('DELETE FROM users WHERE id = ?'); // sessions, jetons, favoris, parrainages… : suppression en cascade
+      this.db.exec('DELETE FROM games WHERE id NOT IN (SELECT game_id FROM user_games)');
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+  }
+
   // ---------- Mot de passe oublié ----------
 
   /** Toujours la même réponse, que l'adresse corresponde à un compte ou non (aucune adresse n'est révélée). */
@@ -201,11 +261,18 @@ export class AccountService {
     return { token: this.openSession(userId), account: this.account(userId)! };
   }
 
+  // Plafond global d'e-mails sortants (toutes fonctions confondues) : protège la réputation et le quota du relais SMTP.
+  private mailCap = new RateLimiter(Number(process.env.MAIL_MAX_PER_HOUR ?? 120), 3_600_000, () => this.now());
+
   private async safeSend(message: Parameters<Mailer['send']>[0]): Promise<void> {
+    if (!this.mailCap.hit('global')) {
+      (this.opts.log ?? console.error)('[e-mail] plafond horaire atteint : envoi ignoré');
+      return;
+    }
     try {
       await this.mailer.send(message);
     } catch (e) {
-      (this.opts.log ?? console.error)(`[e-mail] échec d'envoi à ${message.to} : ${String(e)}`);
+      (this.opts.log ?? console.error)(`[e-mail] échec d'envoi à ${maskEmail(message.to)} : ${String(e)}`);
     }
   }
 

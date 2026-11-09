@@ -323,6 +323,13 @@ export function Table() {
     }
     seen.current = game.history.length;
   }, [game.history, game.phase, me, sound]);
+  // Cartes distribuées au début d'une manche : bruit de distribution (pas au chargement d'une partie en cours).
+  const lastDealt = useRef<string | null>(null);
+  useEffect(() => {
+    const key = game.round ? `${game.roundNo}:${game.round.variant ?? ''}` : null;
+    if (key && lastDealt.current !== null && lastDealt.current !== key && sound) Sound.deal();
+    if (key) lastDealt.current = key;
+  }, [game.round, game.roundNo, sound]);
   useEffect(() => {
     if (game.phase === 'GAME_OVER' && !result) setFinalOpen(true);
   }, [game.phase, result]);

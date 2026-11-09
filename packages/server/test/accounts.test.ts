@@ -34,48 +34,48 @@ async function rejects(p: Promise<unknown> | (() => unknown), code: string): Pro
 describe('comptes : inscription, connexion, sessions', () => {
   it('inscription puis connexion par pseudo ou par e-mail, sans distinction de casse', async () => {
     const { accounts } = service();
-    const r = await accounts.register({ nickname: ' Emeric ', email: 'Emeric@Exemple.fr', password: 'motdepasse1' });
+    const r = await accounts.register({ nickname: ' Emeric ', email: 'Emeric@Exemple.fr', password: 'tapis-vert-42' });
     expect(r.account).toMatchObject({ nickname: 'Emeric', email: 'emeric@exemple.fr', notifyEmail: true });
     expect(accounts.userBySession(r.token)?.id).toBe(r.account.id);
-    expect((await accounts.login({ login: 'emeric', password: 'motdepasse1' })).account.id).toBe(r.account.id);
-    expect((await accounts.login({ login: 'EMERIC@exemple.fr', password: 'motdepasse1' })).account.id).toBe(r.account.id);
+    expect((await accounts.login({ login: 'emeric', password: 'tapis-vert-42' })).account.id).toBe(r.account.id);
+    expect((await accounts.login({ login: 'EMERIC@exemple.fr', password: 'tapis-vert-42' })).account.id).toBe(r.account.id);
   });
 
   it('refuse un pseudo ou un e-mail déjà pris, un mot de passe trop court, un mauvais mot de passe', async () => {
     const { accounts } = service();
-    await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
-    await rejects(accounts.register({ nickname: 'ANA', email: 'b@x.fr', password: 'motdepasse1' }), 'NICKNAME_TAKEN');
-    await rejects(accounts.register({ nickname: 'Bea', email: 'Ana@x.fr', password: 'motdepasse1' }), 'EMAIL_TAKEN');
+    await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
+    await rejects(accounts.register({ nickname: 'ANA', email: 'b@x.fr', password: 'tapis-vert-42' }), 'NICKNAME_TAKEN');
+    await rejects(accounts.register({ nickname: 'Bea', email: 'Ana@x.fr', password: 'tapis-vert-42' }), 'EMAIL_TAKEN');
     await rejects(accounts.register({ nickname: 'Bea', email: 'b@x.fr', password: 'court' }), 'BAD_REQUEST');
     await rejects(accounts.login({ login: 'Ana', password: 'mauvais-mdp' }), 'UNAUTHORIZED');
-    await rejects(accounts.login({ login: 'Inconnu', password: 'motdepasse1' }), 'UNAUTHORIZED');
+    await rejects(accounts.login({ login: 'Inconnu', password: 'tapis-vert-42' }), 'UNAUTHORIZED');
   });
 
   it('le mot de passe n’est jamais stocké en clair ; la session expire après 30 jours ; déconnexion', async () => {
     let t = 1_000;
     const { accounts } = service({ now: () => t });
-    const r = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    const r = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     const row = accounts['store'].db.prepare('SELECT pass_hash FROM users').get() as { pass_hash: string };
     expect(row.pass_hash).toMatch(/^scrypt\$/);
-    expect(row.pass_hash).not.toContain('motdepasse1');
+    expect(row.pass_hash).not.toContain('tapis-vert-42');
     t += 29 * 86_400_000;
     expect(accounts.userBySession(r.token)).not.toBeNull();
     t += 2 * 86_400_000;
     expect(accounts.userBySession(r.token)).toBeNull();
-    const s = await accounts.login({ login: 'Ana', password: 'motdepasse1' });
+    const s = await accounts.login({ login: 'Ana', password: 'tapis-vert-42' });
     accounts.logout(s.token);
     expect(accounts.userBySession(s.token)).toBeNull();
   });
 
   it('profil : pseudo, avatar, alertes ; changement de mot de passe (les autres appareils sont déconnectés)', async () => {
     const { accounts } = service();
-    const a = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
-    await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    const a = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
+    await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42' });
     expect(accounts.updateProfile(a.account.id, { nickname: 'Anaïs', avatar: 'renard', notifyEmail: false })).toMatchObject({ nickname: 'Anaïs', avatar: 'renard', notifyEmail: false });
     await rejects(() => accounts.updateProfile(a.account.id, { nickname: 'bea' }), 'NICKNAME_TAKEN');
-    const other = await accounts.login({ login: 'Anaïs', password: 'motdepasse1' });
+    const other = await accounts.login({ login: 'Anaïs', password: 'tapis-vert-42' });
     await rejects(accounts.changePassword(a.account.id, { current: 'faux-faux', next: 'nouveau-mdp' }, a.token), 'UNAUTHORIZED');
-    await accounts.changePassword(a.account.id, { current: 'motdepasse1', next: 'nouveau-mdp' }, a.token);
+    await accounts.changePassword(a.account.id, { current: 'tapis-vert-42', next: 'nouveau-mdp' }, a.token);
     expect(accounts.userBySession(a.token)).not.toBeNull();
     expect(accounts.userBySession(other.token)).toBeNull();
     expect((await accounts.login({ login: 'Anaïs', password: 'nouveau-mdp' })).account.id).toBe(a.account.id);
@@ -86,7 +86,7 @@ describe('comptes : mot de passe oublié', () => {
   it('envoie un lien à usage unique, valable une heure ; rien n’indique si l’adresse existe', async () => {
     let t = 1_000;
     const { accounts, mailer } = service({ now: () => t });
-    const a = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    const a = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     await accounts.forgot({ email: 'personne@x.fr' });
     expect(mailer.sent).toHaveLength(0);
     await accounts.forgot({ email: 'ANA@x.fr' });
@@ -112,7 +112,7 @@ describe('comptes : mot de passe oublié', () => {
 describe('comptes : parties terminées, historique, statistiques, bankroll, manches favorites', () => {
   async function finishedGame(cfg: { stakeChips?: number } = {}) {
     const { accounts } = service();
-    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     const scheduler = new ManualScheduler();
     const m = new RoomManager({
       rng: new SeededRng(7),
@@ -160,7 +160,7 @@ describe('comptes : parties terminées, historique, statistiques, bankroll, manc
     expect(accounts.favoriteRounds(ana.account.id)).toHaveLength(1);
     expect(accounts.game(ana.account.id, id).favoriteRounds).toEqual([1]);
     await rejects(() => accounts.addFavoriteRound(ana.account.id, id, 9), 'NOT_FOUND');
-    const bea = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    const bea = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42' });
     await rejects(() => accounts.game(bea.account.id, id), 'NOT_FOUND');
     accounts.removeFavoriteRound(ana.account.id, id, 1);
     expect(accounts.favoriteRounds(ana.account.id)).toHaveLength(0);
@@ -168,7 +168,7 @@ describe('comptes : parties terminées, historique, statistiques, bankroll, manc
 
   it('une partie annulée n’est pas archivée', async () => {
     const { accounts } = service();
-    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     const m = new RoomManager({ rng: new SeededRng(7), scheduler: new ManualScheduler(), accounts: { isReservedNickname: () => false, onGameFinished: (g) => accounts.recordGame(g) } });
     const room = m.createRoom({ name: 'T', maxPlayers: 4, targetPoints: 1, stakeChips: 0, nickname: 'x' }, ana.account);
     m.cancelRoom(room.code, room.playerId);
@@ -180,8 +180,8 @@ describe('comptes : joueurs favoris et présence', () => {
   it('prévient dans l’application si l’abonné est en ligne, sinon par e-mail, une fois par jour au plus', async () => {
     let t = Date.UTC(2026, 10, 6, 10);
     const { accounts, mailer } = service({ now: () => t });
-    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
-    const bea = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
+    const bea = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42' });
     expect(accounts.search(ana.account.id, 'be').map((u) => u.nickname)).toEqual(['Bea']);
     accounts.addFavorite(ana.account.id, { nickname: 'bea' });
     await rejects(() => accounts.addFavorite(ana.account.id, { nickname: 'Ana' }), 'BAD_REQUEST');
@@ -221,24 +221,24 @@ describe('comptes : joueurs favoris et présence', () => {
 describe('comptes : invitations', () => {
   it('lien personnel : l’invité s’inscrit, les deux deviennent favoris l’un de l’autre', async () => {
     const { accounts } = service();
-    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     const code = accounts.invites(ana.account.id).code;
     expect(accounts.invites(ana.account.id).code).toBe(code); // toujours le même lien
     expect(accounts.inviteInfo(code).inviter).toMatchObject({ nickname: 'Ana' });
-    const bea = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1', invite: code });
+    const bea = await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42', invite: code });
     expect(accounts.invites(ana.account.id).joined.map((u) => u.nickname)).toEqual(['Bea']);
     expect(accounts.favorites(ana.account.id).map((f) => f.nickname)).toEqual(['Bea']);
     expect(accounts.favorites(bea.account.id).map((f) => f.nickname)).toEqual(['Ana']);
     // Un code inconnu n'empêche pas l'inscription
-    await accounts.register({ nickname: 'Cid', email: 'cid@x.fr', password: 'motdepasse1', invite: 'inconnu123' });
+    await accounts.register({ nickname: 'Cid', email: 'cid@x.fr', password: 'tapis-vert-42', invite: 'inconnu123' });
     await rejects(() => accounts.inviteInfo('inconnu123'), 'NOT_FOUND');
   });
 
   it('par e-mail : lien d’inscription, suivi « en attente » puis « inscrit », garde-fous', async () => {
     let t = 1_000_000;
     const { accounts, mailer } = service({ now: () => t });
-    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
-    await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
+    await accounts.register({ nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42' });
     const o = await accounts.inviteByEmail(ana.account.id, { email: 'Zoe@X.fr' });
     expect(o.sent).toEqual([{ email: 'zoe@x.fr', sentAt: t, joinedAs: null }]);
     expect(o.remainingToday).toBe(9);
@@ -249,7 +249,7 @@ describe('comptes : invitations', () => {
     await rejects(accounts.inviteByEmail(ana.account.id, { email: 'zoe@x.fr' }), 'BAD_REQUEST'); // déjà invitée cette semaine
     await rejects(accounts.inviteByEmail(ana.account.id, { email: 'bea@x.fr' }), 'EMAIL_TAKEN'); // déjà inscrite
     await rejects(accounts.inviteByEmail(ana.account.id, { email: 'ana@x.fr' }), 'BAD_REQUEST'); // soi-même
-    await accounts.register({ nickname: 'Zoé', email: 'zoe@x.fr', password: 'motdepasse1', invite: code });
+    await accounts.register({ nickname: 'Zoé', email: 'zoe@x.fr', password: 'tapis-vert-42', invite: code });
     expect(accounts.invites(ana.account.id).sent[0]).toMatchObject({ joinedAs: 'Zoé' });
     // 10 par jour au plus
     for (let i = 0; i < 9; i++) await accounts.inviteByEmail(ana.account.id, { email: `ami${i}@x.fr` });
@@ -260,7 +260,7 @@ describe('comptes : invitations', () => {
 
   it('sans e-mail configuré : seul le lien est proposé', async () => {
     const { accounts } = service({ mail: false });
-    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1' });
+    const ana = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     expect(accounts.invites(ana.account.id).mailEnabled).toBe(false);
     await rejects(accounts.inviteByEmail(ana.account.id, { email: 'zoe@x.fr' }), 'UNAVAILABLE');
   });
@@ -284,7 +284,7 @@ describe('comptes : routes HTTP et socket de présence', () => {
     const inj = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, token?: string, payload?: unknown) =>
       server.app.inject({ method, url, payload: payload as object, headers: token ? { authorization: `Bearer ${token}` } : {} });
 
-    const reg = await inj('POST', '/auth/register', undefined, { nickname: 'Ana', email: 'ana@x.fr', password: 'motdepasse1', avatar: 'renard' });
+    const reg = await inj('POST', '/auth/register', undefined, { nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42', avatar: 'renard' });
     expect(reg.statusCode).toBe(201);
     const { token } = reg.json() as { token: string };
     expect((await inj('GET', '/me')).statusCode).toBe(401);
@@ -295,7 +295,7 @@ describe('comptes : routes HTTP et socket de présence', () => {
     expect(manager.view(room.code, room.playerId).players[0]).toMatchObject({ nickname: 'Ana', avatar: 'renard', registered: true });
     expect((await inj('POST', `/rooms/${room.code}/join`, undefined, { nickname: 'ANA' })).json()).toMatchObject({ error: { code: 'NICKNAME_RESERVED' } });
 
-    await inj('POST', '/auth/register', undefined, { nickname: 'Bea', email: 'bea@x.fr', password: 'motdepasse1' });
+    await inj('POST', '/auth/register', undefined, { nickname: 'Bea', email: 'bea@x.fr', password: 'tapis-vert-42' });
     expect((await inj('GET', '/users?q=Be', token)).json()).toMatchObject({ users: [{ nickname: 'Bea' }] });
     expect((await inj('POST', '/me/favorites', token, { nickname: 'Bea' })).statusCode).toBe(201);
     expect((await inj('GET', '/me/favorites', token)).json()).toMatchObject({ favorites: [{ nickname: 'Bea', online: false }] });
@@ -325,7 +325,7 @@ describe('comptes : routes HTTP et socket de présence', () => {
   it('socket de présence : un favori qui se connecte est signalé en direct', async () => {
     const { server, url } = await start();
     const reg = async (nickname: string) =>
-      ((await server.app.inject({ method: 'POST', url: '/auth/register', payload: { nickname, email: `${nickname}@x.fr`, password: 'motdepasse1' } })).json() as { token: string }).token;
+      ((await server.app.inject({ method: 'POST', url: '/auth/register', payload: { nickname, email: `${nickname}@x.fr`, password: 'tapis-vert-42' } })).json() as { token: string }).token;
     const ana = await reg('Ana');
     const bea = await reg('Bea');
     await server.app.inject({ method: 'POST', url: '/me/favorites', payload: { nickname: 'Bea' }, headers: { authorization: `Bearer ${ana}` } });
