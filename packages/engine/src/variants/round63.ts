@@ -422,7 +422,10 @@ export class Round63 extends RoundBase {
       return;
     }
     const winner = leaders[0]!;
-    this.finish({ kind: 'WINNER', winner, points: 1, detail: { units } }, events); // 1 point, comme dans toutes les variantes
+    // Capot : gagner seul les 3 lignes vaut 2 points ; sinon 1 point, comme dans toutes les variantes.
+    // Une ligne partagée (égalité) ne compte pas comme gagnée.
+    const sweep = this.s.lines.length === 3 && this.s.lines.every((l) => l.winners.length === 1 && l.winners[0] === winner);
+    this.finish({ kind: 'WINNER', winner, points: sweep ? 2 : 1, detail: { units, sweep } }, events);
   }
 
   protected stateForSnapshot(): unknown {

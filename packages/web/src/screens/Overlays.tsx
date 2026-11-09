@@ -43,7 +43,10 @@ export function awardText(record: RoundRecord, view: RoomView): string {
 /** Même texte, avec les pseudos fournis par l'appelant (parties archivées de « Mon espace »). */
 export function awardTextBy(record: RoundRecord, nameOf: (id: string) => string): string {
   const a = record.award;
-  if (a.kind === 'POINTS') return `${nameOf(a.winner)} remporte la manche (+${pointsLabel(a.points)})${a.tiebreak ? ' après un Hold’em de départage' : ''}`;
+  if (a.kind === 'POINTS') {
+    const capot = record.variant === 'V6_3' && a.points === 2 ? ' : capot, les 3 lignes gagnées' : '';
+    return `${nameOf(a.winner)} remporte la manche (+${pointsLabel(a.points)})${capot}${a.tiebreak ? ' après un Hold’em de départage' : ''}`;
+  }
   if (a.kind === 'INSTANT_VICTORY') return `${nameOf(a.winner)} désigne une quinte flush à la ligne ${a.line} : victoire immédiate`;
   return `Aucun point : ${NO_POINT_REASON[a.reason] ?? a.reason}`;
 }

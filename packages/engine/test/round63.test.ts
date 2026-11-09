@@ -88,10 +88,31 @@ describe('6-3 : plateau et déroulé (3 plateaux indépendants de 5 cartes, 15 a
 });
 
 describe('6-3 : points (règle de la table v1.1)', () => {
-  it('Cas 2 : le même joueur gagne seul les 3 lignes -> 1 point, comme dans toutes les variantes', () => {
+  it('Cas 2 : le même joueur gagne seul les 3 lignes (capot) -> 2 points', () => {
     const r = game(3);
     for (let i = 0; i < 3; i++) line(r, 3, { P0: AA });
-    expect(r.result()).toMatchObject({ kind: 'WINNER', winner: 'P0', points: 1 });
+    expect(r.result()).toMatchObject({ kind: 'WINNER', winner: 'P0', points: 2, detail: { sweep: true } });
+  });
+
+  it('capot : une ligne partagée (égalité) ne compte pas comme gagnée -> 1 point', () => {
+    const r = game(3);
+    line(r, 3, { P0: AA });
+    line(r, 3, { P0: AA, P1: AAh });
+    line(r, 3, { P0: AA });
+    expect(r.result()).toMatchObject({ kind: 'WINNER', winner: 'P0', points: 1, detail: { sweep: false } });
+  });
+
+  it('capot : une ligne sans désignation de l’adversaire reste gagnée seul ; deux lignes sur trois ne suffisent pas', () => {
+    const a = game(3);
+    line(a, 3, { P0: AA });
+    line(a, 3, { P0: AA });
+    line(a, 3, { P0: ['9h', 'Th'] }); // P0 désigne une main plus faible mais reste seul à désigner : ligne gagnée
+    expect(a.result()).toMatchObject({ points: 2 });
+    const b = game(3);
+    line(b, 3, { P0: AA });
+    line(b, 3, { P0: AA });
+    line(b, 3, { P2: KK });
+    expect(b.result()).toMatchObject({ winner: 'P0', points: 1 });
   });
 
   it('A / A / B -> A gagne le plus de lignes : 1 point', () => {
