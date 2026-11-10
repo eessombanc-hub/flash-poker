@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PlayingCard, type CardSize } from './Card';
 import { useSettings } from '../lib/settings';
+import { useI18n } from '../i18n';
 
 /**
  * Brouillon de sélection (cartes à jeter, à changer, paire désignée).
@@ -95,12 +96,13 @@ function fitted(size: CardSize, count: number): CardSize {
 /** Ma main affichée sans interaction (cartes visibles ou non, dans l'ordre de distribution). `code: null` = carte
  * pas encore retournée : ni les adversaires ni le propriétaire n'en connaissent l'identité (6-1, Le 10). */
 export function StaticHand({ cards, size = 'md', label, dimmed }: { cards: { code: string | null; visible?: boolean; next?: boolean }[]; size?: CardSize; label: string; dimmed?: boolean }) {
+  const { t } = useI18n();
   const { fourColor, cardBack } = useSettings();
   return (
     <div role="group" aria-label={label} className="flex flex-wrap items-end justify-center gap-1.5 sm:gap-2.5">
       {cards.map((c, i) => (
         <div key={c.code ?? `hidden-${i}`} className="flex flex-col items-center gap-1">
-          <PlayingCard code={c.code} size={fitted(size, cards.length)} fourColor={fourColor} back={cardBack} highlight={c.next} dimmed={dimmed} dealIndex={i} hint={c.code === null ? 'pas encore retournée' : c.visible ? 'visible de tous' : undefined} />
+          <PlayingCard code={c.code} size={fitted(size, cards.length)} fourColor={fourColor} back={cardBack} highlight={c.next} dimmed={dimmed} dealIndex={i} hint={c.code === null ? t('hand.pas_encore_retournee') : c.visible ? t('hand.visible_de_tous') : undefined} />
           <span className="text-xs text-ivory-300/60">{c.next ? 'prochaine' : i + 1}</span>
         </div>
       ))}

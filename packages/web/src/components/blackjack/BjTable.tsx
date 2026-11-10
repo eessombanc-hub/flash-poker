@@ -4,12 +4,13 @@ import { Badge, Button } from '../ui';
 import { PlayingCard } from '../Card';
 import { CoinRain, Shine } from '../Scene3D';
 import { formatChips, formatSignedChips } from '../../lib/format';
-import { ACTION_LABEL, CHIP_COLORS, RESULT_LABEL, RESULT_TONE, SPEED_MS, totalText, type Pedagogy, type Speed } from '../../lib/blackjack';
+import { ACTION_LABEL, CHIP_COLORS, RESULT_LABEL, RESULT_TONE, SPEED_MS, totalText, paysText, decksText, type Pedagogy, type Speed } from '../../lib/blackjack';
 import { FELT_OPTIONS } from '../../lib/theme';
 import { Sound } from '../../lib/sound';
 import { useSettings } from '../../lib/settings';
 import type { Advice, BjAction, BjActive, BjResult, Odds, PlayerHand } from '../../lib/types';
 import { FairnessProof } from './Panels';
+import { useI18n } from '../../i18n';
 
 export interface HelpData {
   advice: Advice | null;
@@ -22,6 +23,7 @@ const KEYS: Record<string, BjAction> = { h: 'HIT', s: 'STAND', d: 'DOUBLE', p: '
 
 /** Pile de jetons décorative : un jeton par palier de la mise, au plus cinq, pour rester lisible. */
 export function ChipStack({ amount, size = 30 }: { amount: number; size?: number }) {
+  const { t } = useI18n();
   const parts = useMemo(() => {
     const out: number[] = [];
     let rest = amount;
@@ -34,7 +36,7 @@ export function ChipStack({ amount, size = 30 }: { amount: number; size?: number
     return out;
   }, [amount]);
   return (
-    <span className="inline-flex items-center gap-1.5" aria-label={`Mise ${formatChips(amount)}`}>
+    <span className="inline-flex items-center gap-1.5" aria-label={t('bjtable.mise', { formatChips: formatChips(amount) })}>
       <span className="relative inline-block" style={{ width: size, height: size + parts.length * 3 }} aria-hidden="true">
         {parts.map((v, i) => (
           <span
@@ -50,11 +52,12 @@ export function ChipStack({ amount, size = 30 }: { amount: number; size?: number
 }
 
 export function HandView({ hand, index, isActive, compact, settled, speed, fourColor, cardBack }: { hand: PlayerHand; index: number; isActive: boolean; compact: boolean; settled: boolean; speed: Speed; fourColor: boolean; cardBack: 'losange' | 'rayures' | 'etoile' }) {
+  const { t } = useI18n();
   const fast = speed === 'rapide';
   return (
     <div
       className={`rounded-2xl border px-2.5 py-2 transition ${isActive ? 'border-gold-400/80 bg-black/25 shadow-gold' : 'border-transparent bg-black/10'}`}
-      aria-label={`Main ${index + 1}${isActive ? ' (en cours)' : ''}`}
+      aria-label={t('bjtable.main', { v: index + 1, v2: isActive ? (" " + t('bjtable.en_cours')) : '' })}
     >
       <div className={`flex ${compact ? '[&>*:not(:first-child)]:-ml-7' : '[&>*:not(:first-child)]:-ml-6 sm:[&>*:not(:first-child)]:-ml-8'}`}>
         {hand.cards.map((c, i) => (
@@ -94,6 +97,7 @@ interface Props {
 
 /** Table de Blackjack : croupier, mains du joueur, actions, aide pédagogique et fin de manche. */
 export function BjTable({ active, result, chips, speed, pedagogy, help, busy, error, canReplay, onAction, onReplay, onLeave }: Props) {
+  const { t } = useI18n();
   const { fourColor, cardBack, feltColor, sound } = useSettings();
   const reduce = useReducedMotion();
   const felt = FELT_OPTIONS.find((f) => f.id === feltColor) ?? FELT_OPTIONS[0]!;
@@ -161,10 +165,9 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
     <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button variant="ghost" onClick={onLeave} className="px-3">
-          ← Tables
-        </Button>
+          {t('bjtable.tables')}</Button>
         <p className="text-sm text-ivory-200" aria-live="polite">
-          Jetons libres : <strong className="font-display text-base text-gold-300">{formatChips(done ? chips : active.freeChips)}</strong>
+          {t('bjtable.jetons_libres')} <strong className="font-display text-base text-gold-300">{formatChips(done ? chips : active.freeChips)}</strong>
         </p>
       </div>
 
@@ -175,7 +178,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
             <span className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-gold-300 to-gold-600 font-display text-xs text-ink-950" aria-hidden="true">
               C
             </span>
-            Croupier · {r.rules.dealerHitsSoft17 ? 'tire sur 17 soft' : 'reste sur tous les 17'}
+            {t('bjtable.croupier')} {r.rules.dealerHitsSoft17 ? t('bjtable.tire_sur_17') : t('bjtable.reste_sur_tous')}
           </div>
           <div className="flex min-h-[5.2rem] items-center sm:min-h-[5.8rem] [&>*:not(:first-child)]:-ml-6 sm:[&>*:not(:first-child)]:-ml-8" data-testid="dealer-cards">
             {dealerCards.map((c, i) => (
@@ -188,7 +191,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
         </div>
 
         <p className="my-1.5 text-center text-[11px] tracking-wide text-gold-200/70">
-          Blackjack paie {r.rules.blackjackPays === '3:2' ? '3 contre 2' : '6 contre 5'} · {r.rules.decks} jeu{r.rules.decks > 1 ? 'x' : ''}
+          {t('bjtable.regles', { pays: paysText(r.rules.blackjackPays), decks: decksText(r.rules.decks) })}
         </p>
 
         {/* Joueur */}
@@ -215,7 +218,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
 
       {!done && (
         <div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5" role="group" aria-label="Actions">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5" role="group" aria-label={t('bjtable.actions')}>
             {actions.map((a) => (
               <Button
                 key={a}
@@ -234,12 +237,11 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
             <div className="mt-3 rounded-2xl border border-gold-500/30 bg-gold-500/10 p-3 text-sm text-ivory-100" data-testid="help-box">
               {pedagogy === 'coach' && help.advice && (
                 <p className="mb-1.5">
-                  <strong className="text-gold-300">Conseil. {ACTION_LABEL[help.advice.action]}.</strong> {help.advice.reason}
+                  <strong className="text-gold-300">{t('bjtable.conseil', { v: ACTION_LABEL[help.advice.action] })}</strong> {help.advice.reason}
                 </p>
               )}
               <p className="text-ivory-200/90">
-                Risque de dépasser en tirant : <strong>{pct(help.odds.bustOnHit)}</strong>. Si vous restez, gagner <strong>{pct(help.odds.stand.win)}</strong>, égalité {pct(help.odds.stand.push)}, perdre {pct(help.odds.stand.lose)}.
-              </p>
+                {t('bj.odds', { bust: pct(help.odds.bustOnHit), win: pct(help.odds.stand.win), push: pct(help.odds.stand.push), lose: pct(help.odds.stand.lose) })}</p>
             </div>
           )}
         </div>
@@ -251,49 +253,43 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
 }
 
 function RoundSummary({ active, result, chips, canReplay, onReplay, onLeave }: { active: BjActive; result: BjResult | null; chips: number; canReplay: boolean; onReplay: () => void; onLeave: () => void }) {
+  const { t } = useI18n();
   const net = active.round.net;
   const tone = net > 0 ? 'border-emerald-400/50 bg-emerald-500/10' : net < 0 ? 'border-ruby-500/40 bg-ruby-500/10' : 'border-ivory-100/20 bg-ink-800/80';
   return (
-    <section aria-label="Résultat de la manche" className={`rounded-3xl border p-4 sm:p-5 ${tone}`}>
+    <section aria-label={t('bjtable.resultat_de_la')} className={`rounded-3xl border p-4 sm:p-5 ${tone}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-display text-2xl text-ivory-50" data-testid="round-net">
-            {net > 0 ? 'Vous gagnez ' : net < 0 ? 'Vous perdez ' : 'Égalité, '}
-            {net === 0 ? 'mise rendue' : formatChips(Math.abs(net))}
+            {net > 0 ? t('bj.won', { chips: formatChips(net) }) : net < 0 ? t('bj.lost', { chips: formatChips(-net) }) : t('bj.push')}
           </p>
           <p className="text-sm text-ivory-200/85">
-            Solde {formatChips(chips)}
-            {result && result.xpGained > 0 ? `, +${result.xpGained} XP` : ''}
+            {t('bjtable.solde', { formatChips: formatChips(chips) })}{result && result.xpGained > 0 ? `, +${result.xpGained} XP` : ''}
           </p>
         </div>
         <div className="flex gap-2">
           <Button onClick={onReplay} disabled={!canReplay}>
-            Rejouer {formatChips(active.bet)}
-          </Button>
+            {t('bjtable.rejouer', { formatChips: formatChips(active.bet) })}</Button>
           <Button variant="ghost" onClick={onLeave}>
-            Changer de mise
-          </Button>
+            {t('bjtable.changer_de_mise')}</Button>
         </div>
       </div>
-      {!canReplay && chips < active.bet && <p className="mt-2 text-xs text-amber-200">Solde insuffisant pour cette mise. Choisissez-en une plus petite ou attendez la recharge.</p>}
+      {!canReplay && chips < active.bet && <p className="mt-2 text-xs text-amber-200">{t('bjtable.solde_insuffisant_pour')}</p>}
       {result?.level && (
         <p className="mt-3 rounded-xl bg-gold-500/15 px-3 py-2 text-sm text-gold-200">
-          Niveau {result.level.to} atteint ! Récompense de {formatChips(result.level.reward)}.
-        </p>
+          {t('bjtable.niveau_atteint_recompense', { to: result.level.to, formatChips: formatChips(result.level.reward) })}</p>
       )}
       {result?.challengesDone.map((c) => (
         <p key={c.id} className="mt-2 text-sm text-emerald-200">
-          Défi accompli. {c.label} (+{formatChips(c.rewardChips)}, +{c.rewardXp} XP)
-        </p>
+          {t('bjtable.defi_accompli_xp', { label: c.label, formatChips: formatChips(c.rewardChips), rewardXp: c.rewardXp })}</p>
       ))}
       {result?.achievements.map((a) => (
         <p key={a.id} className="mt-2 text-sm text-gold-200">
-          Objectif débloqué. {a.label} (+{formatChips(a.rewardChips)})
-        </p>
+          {t('bjtable.objectif_debloque', { label: a.label, formatChips: formatChips(a.rewardChips) })}</p>
       ))}
       {result && (
         <details className="mt-3 text-xs text-ivory-300/80">
-          <summary className="cursor-pointer text-ivory-200">Vérifier l’équité du tirage</summary>
+          <summary className="cursor-pointer text-ivory-200">{t('bjtable.verifier_l_equite')}</summary>
           <FairnessProof seed={result.seed} commitment={result.commitment} />
         </details>
       )}

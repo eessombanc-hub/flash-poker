@@ -33,8 +33,7 @@ export function Solo({ onBack, onPick, onBlackjack, onTableau }: { onBack: () =>
         <CoinIcon size={54} />
         <div className="min-w-0">
           <button type="button" onClick={onBlackjack} className="text-left font-display text-xl text-ivory-50 after:absolute after:inset-0 after:rounded-[28px] after:content-[''] focus:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-gold-400">
-            Blackjack
-          </button>
+            {t('solo.blackjack')}</button>
           <p className="text-sm text-ivory-200/85">{t('solo.bj.text')}</p>
         </div>
       </Panel>

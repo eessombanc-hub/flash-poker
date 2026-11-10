@@ -3,9 +3,11 @@ import { CountdownRing, Eyebrow, Panel } from '../components/ui';
 import { useSecondsLeft } from '../lib/context';
 import { useMediaQuery } from '../lib/media';
 import { useTable } from '../lib/table';
+import { useI18n } from '../i18n';
 
 /** Cadre commun des panneaux d'action : titre, consigne, compte à rebours de 60 s. */
 export function PanelShell({ eyebrow, title, hint, children, timerLabel }: { eyebrow: string; title: ReactNode; hint?: ReactNode; children: ReactNode; timerLabel?: string }) {
+  const { t } = useI18n();
   const { deadlineAt } = useTable();
   const left = useSecondsLeft(deadlineAt);
   // Écran haut : consigne affichée. Écran bas (téléphone, portable) : repliée sous « Consigne », pour que les
@@ -24,7 +26,7 @@ export function PanelShell({ eyebrow, title, hint, children, timerLabel }: { eye
               <p className="mt-1 max-w-2xl text-xs text-ivory-200/80 sm:text-sm">{hint}</p>
             ) : (
               <details className="mt-0.5 max-w-2xl text-xs text-ivory-200/80 sm:text-sm">
-                <summary className="cursor-pointer select-none text-gold-300/90">Consigne</summary>
+                <summary className="cursor-pointer select-none text-gold-300/90">{t('shell.consigne')}</summary>
                 <p className="mt-1">{hint}</p>
               </details>
             ))}

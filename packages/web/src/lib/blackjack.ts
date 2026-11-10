@@ -2,6 +2,7 @@
  * Utilitaires du module Blackjack côté navigateur : affichage des totaux, préférences locales, vérification de
  * l'équité. Aucune règle de jeu ici : le serveur reste seul juge (distribution, actions, résultats).
  */
+import { tr, trp } from '../i18n';
 import type { HandResult, TableRules } from './types';
 
 export type Speed = 'lente' | 'normale' | 'rapide';
@@ -19,9 +20,9 @@ export interface BjPrefs {
 export const SPEED_MS: Record<Speed, number> = { lente: 900, normale: 520, rapide: 220 };
 export const SPEEDS: readonly Speed[] = ['lente', 'normale', 'rapide'];
 export const PEDAGOGIES: readonly { id: Pedagogy; label: string; text: string }[] = [
-  { id: 'libre', label: 'Libre', text: 'Aucune aide. Vous jouez seul.' },
-  { id: 'indices', label: 'Indices', text: 'Probabilités exactes de dépasser 21 et de gagner si vous restez.' },
-  { id: 'coach', label: 'Coach', text: 'Le coup recommandé par la stratégie de base, avec son explication.' },
+  { id: 'libre', get label() { return tr('bj.ped.libre'); }, get text() { return tr('bj.ped.libre.text'); } },
+  { id: 'indices', get label() { return tr('bj.ped.indices'); }, get text() { return tr('bj.ped.indices.text'); } },
+  { id: 'coach', get label() { return tr('bj.ped.coach'); }, get text() { return tr('bj.ped.coach.text'); } },
 ];
 
 const KEY = 'poker.blackjack.v1';
@@ -92,17 +93,17 @@ export function handTotal(cards: readonly (string | null)[]): { total: number; s
 
 export function totalText(cards: readonly (string | null)[]): string {
   const { total, soft } = handTotal(cards.filter(Boolean));
-  if (total > 21) return `${total}, dépasse`;
+  if (total > 21) return tr('bj.bust', { total });
   return soft && total < 21 ? `${total - 10} / ${total}` : String(total);
 }
 
 export const RESULT_LABEL: Record<HandResult, string> = {
-  BLACKJACK: 'Blackjack !',
-  WIN: 'Gagné',
-  PUSH: 'Égalité',
-  LOSE: 'Perdu',
-  BUST: 'Dépassé',
-  SURRENDER: 'Abandon',
+  get BLACKJACK() { return tr('bj.res.BLACKJACK'); },
+  get WIN() { return tr('bj.res.WIN'); },
+  get PUSH() { return tr('bj.res.PUSH'); },
+  get LOSE() { return tr('bj.res.LOSE'); },
+  get BUST() { return tr('bj.res.BUST'); },
+  get SURRENDER() { return tr('bj.res.SURRENDER'); },
 };
 export const RESULT_TONE: Record<HandResult, 'gold' | 'green' | 'neutral' | 'red' | 'amber'> = {
   BLACKJACK: 'gold',
@@ -113,14 +114,37 @@ export const RESULT_TONE: Record<HandResult, 'gold' | 'green' | 'neutral' | 'red
   SURRENDER: 'amber',
 };
 
-export const ACTION_LABEL = { HIT: 'Tirer', STAND: 'Rester', DOUBLE: 'Doubler', SPLIT: 'Séparer', SURRENDER: 'Abandonner' } as const;
+export const ACTION_LABEL = {
+  get HIT() { return tr('bj.act.HIT'); },
+  get STAND() { return tr('bj.act.STAND'); },
+  get DOUBLE() { return tr('bj.act.DOUBLE'); },
+  get SPLIT() { return tr('bj.act.SPLIT'); },
+  get SURRENDER() { return tr('bj.act.SURRENDER'); },
+};
 
 /** Valeurs des jetons de mise proposés (couleurs de casino). */
 export const CHIP_VALUES = [5, 25, 100, 500] as const;
 export const CHIP_COLORS: Record<number, string> = { 5: '#b3282d', 25: '#2f7d4f', 100: '#23252b', 500: '#6d3c93' };
 
 /** Nom lisible d'un niveau de doublement. */
-export const DOUBLE_LABEL = { any: 'Sur tout total', '9-11': 'Sur 9 à 11', '10-11': 'Sur 10 et 11' } as const;
+export const DOUBLE_LABEL = {
+  get any() { return tr('bj.dbl.any'); },
+  get '9-11'() { return tr('bj.dbl.9-11'); },
+  get '10-11'() { return tr('bj.dbl.10-11'); },
+};
+
+export const paysText = (p: string): string => tr(p === '3:2' ? 'bj.pays.32' : 'bj.pays.65');
+export const decksText = (n: number): string => trp('bj.decks', n);
+/** Règles d'une table en une ligne. */
+export function rulesSummary(r: TableRules): string {
+  return tr('bj.rules', {
+    decks: decksText(r.decks),
+    dealer: tr(r.dealerHitsSoft17 ? 'bj.dealer.hits' : 'bj.dealer.stands'),
+    pays: paysText(r.blackjackPays),
+    double: DOUBLE_LABEL[r.doubleOn].toLowerCase(),
+    surrender: tr(r.surrender ? 'bj.surrender' : 'bj.nosurrender'),
+  });
+}
 
 /**
  * Vérification de l'équité : l'engagement publié avant la manche doit être le SHA-256 de « domaine:commit:graine ».

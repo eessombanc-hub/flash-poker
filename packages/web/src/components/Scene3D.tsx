@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useSettings } from '../lib/settings';
 import { PlayingCard } from './Card';
 import { ChipsIcon, TrophyIcon } from './Icons3D';
+import { useI18n } from '../i18n';
 
 /**
  * Effets en trois dimensions, en CSS pur (perspective et rotations) : aucune bibliothèque 3D à charger.
@@ -154,6 +155,7 @@ export function Shine({ delay = 0.6 }: { delay?: number }) {
  * ce qui crée la parallaxe. Immobile si les animations sont réduites.
  */
 export function HeroScene() {
+  const { t } = useI18n();
   const reduce = useReducedMotion();
   const rx = useMotionValue(0);
   const ry = useMotionValue(0);
@@ -198,7 +200,7 @@ export function HeroScene() {
                   <button
                     type="button"
                     onClick={() => setFlipped((f) => ({ ...f, [i]: !f[i] }))}
-                    aria-label={flipped[i] ? 'Retourner la carte face visible' : 'Retourner la carte'}
+                    aria-label={flipped[i] ? t('scene3d.retourner_la_carte') : t('scene3d.retourner_la_carte2')}
                     aria-pressed={!!flipped[i]}
                     className="block cursor-pointer rounded-[9px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400"
                   >

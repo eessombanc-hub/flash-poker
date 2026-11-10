@@ -2,6 +2,8 @@ import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError, createRoom, joinRoom, listRooms, type CreateRoomInput, type JoinRoomInput, type RoomSummary } from './api';
 import { describeEvent, type Tone } from './events';
+import { currentI18n } from '../i18n';
+import { errorText as localizedError } from './tbText';
 import type { Session, SessionStore } from './session';
 import type { ClientCommand, RoomView, RoundEvent, UpdateMessage } from './types';
 
@@ -75,7 +77,7 @@ export interface ClientOptions {
 
 type Ack = { ok: true } | { ok: false; error: { code: string; message: string; ruleCode?: string } };
 
-export const errorText = (e: unknown): string => (e instanceof ApiError ? e.message : 'Une erreur inattendue est survenue.');
+export const errorText = (e: unknown): string => localizedError(currentI18n(), e);
 
 /** Client d'une partie : HTTP (création / arrivée), WebSocket (jeu), état réactif (zustand). */
 export class GameClient {

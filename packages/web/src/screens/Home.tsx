@@ -21,8 +21,7 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <p className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-xl tracking-wide text-ivory-50">
           <CardsIcon size={34} />
-          Flash Poker
-        </p>
+          {t('home.flash_poker')}</p>
         <div className="flex items-center gap-0 sm:gap-1">
           <Button variant="ghost" className="whitespace-nowrap px-2 sm:px-3" onClick={() => setSettings(true)}>
             {t('common.settings')}
@@ -62,7 +61,7 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
 
         {/* Blackjack : rubrique à part, distincte des variantes de poker */}
         {onBlackjack && (
-          <section aria-label="Blackjack" className="mt-4">
+          <section aria-label={t('home.blackjack')} className="mt-4">
             <div className="relative flex flex-col gap-3 overflow-hidden rounded-3xl border border-gold-500/40 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 <span aria-hidden="true"><CoinIcon size={58} /></span>
@@ -70,8 +69,7 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
                   <Eyebrow>{t('home.bj.eyebrow')}</Eyebrow>
                   <h2 className="font-display text-2xl text-ivory-50">
                     <button type="button" onClick={onBlackjack} className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none" aria-describedby="bj-tile-d">
-                      Blackjack
-                    </button>
+                      {t('home.blackjack')}</button>
                   </h2>
                   <p id="bj-tile-d" className="mt-0.5 max-w-xl text-sm text-ivory-200/85">
                     {t('home.bj.text')}
@@ -240,11 +238,12 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
 }
 
 export function RulesModal({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   return (
-    <Modal title="Mémo des règles" onClose={onClose} wide>
-      <Eyebrow>Règles v1.1</Eyebrow>
-      <h2 className="mt-1 font-display text-3xl text-ivory-50">Mémo des règles</h2>
-      <h3 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-widest text-gold-400">Les huit variantes</h3>
+    <Modal title={t('home.memo_des_regles')} onClose={onClose} wide>
+      <Eyebrow>{t('home.regles_v1_1')}</Eyebrow>
+      <h2 className="mt-1 font-display text-3xl text-ivory-50">{t('home.memo_des_regles')}</h2>
+      <h3 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-widest text-gold-400">{t('home.les_huit_variantes')}</h3>
       <ul className="space-y-3">
         {VARIANTS.map((v) => (
           <li key={v.id} className="rounded-xl border border-ivory-100/10 bg-ink-900/60 p-3.5">
@@ -255,7 +254,7 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           </li>
         ))}
       </ul>
-      <h3 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-widest text-gold-400">Règles communes</h3>
+      <h3 className="mb-2 mt-6 text-sm font-semibold uppercase tracking-widest text-gold-400">{t('home.regles_communes')}</h3>
       <dl className="space-y-3">
         {COMMON_RULES.map((r) => (
           <div key={r.title}>
@@ -265,7 +264,7 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
         ))}
       </dl>
       <div className="mt-7 flex justify-end">
-        <Button onClick={onClose}>Fermer</Button>
+        <Button onClick={onClose}>{t('home.fermer')}</Button>
       </div>
     </Modal>
   );

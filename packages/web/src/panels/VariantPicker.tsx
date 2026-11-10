@@ -5,9 +5,11 @@ import { VARIANTS } from '../lib/labels';
 import { nick } from '../lib/selectors';
 import { useTable } from '../lib/table';
 import { PanelShell } from './Shell';
+import { useI18n } from '../i18n';
 
 /** Écran « Choisissez la variante » : six cartes-variantes, Fermé 2 grisé à 6 joueurs. */
 export function VariantPicker() {
+  const { t } = useI18n();
   const client = useClient();
   const { view, game, me, canAct } = useTable();
   const isChooser = game.chooser === me && canAct;
@@ -18,18 +20,18 @@ export function VariantPicker() {
 
   return (
     <PanelShell
-      eyebrow={`Manche ${game.roundNo}`}
-      title={isChooser ? 'Choisissez la variante' : `${nick(view, game.chooser)} choisit la variante`}
+      eyebrow={t('picker.manche', { roundNo: game.roundNo })}
+      title={isChooser ? t('picker.choisissez_la_variante') : t('picker.choisit_la_variante', { nick: nick(view, game.chooser) })}
       hint={
         isChooser
           ? pending
-            ? 'Une proposition d’assurance est en attente de réponse. Vous pourrez choisir ensuite.'
-            : 'Sans choix en 60 secondes, une variante disponible est tirée au hasard.'
-          : 'Le choix tourne dans l’ordre des positions.'
+            ? t('picker.une_proposition_d')
+            : t('picker.sans_choix_en')
+          : t('picker.le_choix_tourne')
       }
-      timerLabel="Choix de la variante"
+      timerLabel={t('picker.choix_de_la')}
     >
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label="Variantes">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={t('picker.variantes')}>
         {VARIANTS.map((v) => {
           const available = game.variants.find((x) => x.variant === v.id)?.available ?? true;
           const disabled = !isChooser || !available || pending;
@@ -45,7 +47,7 @@ export function VariantPicker() {
               >
                 <span className="flex items-start justify-between gap-2">
                   <span className="font-display text-xl text-ivory-50">{v.name}</span>
-                  {!available && <Badge tone="amber">2 à 5 joueurs</Badge>}
+                  {!available && <Badge tone="amber">{t('picker.2_a_5')}</Badge>}
                 </span>
                 <span className="mt-0.5 block text-xs uppercase tracking-widest text-gold-400">{v.tagline}</span>
                 <span className="mt-2 block text-sm text-ivory-200/80">{v.description}</span>
@@ -55,26 +57,26 @@ export function VariantPicker() {
         })}
       </ul>
       {opts63 && isChooser && (
-        <div role="group" aria-label="Options du 6-3" className="mt-4 rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
-          <p className="font-display text-lg text-ivory-50">Options du 6-3</p>
+        <div role="group" aria-label={t('picker.options_du_6')} className="mt-4 rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
+          <p className="font-display text-lg text-ivory-50">{t('picker.options_du_6')}</p>
           <fieldset className="mt-2">
-            <legend className="text-sm text-ivory-200/85">Tétines (cartes supplémentaires qui glissent de ligne en ligne)</legend>
+            <legend className="text-sm text-ivory-200/85">{t('picker.tetines_cartes_supplementaires')}</legend>
             <div className="mt-1.5 flex gap-2">
               {[0, 1, 2].map((n) => (
                 <label key={n} className={`cursor-pointer rounded-lg border px-4 py-2 text-sm ${teats === n ? 'border-gold-400 bg-gold-500/15 text-gold-200' : 'border-ivory-100/20 text-ivory-200/85'}`}>
                   <input type="radio" name="teats" className="sr-only" checked={teats === n} onChange={() => setTeats(n)} />
-                  {n === 0 ? 'Aucune' : n === 1 ? '1 tétine' : '2 tétines'}
+                  {n === 0 ? t('picker.aucune') : n === 1 ? '1 tétine' : '2 tétines'}
                 </label>
               ))}
             </div>
           </fieldset>
           <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-ivory-200/90">
             <input type="checkbox" checked={sideBets} onChange={(e) => setSideBets(e.target.checked)} className="mt-1" />
-            <span>Paris extérieurs (chacun peut miser sur une ligne avant la distribution des cartes)</span>
+            <span>{t('picker.paris_exterieurs_chacun')}</span>
           </label>
           <div className="mt-4 flex gap-2">
-            <Button onClick={() => void client.command({ type: 'CHOOSE_VARIANT', variant: 'V6_3', teats, sideBets })}>Lancer le 6-3</Button>
-            <Button variant="ghost" onClick={() => setOpts63(false)}>Retour</Button>
+            <Button onClick={() => void client.command({ type: 'CHOOSE_VARIANT', variant: 'V6_3', teats, sideBets })}>{t('picker.lancer_le_6')}</Button>
+            <Button variant="ghost" onClick={() => setOpts63(false)}>{t('picker.retour')}</Button>
           </div>
         </div>
       )}

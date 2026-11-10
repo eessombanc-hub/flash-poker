@@ -1,3 +1,4 @@
+import { currentLang, locale, trp } from '../i18n';
 /** Cave : jetons reçus par chaque joueur au début de chaque partie (même valeur que `STARTING_CHIPS` du protocole serveur). */
 export const STARTING_CHIPS = 1_000;
 
@@ -7,7 +8,7 @@ const FRACTIONS: Record<number, string> = { 60: '1', 30: '½', 20: '⅓', 15: '�
 export function formatLinePoints(units: number, scale = 60): string {
   if (scale === 60 && FRACTIONS[units]) return FRACTIONS[units]!;
   const v = units / scale;
-  return Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ',');
+  return Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', currentLang() === 'en' ? '.' : ',');
 }
 
 export function initials(nickname: string): string {
@@ -16,7 +17,7 @@ export function initials(nickname: string): string {
   return letters.toUpperCase();
 }
 
-export const pointsLabel = (n: number): string => `${n} point${n > 1 ? 's' : ''}`;
+export const pointsLabel = (n: number): string => trp('fmt.point', n);
 
 export function clockText(seconds: number): string {
   const s = Math.max(0, Math.ceil(seconds));
@@ -25,13 +26,20 @@ export function clockText(seconds: number): string {
 
 /** « de » + nom avec élision : « d’Emeric », « d’Alice », « de Bob ». */
 export function deNom(name: string): string {
+  if (currentLang() !== 'fr') return name;
   return /^[aeiouhàâäéèêëîïôöùûüœæ]/i.test(name.trim()) ? `d’${name}` : `de ${name}`;
 }
 
-const CHIPS = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const CHIPS = new Map<string, Intl.NumberFormat>();
+const chipsFormat = (): Intl.NumberFormat => {
+  const l = locale();
+  let f = CHIPS.get(l);
+  if (!f) CHIPS.set(l, (f = new Intl.NumberFormat(l, { maximumFractionDigits: 0 })));
+  return f;
+};
 /** Jetons (mises, cagnottes, gains) : « 1 jeton », « 1 250 jetons ». Sans valeur monétaire. */
 export function formatChips(n: number): string {
-  return `${CHIPS.format(n)} jeton${Math.abs(n) > 1 ? 's' : ''}`;
+  return trp('fmt.chip', Math.abs(n), { n: chipsFormat().format(n) });
 }
 export function formatSignedChips(n: number): string {
   if (n === 0) return formatChips(0);

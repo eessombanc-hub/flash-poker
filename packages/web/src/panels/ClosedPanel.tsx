@@ -8,9 +8,11 @@ import { closedInfo } from '../lib/roundInfo';
 import { ownCards } from '../lib/selectors';
 import { useTable } from '../lib/table';
 import { PanelShell, WaitingNote } from './Shell';
+import { useI18n } from '../i18n';
 
 /** Poker fermé, 1 ou 2 changes : jeter de 0 à 3 cartes, simultanément et en secret. */
 export function ClosedPanel() {
+  const { t, tp } = useI18n();
   const client = useClient();
   const { game, round, me, canAct, timerKey } = useTable();
   const info = round ? closedInfo(round) : null;
@@ -22,26 +24,26 @@ export function ClosedPanel() {
 
   return (
     <PanelShell
-      eyebrow={`Poker fermé, change ${info.change} / ${info.totalChanges}`}
-      title="Choisissez les cartes à changer"
-      hint="De 0 à 3 cartes. Les changes sont simultanés et secrets. Sans action à l’échéance, votre main reste telle quelle."
+      eyebrow={t('closed.poker_ferme_change', { change: info.change, totalChanges: info.totalChanges })}
+      title={t('closed.choisissez_les_cartes')}
+      hint={t('closed.de_0_a')}
     >
       {canAct ? (
         <>
-          <SelectableHand label="Votre main" cards={hand} selected={draft} max={3} assist={assistCards(round)} disabled={validated} onToggle={(c) => toggle(c, 3)} fan />
+          <SelectableHand label={t('closed.votre_main')} cards={hand} selected={draft} max={3} assist={assistCards(round)} disabled={validated} onToggle={(c) => toggle(c, 3)} fan />
           <AssistBadge active={game.assistance} category={assistCategory(round)} />
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className="text-sm text-ivory-200/80" aria-live="polite">
-              {draft.length === 0 ? 'Aucune carte sélectionnée' : `${draft.length} carte${draft.length > 1 ? 's' : ''} à changer`}
+              {draft.length === 0 ? t('closed.aucune_carte_selectionnee') : tp('closed.carte_a_changer', draft.length)}
             </p>
             <Button disabled={validated} onClick={() => void client.command({ type: 'VALIDATE' })} className="w-full sm:w-auto sm:min-w-[16rem]">
-              {validated ? 'Change validé' : draft.length === 0 ? 'Garder ma main' : `Changer ${draft.length} carte${draft.length > 1 ? 's' : ''}`}
+              {validated ? t('closed.change_valide') : draft.length === 0 ? t('closed.garder_ma_main') : tp('closed.changer_carte', draft.length)}
             </Button>
-            {validated && <p className="text-sm text-ivory-200/80">En attente des autres joueurs ({info.validated.length} / {total})</p>}
+            {validated && <p className="text-sm text-ivory-200/80">{t('closed.en_attente_des', { n: info.validated.length, total })}</p>}
           </div>
         </>
       ) : (
-        <WaitingNote>Vous suivez la partie en spectateur.</WaitingNote>
+        <WaitingNote>{t('closed.vous_suivez_la')}</WaitingNote>
       )}
     </PanelShell>
   );

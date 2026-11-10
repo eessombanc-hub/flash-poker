@@ -7,21 +7,23 @@ import { formatChips, formatSignedChips } from '../lib/format';
 import { variantName } from '../lib/labels';
 import type { AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats, Wallet } from '../lib/types';
 import { RoundList } from './Overlays';
+import { currentI18n, locale, tr, useI18n } from '../i18n';
+import { errorText } from '../lib/tbText';
 
 export type SpaceTab = 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter';
 const TABS: { id: SpaceTab; label: string; icon: (size: number) => ReactNode }[] = [
-  { id: 'profil', label: 'Profil', icon: (s) => <ProfileIcon size={s} /> },
-  { id: 'historique', label: 'Historique', icon: (s) => <TrophyIcon size={s} /> },
-  { id: 'statistiques', label: 'Statistiques', icon: (s) => <StatsIcon size={s} /> },
-  { id: 'manches', label: 'Manches favorites', icon: (s) => <StarIcon size={s} /> },
-  { id: 'bankroll', label: 'Bankroll', icon: (s) => <ChipsIcon size={s} /> },
-  { id: 'favoris', label: 'Joueurs favoris', icon: (s) => <BellIcon size={s} /> },
-  { id: 'inviter', label: 'Inviter des amis', icon: (s) => <JoinIcon size={s} /> },
+  { id: 'profil', get label() { return tr('space.tab.profil'); }, icon: (s) => <ProfileIcon size={s} /> },
+  { id: 'historique', get label() { return tr('space.tab.historique'); }, icon: (s) => <TrophyIcon size={s} /> },
+  { id: 'statistiques', get label() { return tr('space.tab.statistiques'); }, icon: (s) => <StatsIcon size={s} /> },
+  { id: 'manches', get label() { return tr('space.tab.manches'); }, icon: (s) => <StarIcon size={s} /> },
+  { id: 'bankroll', get label() { return tr('space.tab.bankroll'); }, icon: (s) => <ChipsIcon size={s} /> },
+  { id: 'favoris', get label() { return tr('space.tab.favoris'); }, icon: (s) => <BellIcon size={s} /> },
+  { id: 'inviter', get label() { return tr('space.tab.inviter'); }, icon: (s) => <JoinIcon size={s} /> },
 ];
 
-const DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-const DAY = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
-const message = (e: unknown) => (e instanceof ApiError ? e.message : 'Une erreur inattendue est survenue.');
+const dateFmt = (): Intl.DateTimeFormat => new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+const dayFmt = (): Intl.DateTimeFormat => new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'short' });
+const message = (e: unknown): string => errorText(currentI18n(), e);
 const pct = (a: number, b: number) => (b === 0 ? '—' : `${Math.round((a / b) * 100)} %`);
 
 /** Charge une donnée de l'espace joueur ; `reload` la rafraîchit après une modification. */
@@ -49,7 +51,7 @@ function State({ error, empty, children }: { error: string | null; empty?: strin
   if (empty) return <p className="rounded-xl border border-dashed border-ivory-100/15 px-4 py-8 text-center text-sm text-ivory-300/75">{empty}</p>;
   return <>{children}</>;
 }
-const Loading = () => <p className="py-6 text-center text-sm text-ivory-300/70" role="status">Chargement…</p>;
+const Loading = () => { const { t, tp } = useI18n(); return <p className="py-6 text-center text-sm text-ivory-300/70" role="status">{t('space.chargement')}</p>; };
 const Notice = ({ tone, children }: { tone: 'ok' | 'error'; children: ReactNode }) => (
   <p role={tone === 'error' ? 'alert' : 'status'} className={`rounded-lg px-3 py-2 text-sm ${tone === 'ok' ? 'border border-jade-500/40 bg-jade-950/50 text-jade-100' : 'border border-ruby-500/50 bg-ruby-950/60 text-ruby-100'}`}>
     {children}
@@ -58,6 +60,7 @@ const Notice = ({ tone, children }: { tone: 'ok' | 'error'; children: ReactNode 
 
 /** Espace personnel du joueur inscrit. */
 export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; initialTab?: SpaceTab }) {
+  const { t, tp } = useI18n();
   const me = useAccount((s) => s.account);
   const [tab, setTab] = useState<SpaceTab>(initialTab);
   const id = useId();
@@ -78,18 +81,17 @@ export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; i
     <div className="min-h-[calc(100dvh-3rem)]">
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-4">
         <Button variant="ghost" onClick={onBack} className="-ml-3">
-          ← Accueil
-        </Button>
+          {t('space.accueil')}</Button>
         <span className="flex min-w-0 items-center gap-2 text-sm text-ivory-200">
           <Avatar nickname={me.nickname} avatar={me.avatar} size={32} />
           <span className="truncate">{me.nickname}</span>
         </span>
       </header>
       <main className="mx-auto max-w-6xl px-5 pb-12">
-        <Eyebrow>Mon espace</Eyebrow>
-        <h1 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">Bonjour {me.nickname}</h1>
+        <Eyebrow>{t('space.mon_espace')}</Eyebrow>
+        <h1 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">{t('space.bonjour', { nickname: me.nickname })}</h1>
         <div className="mt-6 grid gap-5 lg:grid-cols-[15rem_1fr]">
-          <div role="tablist" aria-label="Rubriques de mon espace" aria-orientation="vertical" onKeyDown={onKey} className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-col">
+          <div role="tablist" aria-label={t('space.rubriques_de_mon')} aria-orientation="vertical" onKeyDown={onKey} className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-col">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -132,6 +134,7 @@ const H3 = ({ children }: { children: ReactNode }) => <h3 className="mb-3 text-x
 
 // ---------- Profil ----------
 function ProfileTab() {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const me = useAccount((s) => s.account)!;
   const [nickname, setNick] = useState(me.nickname);
@@ -153,7 +156,7 @@ function ProfileTab() {
       a.download = 'flash-poker-mes-donnees.json';
       a.click();
       URL.revokeObjectURL(url);
-      setDataState({ tone: 'ok', text: 'Le fichier de vos données a été téléchargé.' });
+      setDataState({ tone: 'ok', text: t('space.le_fichier_de') });
     } catch (err) {
       setDataState({ tone: 'error', text: message(err) });
     }
@@ -171,7 +174,7 @@ function ProfileTab() {
     e.preventDefault();
     try {
       await account.updateProfile({ nickname: nickname.trim(), avatar });
-      setState({ tone: 'ok', text: 'Profil enregistré. Il s’appliquera à vos prochaines parties.' });
+      setState({ tone: 'ok', text: t('space.profil_enregistre_il') });
     } catch (err) {
       setState({ tone: 'error', text: message(err) });
     }
@@ -181,7 +184,7 @@ function ProfileTab() {
     try {
       await account.changeEmail(mail.email.trim(), mail.password);
       setMail((m) => ({ ...m, password: '' }));
-      setMailState({ tone: 'ok', text: 'Adresse e-mail modifiée.' });
+      setMailState({ tone: 'ok', text: t('space.adresse_e_mail3') });
     } catch (err) {
       setMailState({ tone: 'error', text: message(err) });
     }
@@ -191,7 +194,7 @@ function ProfileTab() {
     try {
       await account.changePassword(pwd.current, pwd.next);
       setPwd({ current: '', next: '' });
-      setPwdState({ tone: 'ok', text: 'Mot de passe modifié. Vos autres appareils ont été déconnectés.' });
+      setPwdState({ tone: 'ok', text: t('space.mot_de_passe4') });
     } catch (err) {
       setPwdState({ tone: 'error', text: message(err) });
     }
@@ -200,84 +203,76 @@ function ProfileTab() {
   return (
     <div className="space-y-8">
       <form onSubmit={saveProfile} className="space-y-4">
-        <H2>Profil</H2>
+        <H2>{t('space.profil')}</H2>
         <div className="flex items-center gap-4">
           <Avatar nickname={nickname || me.nickname} avatar={avatar} size={64} />
-          <p className="text-sm text-ivory-200/80">Votre pseudo et votre avatar sont visibles des autres joueurs à la table.</p>
+          <p className="text-sm text-ivory-200/80">{t('space.votre_pseudo_et')}</p>
         </div>
-        <Field label="Pseudo" htmlFor="sp-nick">
+        <Field label={t('space.pseudo')} htmlFor="sp-nick">
           <input id="sp-nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
         </Field>
-        <Field label="Avatar">
+        <Field label={t('space.avatar')}>
           <AvatarPicker value={avatar} onChange={setAvatar} />
         </Field>
         {state && <Notice tone={state.tone}>{state.text}</Notice>}
         <Button type="submit" disabled={nickname.trim().length < 2}>
-          Enregistrer le profil
-        </Button>
+          {t('space.enregistrer_le_profil')}</Button>
       </form>
 
-      <section className="space-y-3 border-t border-ivory-100/10 pt-6" aria-label="Alertes par e-mail">
-        <H3>Alertes par e-mail</H3>
-        <p className="text-sm text-ivory-200/80">Quand un de vos joueurs favoris se connecte alors que vous n’êtes pas sur Flash Poker, vous recevez un e-mail, au plus un par jour et par favori.</p>
-        <Segmented label="Alertes par e-mail" value={me.notifyEmail ? 'oui' : 'non'} options={['oui', 'non'] as const} format={(v) => (v === 'oui' ? 'Activées' : 'Désactivées')} onChange={(v) => void account.updateProfile({ notifyEmail: v === 'oui' }).catch(() => undefined)} />
+      <section className="space-y-3 border-t border-ivory-100/10 pt-6" aria-label={t('space.alertes_par_e')}>
+        <H3>{t('space.alertes_par_e')}</H3>
+        <p className="text-sm text-ivory-200/80">{t('space.quand_un_de')}</p>
+        <Segmented label={t('space.alertes_par_e')} value={me.notifyEmail ? 'oui' : 'non'} options={['oui', 'non'] as const} format={(v) => (v === 'oui' ? t('space.activees') : t('space.desactivees'))} onChange={(v) => void account.updateProfile({ notifyEmail: v === 'oui' }).catch(() => undefined)} />
       </section>
 
       <form onSubmit={saveMail} className="space-y-4 border-t border-ivory-100/10 pt-6">
-        <H3>Adresse e-mail</H3>
-        <Field label="Adresse e-mail" htmlFor="sp-mail">
+        <H3>{t('space.adresse_e_mail')}</H3>
+        <Field label={t('space.adresse_e_mail')} htmlFor="sp-mail">
           <input id="sp-mail" type="email" className={inputClass} value={mail.email} onChange={(e) => setMail({ ...mail, email: e.target.value })} autoComplete="email" />
         </Field>
-        <Field label="Mot de passe actuel (confirmation)" htmlFor="sp-mail-pwd">
+        <Field label={t('space.mot_de_passe')} htmlFor="sp-mail-pwd">
           <input id="sp-mail-pwd" type="password" className={inputClass} value={mail.password} onChange={(e) => setMail({ ...mail, password: e.target.value })} autoComplete="current-password" />
         </Field>
         {mailState && <Notice tone={mailState.tone}>{mailState.text}</Notice>}
         <Button type="submit" variant="secondary" disabled={!mail.password || mail.email.trim() === me.email}>
-          Changer d’adresse
-        </Button>
+          {t('space.changer_d_adresse')}</Button>
       </form>
 
       <form onSubmit={savePwd} className="space-y-4 border-t border-ivory-100/10 pt-6">
-        <H3>Mot de passe</H3>
-        <Field label="Mot de passe actuel" htmlFor="sp-cur">
+        <H3>{t('space.mot_de_passe2')}</H3>
+        <Field label={t('space.mot_de_passe3')} htmlFor="sp-cur">
           <input id="sp-cur" type="password" className={inputClass} value={pwd.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} autoComplete="current-password" />
         </Field>
-        <Field label="Nouveau mot de passe" htmlFor="sp-next" hint="Au moins 8 caractères.">
+        <Field label={t('space.nouveau_mot_de')} htmlFor="sp-next" hint={t('space.au_moins_8')}>
           <input id="sp-next" type="password" className={inputClass} value={pwd.next} onChange={(e) => setPwd({ ...pwd, next: e.target.value })} autoComplete="new-password" />
         </Field>
         {pwdState && <Notice tone={pwdState.tone}>{pwdState.text}</Notice>}
         <Button type="submit" variant="secondary" disabled={!pwd.current || pwd.next.length < 8}>
-          Changer le mot de passe
-        </Button>
+          {t('space.changer_le_mot')}</Button>
       </form>
 
       <section className="space-y-4 border-t border-ivory-100/10 pt-6" aria-labelledby="sp-data">
-        <H3>Mes données</H3>
+        <H3>{t('space.mes_donnees')}</H3>
         <p id="sp-data" className="text-sm text-ivory-100/70">
-          Vous pouvez récupérer une copie de vos données (compte, parties, statistiques, favoris) ou supprimer définitivement votre compte.
-        </p>
+          {t('space.vous_pouvez_recuperer')}</p>
         <Button variant="secondary" onClick={() => void downloadData()}>
-          Télécharger mes données
-        </Button>
+          {t('space.telecharger_mes_donnees')}</Button>
         {!del.open ? (
           <div>
             <Button variant="danger" onClick={() => setDel({ open: true, password: '' })}>
-              Supprimer mon compte
-            </Button>
+              {t('space.supprimer_mon_compte')}</Button>
           </div>
         ) : (
           <form onSubmit={deleteAccount} className="space-y-3 rounded-lg border border-red-400/30 p-4">
-            <p className="text-sm text-ivory-100/80">Cette action est définitive. Votre compte, votre historique, vos statistiques et vos jetons seront effacés. Confirmez avec votre mot de passe.</p>
-            <Field label="Mot de passe" htmlFor="sp-del">
+            <p className="text-sm text-ivory-100/80">{t('space.cette_action_est')}</p>
+            <Field label={t('space.mot_de_passe2')} htmlFor="sp-del">
               <input id="sp-del" type="password" className={inputClass} value={del.password} onChange={(e) => setDel({ ...del, password: e.target.value })} autoComplete="current-password" />
             </Field>
             <div className="flex gap-3">
               <Button type="submit" variant="danger" disabled={!del.password}>
-                Supprimer définitivement
-              </Button>
+                {t('space.supprimer_definitivement')}</Button>
               <Button type="button" variant="secondary" onClick={() => setDel({ open: false, password: '' })}>
-                Annuler
-              </Button>
+                {t('space.annuler')}</Button>
             </div>
           </form>
         )}
@@ -286,8 +281,7 @@ function ProfileTab() {
 
       <div className="border-t border-ivory-100/10 pt-6">
         <Button variant="danger" onClick={() => void account.logout()}>
-          Se déconnecter
-        </Button>
+          {t('space.se_deconnecter')}</Button>
       </div>
     </div>
   );
@@ -295,18 +289,19 @@ function ProfileTab() {
 
 // ---------- Historique ----------
 function HistoryTab() {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const { data, error } = useLoad(account.games);
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div>
-      <H2>Historique des parties</H2>
-      <p className="mt-1 text-sm text-ivory-300/80">Parties terminées, de la plus récente à la plus ancienne. Ouvrez une partie pour revoir chaque manche et marquer vos favorites.</p>
+      <H2>{t('space.historique_des_parties')}</H2>
+      <p className="mt-1 text-sm text-ivory-300/80">{t('space.parties_terminees_de')}</p>
       <div className="mt-4">
         {data === null && !error ? (
           <Loading />
         ) : (
-          <State error={error} empty={data?.length === 0 && 'Aucune partie terminée pour l’instant. Vos parties s’afficheront ici dès la fin de la première.'}>
+          <State error={error} empty={data?.length === 0 && t('space.aucune_partie_terminee')}>
             <ul className="space-y-2">
               {data?.map((g) => (
                 <li key={g.id}>
@@ -322,15 +317,16 @@ function HistoryTab() {
 }
 
 function GameRow({ game, open, onToggle }: { game: GameSummary; open: boolean; onToggle: () => void }) {
+  const { t, tp } = useI18n();
   return (
     <div className="rounded-xl border border-ivory-100/10 bg-ink-900/50">
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
         <span className="min-w-0">
           <span className="block font-semibold text-ivory-50">
-            {game.name} {game.won && <span className="align-middle"><Badge tone="gold">Victoire</Badge></span>}
+            {game.name} {game.won && <span className="align-middle"><Badge tone="gold">{t('space.victoire')}</Badge></span>}
           </span>
           <span className="block text-xs text-ivory-300/75">
-            {DATE.format(game.endedAt)} · {game.rounds} manche{game.rounds > 1 ? 's' : ''} · avec {game.opponents.join(', ') || '—'}
+            {tp('space.manche', game.rounds, { format: dateFmt().format(game.endedAt), opponents: game.opponents.join(', ') || '—' })}
           </span>
         </span>
         <span className={`font-display text-lg ${game.netChips > 0 ? 'text-jade-300' : game.netChips < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}>{formatSignedChips(game.netChips)}</span>
@@ -341,6 +337,7 @@ function GameRow({ game, open, onToggle }: { game: GameSummary; open: boolean; o
 }
 
 function GameDetailView({ id }: { id: string }) {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const { data, error } = useLoad(() => account.game(id));
   const [favs, setFavs] = useState<Set<number>>(new Set());
@@ -353,7 +350,7 @@ function GameDetailView({ id }: { id: string }) {
   }, [account]);
   if (error) return <div className="px-4 pb-4"><State error={error} /></div>;
   if (!data) return <Loading />;
-  const nameOf = (pid: string) => data.players.find((p) => p.playerId === pid)?.nickname ?? 'Un joueur';
+  const nameOf = (pid: string) => data.players.find((p) => p.playerId === pid)?.nickname ?? t('space.un_joueur');
   const toggle = (roundNo: number) => {
     const on = favs.has(roundNo);
     const next = new Set(favs);
@@ -371,23 +368,21 @@ function GameDetailView({ id }: { id: string }) {
 }
 
 function Standings({ game, nameOf, favPlayers, onFavorite }: { game: GameDetail; nameOf: (id: string) => string; favPlayers: Set<string>; onFavorite: (nickname: string) => void }) {
+  const { t, tp } = useI18n();
   const winner = game.outcome.winner;
   const others = game.players.filter((p) => p.playerId !== game.you && p.accountId && game.seated.includes(p.playerId));
   return (
     <div className="space-y-2 text-sm">
       <p className="text-ivory-100">
-        <TrophyIcon size={22} className="mr-1 inline align-[-5px]" /> Vainqueur <strong className="text-gold-200">{nameOf(winner)}</strong>, cagnotte {formatChips(game.outcome.settlement.potChips)}
-      </p>
+        <TrophyIcon size={22} className="mr-1 inline align-[-5px]" />  {t('space.vainqueur')} <strong className="text-gold-200">{nameOf(winner)}</strong>{t('space.cagnotte', { formatChips: formatChips(game.outcome.settlement.potChips) })}</p>
       {others.length > 0 && (
         <p className="flex flex-wrap items-center gap-2 text-ivory-300/80">
-          Joueurs inscrits :
-          {others.map((p) =>
+          {t('space.joueurs_inscrits')} {others.map((p) =>
             favPlayers.has(p.nickname.toLowerCase()) ? (
               <Badge key={p.playerId} tone="gold">★ {p.nickname}</Badge>
             ) : (
               <button key={p.playerId} type="button" onClick={() => onFavorite(p.nickname)} className="rounded-full border border-gold-500/50 px-2.5 py-0.5 text-xs font-semibold text-gold-300 hover:bg-gold-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
-                ☆ Ajouter {p.nickname} aux favoris
-              </button>
+                {t('space.ajouter_aux_favoris', { nickname: p.nickname })}</button>
             ),
           )}
         </p>
@@ -398,34 +393,35 @@ function Standings({ game, nameOf, favPlayers, onFavorite }: { game: GameDetail;
 
 // ---------- Statistiques ----------
 function StatsTab() {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const { data, error } = useLoad(account.stats);
   const best = data?.variants.reduce<VariantStats | null>((b, v) => (v.played >= 3 && (!b || v.won / v.played > b.won / b.played) ? v : b), null);
   return (
     <div>
-      <H2>Statistiques par variante</H2>
+      <H2>{t('space.statistiques_par_variante')}</H2>
       {data === null && !error ? (
         <Loading />
       ) : (
-        <State error={error} empty={data?.games === 0 && 'Vos statistiques apparaîtront après votre première partie terminée.'}>
+        <State error={error} empty={data?.games === 0 && t('space.vos_statistiques_apparaitront')}>
           {data && (
             <>
               <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Kpi label="Parties" value={String(data.games)} />
-                <Kpi label="Parties gagnées" value={`${data.gamesWon} (${pct(data.gamesWon, data.games)})`} />
-                <Kpi label="Manches jouées" value={String(data.variants.reduce((a, v) => a + v.played, 0))} />
-                <Kpi label="Meilleure variante" value={best ? variantName(best.variant) : '—'} hint={best ? undefined : 'dès 3 manches jouées'} />
+                <Kpi label={t('space.parties')} value={String(data.games)} />
+                <Kpi label={t('space.parties_gagnees')} value={`${data.gamesWon} (${pct(data.gamesWon, data.games)})`} />
+                <Kpi label={t('space.manches_jouees')} value={String(data.variants.reduce((a, v) => a + v.played, 0))} />
+                <Kpi label={t('space.meilleure_variante')} value={best ? variantName(best.variant) : '—'} hint={best ? undefined : t('space.des_3_manches')} />
               </dl>
               <div className="mt-5 overflow-x-auto">
                 <table className="w-full min-w-[28rem] text-sm">
-                  <caption className="sr-only">Manches jouées, gagnées et points marqués par variante</caption>
+                  <caption className="sr-only">{t('space.manches_jouees_gagnees')}</caption>
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-wider text-ivory-300/70">
-                      <th className="py-2 font-medium">Variante</th>
-                      <th className="py-2 text-right font-medium">Manches</th>
-                      <th className="py-2 text-right font-medium">Gagnées</th>
-                      <th className="py-2 text-right font-medium">Réussite</th>
-                      <th className="py-2 text-right font-medium">Points</th>
+                      <th className="py-2 font-medium">{t('space.variante')}</th>
+                      <th className="py-2 text-right font-medium">{t('space.manches')}</th>
+                      <th className="py-2 text-right font-medium">{t('space.gagnees')}</th>
+                      <th className="py-2 text-right font-medium">{t('space.reussite')}</th>
+                      <th className="py-2 text-right font-medium">{t('space.points')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -448,7 +444,7 @@ function StatsTab() {
                   </tbody>
                 </table>
               </div>
-              <p className="mt-3 text-xs text-ivory-300/65">Une manche compte comme gagnée quand vous en remportez les points (ou la victoire immédiate).</p>
+              <p className="mt-3 text-xs text-ivory-300/65">{t('space.une_manche_compte')}</p>
             </>
           )}
         </State>
@@ -469,26 +465,27 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint?: stri
 
 // ---------- Manches favorites ----------
 function FavoriteRoundsTab() {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const { data, error, reload } = useLoad(account.favoriteRounds);
   return (
     <div>
-      <H2>Manches favorites</H2>
-      <p className="mt-1 text-sm text-ivory-300/80">Marquez une manche d’une étoile depuis l’onglet Historique pour la retrouver ici.</p>
+      <H2>{t('space.manches_favorites')}</H2>
+      <p className="mt-1 text-sm text-ivory-300/80">{t('space.marquez_une_manche')}</p>
       <div className="mt-4">
         {data === null && !error ? (
           <Loading />
         ) : (
-          <State error={error} empty={data?.length === 0 && 'Aucune manche favorite pour l’instant.'}>
+          <State error={error} empty={data?.length === 0 && t('space.aucune_manche_favorite')}>
             <ul className="space-y-3">
               {data?.map((f: FavoriteRound) => (
                 <li key={`${f.gameId}-${f.round.roundNo}`} className="rounded-xl border border-ivory-100/10 bg-ink-900/40 px-3 pb-3 pt-2">
                   <p className="text-xs text-ivory-300/75">
-                    {f.gameName} · {DAY.format(f.endedAt)}
+                    {f.gameName} · {dayFmt().format(f.endedAt)}
                   </p>
                   <RoundList
                     history={[f.round]}
-                    nameOf={(pid) => f.players.find((p) => p.playerId === pid)?.nickname ?? 'Un joueur'}
+                    nameOf={(pid) => f.players.find((p) => p.playerId === pid)?.nickname ?? t('space.un_joueur')}
                     star={{ isOn: () => true, toggle: () => void account.removeFavoriteRound(f.gameId, f.round.roundNo).then(reload, () => undefined) }}
                   />
                 </li>
@@ -503,24 +500,25 @@ function FavoriteRoundsTab() {
 
 // ---------- Bankroll ----------
 function BankrollTab() {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const { data, error } = useLoad(account.bankroll);
   const { data: wallet } = useLoad(account.wallet);
   return (
     <div>
-      <H2>Bankroll</H2>
+      <H2>{t('space.bankroll')}</H2>
       {wallet && <WalletCard wallet={wallet} />}
-      <p className="mt-1 text-sm text-ivory-300/80">Bilan de vos parties en jetons. Gains moins mises, assurances comprises.</p>
+      <p className="mt-1 text-sm text-ivory-300/80">{t('space.bilan_de_vos')}</p>
       {data === null && !error ? (
         <Loading />
       ) : (
-        <State error={error} empty={data?.games === 0 && 'Votre courbe démarrera à la fin de votre première partie.'}>
+        <State error={error} empty={data?.games === 0 && t('space.votre_courbe_demarrera')}>
           {data && (
             <>
               <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <Kpi label="Bilan total" value={formatSignedChips(data.totalChips)} />
-                <Kpi label="Parties" value={String(data.games)} />
-                <Kpi label="Meilleure partie" value={formatSignedChips(Math.max(...data.series.map((s) => s.netChips)))} />
+                <Kpi label={t('space.bilan_total')} value={formatSignedChips(data.totalChips)} />
+                <Kpi label={t('space.parties')} value={String(data.games)} />
+                <Kpi label={t('space.meilleure_partie')} value={formatSignedChips(Math.max(...data.series.map((s) => s.netChips)))} />
               </dl>
               <BankrollChart bankroll={data} />
             </>
@@ -533,16 +531,17 @@ function BankrollTab() {
 
 /** Solde du portefeuille et, sous le seuil, heure de la prochaine recharge. */
 export function WalletCard({ wallet }: { wallet: Wallet }) {
+  const { t, tp } = useI18n();
   const low = wallet.nextRefillAt !== null;
-  const when = low ? new Date(wallet.nextRefillAt!).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+  const when = low ? new Date(wallet.nextRefillAt!).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) : null;
   return (
-    <section aria-label="Portefeuille" className="mt-3 rounded-xl border border-gold-500/40 bg-gold-500/10 p-3">
-      <p className="text-xs text-gold-300">Portefeuille</p>
+    <section aria-label={t('space.portefeuille')} className="mt-3 rounded-xl border border-gold-500/40 bg-gold-500/10 p-3">
+      <p className="text-xs text-gold-300">{t('space.portefeuille')}</p>
       <p className="font-display text-2xl text-ivory-50" data-testid="wallet-balance">{formatChips(wallet.balance)}</p>
       <p className="mt-1 text-xs text-ivory-200/85">
         {low
-          ? `Solde sous ${formatChips(wallet.threshold)}. Recharge à ${formatChips(wallet.refillTo)} à ${when} (après ${wallet.refillDelayMs / 3_600_000} h sans partie).`
-          : `Vous avez reçu ${formatChips(wallet.startingChips)} à l’inscription. Sous ${formatChips(wallet.threshold)}, une recharge à ${formatChips(wallet.refillTo)} est accordée après ${wallet.refillDelayMs / 3_600_000} h sans partie.`}
+          ? t('space.solde_sous_recharge', { formatChips: formatChips(wallet.threshold), formatChips2: formatChips(wallet.refillTo), when: when ?? '', hours: wallet.refillDelayMs / 3_600_000 })
+          : t('space.vous_avez_recu', { formatChips: formatChips(wallet.startingChips), formatChips2: formatChips(wallet.threshold), formatChips3: formatChips(wallet.refillTo), hours: wallet.refillDelayMs / 3_600_000 })}
       </p>
     </section>
   );
@@ -550,7 +549,8 @@ export function WalletCard({ wallet }: { wallet: Wallet }) {
 
 /** Courbe du bilan cumulé, partie après partie (ligne zéro marquée). */
 export function BankrollChart({ bankroll }: { bankroll: Bankroll }) {
-  const pts = [{ cumulativeChips: 0, endedAt: 0, name: 'Départ', netChips: 0 }, ...bankroll.series];
+  const { t, tp } = useI18n();
+  const pts = [{ cumulativeChips: 0, endedAt: 0, name: t('space.depart'), netChips: 0 }, ...bankroll.series];
   const W = 640;
   const H = 220;
   const P = { l: 56, r: 12, t: 12, b: 28 };
@@ -566,7 +566,7 @@ export function BankrollChart({ bankroll }: { bankroll: Bankroll }) {
   const color = last >= 0 ? '#5bc79f' : '#ef6a73';
   return (
     <figure className="mt-5">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`Bilan cumulé sur ${bankroll.games} partie${bankroll.games > 1 ? 's' : ''}, ${formatSignedChips(last)}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={tp('space.bilan_cumule_sur', bankroll.games, { games: bankroll.games, formatSignedChips: formatSignedChips(last) })}>
         <defs>
           <linearGradient id="bk-area" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0" stopColor={color} stopOpacity="0.35" />
@@ -586,15 +586,14 @@ export function BankrollChart({ bankroll }: { bankroll: Bankroll }) {
         <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
         {pts.map((p, i) => (i === 0 ? null : <circle key={i} cx={x(i)} cy={y(p.cumulativeChips)} r="3.5" fill={color} />))}
         <text x={P.l} y={H - 8} fontSize="11" fill="#c9c2b2">
-          Départ
-        </text>
+          {t('space.depart')}</text>
         <text x={W - P.r} y={H - 8} fontSize="11" fill="#c9c2b2" textAnchor="end">
-          {pts.length > 1 ? DAY.format(pts[pts.length - 1]!.endedAt) : ''}
+          {pts.length > 1 ? dayFmt().format(pts[pts.length - 1]!.endedAt) : ''}
         </text>
       </svg>
       <figcaption className="sr-only">
         <table>
-          <caption>Bilan partie par partie</caption>
+          <caption>{t('space.bilan_partie_par')}</caption>
           <tbody>
             {bankroll.series.map((s, i) => (
               <tr key={i}>
@@ -612,6 +611,7 @@ export function BankrollChart({ bankroll }: { bankroll: Bankroll }) {
 
 // ---------- Joueurs favoris ----------
 function FavoritesTab() {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const { data, error, reload } = useLoad(account.favorites);
   const [q, setQ] = useState('');
@@ -646,8 +646,8 @@ function FavoritesTab() {
 
   return (
     <div>
-      <H2>Joueurs favoris</H2>
-      <p className="mt-1 text-sm text-ivory-300/80">Vous êtes prévenu dans l’application dès qu’un favori se connecte, et par e-mail si vous n’êtes pas en ligne (réglable dans Profil).</p>
+      <H2>{t('space.joueurs_favoris')}</H2>
+      <p className="mt-1 text-sm text-ivory-300/80">{t('space.vous_etes_prevenu')}</p>
       <form
         className="mt-4"
         onSubmit={(e) => {
@@ -655,11 +655,11 @@ function FavoritesTab() {
           if (q.trim()) void add(q.trim());
         }}
       >
-        <Field label="Ajouter un joueur inscrit" htmlFor="fav-q" hint="Tapez au moins deux lettres de son pseudo.">
+        <Field label={t('space.ajouter_un_joueur')} htmlFor="fav-q" hint={t('space.tapez_au_moins')}>
           <input id="fav-q" className={inputClass} value={q} maxLength={20} onChange={(e) => setQ(e.target.value)} autoComplete="off" role="combobox" aria-expanded={results.length > 0} aria-controls="fav-results" aria-autocomplete="list" />
         </Field>
         {results.length > 0 && (
-          <ul id="fav-results" role="listbox" aria-label="Joueurs trouvés" className="mt-2 divide-y divide-ivory-100/10 rounded-xl border border-ivory-100/10 bg-ink-900/70">
+          <ul id="fav-results" role="listbox" aria-label={t('space.joueurs_trouves')} className="mt-2 divide-y divide-ivory-100/10 rounded-xl border border-ivory-100/10 bg-ink-900/70">
             {results.map((u) => (
               <li key={u.id} role="option" aria-selected={false} className="flex items-center justify-between gap-3 px-3 py-2">
                 <span className="flex items-center gap-2">
@@ -667,11 +667,10 @@ function FavoritesTab() {
                   {u.nickname}
                 </span>
                 {known.has(u.id) ? (
-                  <Badge tone="gold">Déjà favori</Badge>
+                  <Badge tone="gold">{t('space.deja_favori')}</Badge>
                 ) : (
                   <Button variant="secondary" className="min-h-[36px] px-3 py-1" onClick={() => void add(u.nickname)}>
-                    Ajouter
-                  </Button>
+                    {t('space.ajouter')}</Button>
                 )}
               </li>
             ))}
@@ -683,8 +682,8 @@ function FavoritesTab() {
         {data === null && !error ? (
           <Loading />
         ) : (
-          <State error={error} empty={data?.length === 0 && 'Aucun favori pour l’instant.'}>
-            <ul className="space-y-2" aria-label="Mes joueurs favoris">
+          <State error={error} empty={data?.length === 0 && t('space.aucun_favori_pour')}>
+            <ul className="space-y-2" aria-label={t('space.mes_joueurs_favoris')}>
               {data?.map((f: FavoritePlayer) => (
                 <li key={f.id} className="flex items-center justify-between gap-3 rounded-xl border border-ivory-100/10 bg-ink-900/50 px-3 py-2">
                   <span className="flex min-w-0 items-center gap-3">
@@ -694,12 +693,11 @@ function FavoritesTab() {
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-ivory-50">{f.nickname}</span>
-                      <span className={`block text-xs ${f.online ? 'text-jade-300' : 'text-ivory-300/70'}`}>{f.online ? 'En ligne' : 'Hors ligne'}</span>
+                      <span className={`block text-xs ${f.online ? 'text-jade-300' : 'text-ivory-300/70'}`}>{f.online ? t('space.en_ligne') : t('space.hors_ligne')}</span>
                     </span>
                   </span>
-                  <Button variant="ghost" className="min-h-[36px] px-3 py-1 text-ruby-300" onClick={() => void account.removeFavorite(f.id).then(reload, () => undefined)} aria-label={`Retirer ${f.nickname} des favoris`}>
-                    Retirer
-                  </Button>
+                  <Button variant="ghost" className="min-h-[36px] px-3 py-1 text-ruby-300" onClick={() => void account.removeFavorite(f.id).then(reload, () => undefined)} aria-label={t('space.retirer_des_favoris', { nickname: f.nickname })}>
+                    {t('space.retirer')}</Button>
                 </li>
               ))}
             </ul>
@@ -712,6 +710,7 @@ function FavoritesTab() {
 
 // ---------- Inviter des amis ----------
 function InviteTab() {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const me = useAccount((s) => s.account)!;
   const { data, error, reload } = useLoad(account.invites);
@@ -734,7 +733,7 @@ function InviteTab() {
     }
   };
   const share = () =>
-    void navigator.share({ title: 'Flash Poker', text: `${me.nickname} vous invite à jouer au poker sur Flash Poker. Créez votre compte :`, url: link }).catch(() => undefined);
+    void navigator.share({ title: t('space.flash_poker'), text: t('space.vous_invite_a', { nickname: me.nickname }), url: link }).catch(() => undefined);
 
   async function send(e: FormEvent) {
     e.preventDefault();
@@ -743,7 +742,7 @@ function InviteTab() {
     setState(null);
     try {
       setOverview(await account.inviteByEmail(email.trim()));
-      setState({ tone: 'ok', text: `Invitation envoyée à ${email.trim()}.` });
+      setState({ tone: 'ok', text: t('space.invitation_envoyee_a', { trim: email.trim() }) });
       setEmail('');
     } catch (err) {
       setState({ tone: 'error', text: message(err) });
@@ -755,55 +754,54 @@ function InviteTab() {
   return (
     <div className="space-y-8">
       <div>
-        <H2>Inviter des amis</H2>
-        <p className="mt-1 text-sm text-ivory-300/80">Votre invité crée son compte en quelques secondes ; vous devenez alors joueurs favoris l’un de l’autre, et chacun est prévenu quand l’autre se connecte.</p>
+        <H2>{t('space.inviter_des_amis')}</H2>
+        <p className="mt-1 text-sm text-ivory-300/80">{t('space.votre_invite_cree')}</p>
       </div>
       {!info ? (
         error ? <State error={error} /> : <Loading />
       ) : (
         <>
-          <section aria-label="Mon lien d’invitation" className="space-y-3">
-            <H3>Mon lien d’invitation</H3>
-            <p className="text-sm text-ivory-200/85">À envoyer par SMS, WhatsApp ou tout autre moyen. Il reste valable et peut servir à plusieurs personnes.</p>
+          <section aria-label={t('space.mon_lien_d')} className="space-y-3">
+            <H3>{t('space.mon_lien_d')}</H3>
+            <p className="text-sm text-ivory-200/85">{t('space.a_envoyer_par')}</p>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <input readOnly value={link} aria-label="Lien d’invitation" className={`${inputClass} font-mono text-xs sm:text-sm`} onFocus={(e) => e.currentTarget.select()} />
+              <input readOnly value={link} aria-label={t('space.lien_d_invitation')} className={`${inputClass} font-mono text-xs sm:text-sm`} onFocus={(e) => e.currentTarget.select()} />
               <div className="flex gap-2">
                 <Button onClick={() => void copy()} className="flex-1 sm:flex-none">
-                  {copied ? 'Lien copié ✓' : 'Copier'}
+                  {copied ? t('space.lien_copie') : t('space.copier')}
                 </Button>
                 {canShare && (
                   <Button variant="secondary" onClick={share} className="flex-1 sm:flex-none">
-                    Partager…
-                  </Button>
+                    {t('space.partager')}</Button>
                 )}
               </div>
             </div>
-            <span role="status" className="sr-only">{copied ? 'Lien copié dans le presse-papiers' : ''}</span>
+            <span role="status" className="sr-only">{copied ? t('space.lien_copie_dans') : ''}</span>
           </section>
 
-          <section aria-label="Invitation par e-mail" className="space-y-3 border-t border-ivory-100/10 pt-6">
-            <H3>Par e-mail</H3>
+          <section aria-label={t('space.invitation_par_e')} className="space-y-3 border-t border-ivory-100/10 pt-6">
+            <H3>{t('space.par_e_mail')}</H3>
             {info.mailEnabled ? (
               <form onSubmit={send} className="space-y-3" noValidate>
-                <Field label="Adresse e-mail de votre ami" htmlFor="inv-mail" hint={`Flash Poker lui envoie un message à votre nom, avec un lien pour créer son compte. Encore ${info.remainingToday} invitation${info.remainingToday > 1 ? 's' : ''} possible${info.remainingToday > 1 ? 's' : ''} aujourd’hui.`}>
+                <Field label={t('space.adresse_e_mail2')} htmlFor="inv-mail" hint={tp('space.flash_poker_lui', info.remainingToday, { remainingToday: info.remainingToday })}>
                   <input id="inv-mail" type="email" inputMode="email" className={inputClass} value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
                 </Field>
                 {state && <Notice tone={state.tone}>{state.text}</Notice>}
                 <Button type="submit" disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || info.remainingToday === 0}>
-                  {busy ? 'Envoi…' : 'Envoyer l’invitation'}
+                  {busy ? t('space.envoi') : t('space.envoyer_l_invitation')}
                 </Button>
               </form>
             ) : (
-              <p className="rounded-xl border border-dashed border-ivory-100/15 px-4 py-3 text-sm text-ivory-300/80">L’envoi d’e-mails n’est pas encore activé sur ce serveur. Utilisez votre lien d’invitation ci-dessus.</p>
+              <p className="rounded-xl border border-dashed border-ivory-100/15 px-4 py-3 text-sm text-ivory-300/80">{t('space.l_envoi_d')}</p>
             )}
             {info.sent.length > 0 && (
-              <ul className="space-y-1.5" aria-label="Invitations envoyées">
+              <ul className="space-y-1.5" aria-label={t('space.invitations_envoyees')}>
                 {info.sent.map((i) => (
                   <li key={`${i.email}-${i.sentAt}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-ink-900/50 px-3 py-2 text-sm">
                     <span className="min-w-0 truncate text-ivory-100">{i.email}</span>
                     <span className="flex items-center gap-2 text-xs text-ivory-300/75">
-                      {DAY.format(i.sentAt)}
-                      {i.joinedAs ? <Badge tone="green">Inscrit : {i.joinedAs}</Badge> : <Badge>En attente</Badge>}
+                      {dayFmt().format(i.sentAt)}
+                      {i.joinedAs ? <Badge tone="green">{t('space.inscrit', { joinedAs: i.joinedAs })}</Badge> : <Badge>{t('space.en_attente')}</Badge>}
                     </span>
                   </li>
                 ))}
@@ -811,10 +809,10 @@ function InviteTab() {
             )}
           </section>
 
-          <section aria-label="Amis inscrits grâce à vous" className="space-y-3 border-t border-ivory-100/10 pt-6">
-            <H3>Amis inscrits grâce à vous ({info.joined.length})</H3>
+          <section aria-label={t('space.amis_inscrits_grace')} className="space-y-3 border-t border-ivory-100/10 pt-6">
+            <H3>{t('space.amis_inscrits_grace2', { n: info.joined.length })}</H3>
             {info.joined.length === 0 ? (
-              <p className="text-sm text-ivory-300/75">Personne pour l’instant.</p>
+              <p className="text-sm text-ivory-300/75">{t('space.personne_pour_l')}</p>
             ) : (
               <ul className="flex flex-wrap gap-2">
                 {info.joined.map((u) => (

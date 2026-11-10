@@ -10,9 +10,10 @@ import { ownCards } from '../lib/selectors';
 import { useMediaQuery } from '../lib/media';
 import { useTable } from '../lib/table';
 import { PanelShell, WaitingNote } from './Shell';
+import { tr, useI18n } from '../i18n';
 
 /** Les 8 alignements, dans l'ordre exact du moteur (index 0-7) : 3 lignes, 3 colonnes, 2 diagonales. */
-const ALIGNMENTS = ['Ligne 1', 'Ligne 2', 'Ligne 3', 'Colonne 1', 'Colonne 2', 'Colonne 3', 'Diagonale ↘', 'Diagonale ↗'];
+const alignments = (): string[] => [1, 2, 3].map((n) => tr('mp.row', { n })).concat([1, 2, 3].map((n) => tr('mp.col', { n })), [tr('mp.diag1'), tr('mp.diag2')]);
 /** Les 3 cases (0-8, lues ligne par ligne) que chaque alignement combine — mêmes indices que le moteur. */
 const LINES: readonly (readonly [number, number, number])[] = [
   [0, 1, 2],
@@ -81,6 +82,7 @@ function useMorpionDraft(server: MorpionDraft, phaseKey: string, send: (d: Morpi
 
 /** Morpion : désignez 2 de vos 4 cartes privées et un alignement (ligne, colonne, diagonale). Aucune aide. */
 export function MorpionPanel() {
+  const { t, tp } = useI18n();
   const client = useClient();
   const { game, round, me, canAct, timerKey } = useTable();
   const wide = useMediaQuery('(min-width: 640px)');
@@ -98,18 +100,18 @@ export function MorpionPanel() {
 
   return (
     <PanelShell
-      eyebrow="Morpion"
-      title="Choisissez 2 cartes et un alignement"
-      hint="Combinez 2 de vos 4 cartes avec les 3 cartes d’une ligne, d’une colonne ou d’une diagonale de la grille. Aucune aide n’est fournie. Sans désignation complète à l’échéance, vous ne comptez pas pour la manche."
+      eyebrow={t('morpion.morpion')}
+      title={t('morpion.choisissez_2_cartes')}
+      hint={t('morpion.combinez_2_de')}
     >
       {canAct ? (
         <>
-          <SelectableHand label="Votre main" cards={hand} selected={draft.cards} max={2} assist={assistCards(round)} disabled={validated} onToggle={toggleCard} size={wide ? 'md' : 'sm'} />
+          <SelectableHand label={t('morpion.votre_main')} cards={hand} selected={draft.cards} max={2} assist={assistCards(round)} disabled={validated} onToggle={toggleCard} size={wide ? 'md' : 'sm'} />
           <fieldset className="mt-1.5 sm:mt-3">
-            <legend className="sr-only sm:not-sr-only sm:mb-1 sm:text-sm sm:font-medium sm:text-ivory-100">Alignement</legend>
+            <legend className="sr-only sm:not-sr-only sm:mb-1 sm:text-sm sm:font-medium sm:text-ivory-100">{t('morpion.alignement')}</legend>
             {/* Les 8 alignements en une seule rangée. */}
-            <div className="grid grid-cols-8 gap-1 sm:gap-1.5" role="radiogroup" aria-label="Alignement">
-              {ALIGNMENTS.map((label, i) => (
+            <div className="grid grid-cols-8 gap-1 sm:gap-1.5" role="radiogroup" aria-label={t('morpion.alignement')}>
+              {alignments().map((label, i) => (
                 <button
                   key={label}
                   type="button"
@@ -127,23 +129,22 @@ export function MorpionPanel() {
               ))}
             </div>
           </fieldset>
-          <AssistBadge active={game.assistance} category={assistCategory(round)} waiting="Choisissez 2 cartes et un alignement" />
+          <AssistBadge active={game.assistance} category={assistCategory(round)} waiting={t('morpion.choisissez_2_cartes')} />
           <div className="mt-2 flex flex-row items-center justify-center gap-2 sm:mt-3 sm:gap-4">
             <p className="text-xs text-ivory-200/80 sm:text-sm" aria-live="polite">
-              {draft.cards.length}/2 carte{draft.cards.length > 1 ? 's' : ''}, {draft.line === null ? 'aucun alignement' : ALIGNMENTS[draft.line]}
+              {tp('morpion.2_carte', draft.cards.length)}, {draft.line === null ? t('morpion.aucun_alignement') : alignments()[draft.line]}
             </p>
             <Button disabled={validated || !complete} onClick={() => void client.command({ type: 'VALIDATE' })} className="flex-1 px-3 sm:flex-none sm:min-w-[16rem] sm:px-5">
-              {validated ? 'Combinaison verrouillée' : 'Valider ma combinaison'}
+              {validated ? t('morpion.combinaison_verrouillee') : t('morpion.valider_ma_combinaison')}
             </Button>
             {validated && (
               <p className="text-sm text-ivory-200/80">
-                En attente des autres joueurs ({info.validated.length} / {total})
-              </p>
+                {t('morpion.en_attente_des', { n: info.validated.length, total })}</p>
             )}
           </div>
         </>
       ) : (
-        <WaitingNote>Vous suivez la partie en spectateur.</WaitingNote>
+        <WaitingNote>{t('morpion.vous_suivez_la')}</WaitingNote>
       )}
     </PanelShell>
   );

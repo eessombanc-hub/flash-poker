@@ -1,13 +1,15 @@
+import { tr } from '../i18n';
+
 /** Mémo des règles : reprend le document de règles v1.1 validé. Aucune règle n'est ajoutée ici. */
 export const COMMON_RULES: { title: string; text: string }[] = [
-  { title: 'La table', text: 'De 2 à 6 joueurs. Chacun reçoit 1 000 jetons au début de la partie et mise la même somme. La cagnotte se joue en jetons, sans valeur monétaire.' },
-  { title: 'Positions', text: 'Tirées au sort au démarrage, de UTG à UTG+5, et stables pendant toute la partie.' },
-  { title: 'Choix de la variante', text: 'Le choix tourne dans l\u2019ordre des positions. Sans choix en 60 secondes, une variante disponible est tirée au hasard.' },
-  { title: 'Points', text: 'Le vainqueur d\u2019une manche marque 1 point, quelle que soit la variante, sauf au 6-3. Gagner seul les 3 lignes vaut 2 points. L\u2019objectif va de 1 à 5 points. Les jetons misés se jouent sur un portefeuille personnel. 5 000 jetons à l\u2019inscription ; sous 1 000, une recharge à 2 000 jetons est accordée après 2 heures sans partie.' },
-  { title: 'Tétines et paris du 6-3', text: 'Le joueur qui choisit le 6-3 peut ajouter 1 ou 2 tétines, des cartes communes supplémentaires posées sur la ligne en cours, qui passent à la ligne suivante une fois celle-ci résolue. Avec tétines, la meilleure main de 5 cartes se compose de votre paire désignée, des 5 cartes de la ligne et des tétines. Il peut aussi activer les paris extérieurs. Avant la distribution, chaque joueur mise un montant sur une ligne ; quand au moins deux joueurs misent le même montant sur la même ligne, le meilleur d\u2019entre eux, sans compter les tétines, remporte la cagnotte à la fin de la ligne (partage en cas d\u2019égalité, mises rendues sans partenaire).' },
-  { title: 'Égalité', text: 'Un Hold\u2019em de départage entre les seuls ex aequo. 2 cartes privées ouvertes, 5 cartes communes. Au 6-3, à 2 ou 3 joueurs, une égalité en tête donne 0 point.' },
-  { title: 'Minuteurs', text: '60 secondes pour chaque phase (change, défausse, ligne du 6-3, retournement du 6-1, réponse à une assurance). Un joueur déconnecté suit les mêmes délais.' },
-  { title: 'Mains', text: 'L\u2019As est toujours la carte la plus forte. La roue A-2-3-4-5 est une quinte valide ; les couleurs ne départagent jamais.' },
-  { title: 'Assurance', text: 'Entre deux manches, deux joueurs à 1 point de la victoire peuvent s\u2019assurer. « Le perdant ne paye pas » ou « 50 / 50 ». Une seule assurance par partie. Elle ne change jamais le vainqueur, seulement la répartition de la cagnotte.' },
-  { title: 'Arrivée en cours de partie', text: 'Un joueur peut rejoindre entre deux manches, à la dernière position, avec 0 point et la même mise, dans la limite du nombre de places.' },
+  { get title() { return tr('rules.0.title'); }, get text() { return tr('rules.0.text'); } },
+  { get title() { return tr('rules.1.title'); }, get text() { return tr('rules.1.text'); } },
+  { get title() { return tr('rules.2.title'); }, get text() { return tr('rules.2.text'); } },
+  { get title() { return tr('rules.3.title'); }, get text() { return tr('rules.3.text'); } },
+  { get title() { return tr('rules.4.title'); }, get text() { return tr('rules.4.text'); } },
+  { get title() { return tr('rules.5.title'); }, get text() { return tr('rules.5.text'); } },
+  { get title() { return tr('rules.6.title'); }, get text() { return tr('rules.6.text'); } },
+  { get title() { return tr('rules.7.title'); }, get text() { return tr('rules.7.text'); } },
+  { get title() { return tr('rules.8.title'); }, get text() { return tr('rules.8.text'); } },
+  { get title() { return tr('rules.9.title'); }, get text() { return tr('rules.9.text'); } },
 ];

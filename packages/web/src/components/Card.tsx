@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useId } from 'react';
 import { parseCode, type Suit } from '../lib/cards';
 import type { CardBack as CardBackId } from '../lib/settings';
+import { useI18n } from '../i18n';
 
 export type CardSize = 'xs' | 'board' | 'sm' | 'md' | 'wide6' | 'fan' | 'lg' | 'col';
 // `col` : carte d'une colonne du Tableau ; la largeur vient de la variable CSS --w posée par la colonne.
@@ -159,11 +160,12 @@ export function spokenName(code: string): string {
 
 /** Une carte : face, ou dos si `code` est nul. Cliquable (sélection) ou purement décorative. */
 export function PlayingCard({ code, size = 'md', selected = false, disabled = false, dimmed = false, highlight = false, assist = false, fourColor = false, back = 'losange', flip = false, dealIndex, onClick, hint, className = '' }: CardProps) {
+  const { t } = useI18n();
   const uid = useId();
   const reduce = useReducedMotion();
   // Figures : la lettre dessinée (J, Q, K) figure aussi dans le nom, pour la commande vocale (« cliquer K »).
-  const label = code ? spokenName(code) : 'Carte face cachée';
-  if (assist && !hint) hint = 'dans votre combinaison';
+  const label = code ? spokenName(code) : t('card.carte_face_cachee');
+  if (assist && !hint) hint = t('card.dans_votre_combinaison');
   const interactive = !!onClick && !disabled;
   const base = selected ? 'shadow-gold' : highlight ? 'ring-2 ring-gold-400' : 'shadow-card';
   const ring = assist ? (selected ? `${base} ring-[3px] ring-gold-200` : 'ring-[3px] ring-gold-200 shadow-[0_0_18px_4px_rgba(240,214,140,0.7)]') : base;
@@ -209,11 +211,12 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
 
 /** Emplacement de plateau : carte, ou gabarit en pointillés tant qu'elle n'est pas dévoilée. */
 export function CardSlot({ code, size = 'md', label, fourColor, flip, dealIndex, assist }: { code: string | null; size?: CardSize; label?: string; fourColor?: boolean; flip?: boolean; dealIndex?: number; assist?: boolean }) {
+  const { t } = useI18n();
   if (code) return <PlayingCard code={code} size={size} fourColor={fourColor} flip={flip} dealIndex={dealIndex} assist={assist} />;
   return (
     <span
       className={`relative inline-flex aspect-[5/7] shrink-0 items-center justify-center rounded-[9px] border border-dashed border-ivory-100/25 bg-ink-950/25 text-center text-[11px] leading-tight text-ivory-200/60 ${WIDTH[size]}`}
-      aria-label={label ?? 'Carte pas encore dévoilée'}
+      aria-label={label ?? t('card.carte_pas_encore')}
       role="img"
     >
       {label ?? ''}

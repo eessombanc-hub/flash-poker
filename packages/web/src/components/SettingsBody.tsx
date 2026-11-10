@@ -1,31 +1,33 @@
 import { useSettings } from '../lib/settings';
 import { AMBIANCE_OPTIONS, CARD_BACK_OPTIONS, FELT_OPTIONS } from '../lib/theme';
 import { PlayingCard } from './Card';
+import { useI18n } from '../i18n';
 
 /** Contenu des Paramètres : sons, lecture des couleurs, couleur du tapis, dos des cartes. Partagé entre
  * l'écran d'accueil (« Paramètres ») et la fenêtre en jeu (« Options »), pour une seule source de vérité. */
 export function SettingsBody() {
+  const { t } = useI18n();
   const { fourColor, setFourColor, sound, setSound, feltColor, setFeltColor, cardBack, setCardBack, ambiance, setAmbiance } = useSettings();
   return (
     <div className="space-y-7">
       <label className="flex cursor-pointer items-start gap-3">
         <input type="checkbox" className="mt-1 h-5 w-5 accent-yellow-600" checked={fourColor} onChange={(e) => setFourColor(e.target.checked)} />
         <span>
-          <span className="block font-medium text-ivory-50">Cartes en quatre couleurs</span>
-          <span className="text-sm text-ivory-200/80">Trèfle vert, carreau bleu. Lecture plus rapide des couleurs.</span>
+          <span className="block font-medium text-ivory-50">{t('settingsbody.cartes_en_quatre')}</span>
+          <span className="text-sm text-ivory-200/80">{t('settingsbody.trefle_vert_carreau')}</span>
         </span>
       </label>
       <label className="flex cursor-pointer items-start gap-3">
         <input type="checkbox" className="mt-1 h-5 w-5 accent-yellow-600" checked={sound} onChange={(e) => setSound(e.target.checked)} />
         <span>
-          <span className="block font-medium text-ivory-50">Sons et vibrations</span>
-          <span className="text-sm text-ivory-200/80">Sélection, retournement, votre tour, et vibration mobile en fin de minuteur.</span>
+          <span className="block font-medium text-ivory-50">{t('settingsbody.sons_et_vibrations')}</span>
+          <span className="text-sm text-ivory-200/80">{t('settingsbody.selection_retournement_votre')}</span>
         </span>
       </label>
 
       <div>
-        <p className="mb-2 font-medium text-ivory-50">Ambiance</p>
-        <div role="radiogroup" aria-label="Ambiance" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <p className="mb-2 font-medium text-ivory-50">{t('settingsbody.ambiance')}</p>
+        <div role="radiogroup" aria-label={t('settingsbody.ambiance')} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {AMBIANCE_OPTIONS.map((a) => (
             <button
               key={a.id}
@@ -50,8 +52,8 @@ export function SettingsBody() {
       </div>
 
       <div>
-        <p className="mb-2 font-medium text-ivory-50">Couleur du tapis</p>
-        <div role="radiogroup" aria-label="Couleur du tapis" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <p className="mb-2 font-medium text-ivory-50">{t('settingsbody.couleur_du_tapis')}</p>
+        <div role="radiogroup" aria-label={t('settingsbody.couleur_du_tapis')} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {FELT_OPTIONS.map((f) => (
             <button
               key={f.id}
@@ -69,8 +71,8 @@ export function SettingsBody() {
       </div>
 
       <div>
-        <p className="mb-2 font-medium text-ivory-50">Dos des cartes</p>
-        <div role="radiogroup" aria-label="Dos des cartes" className="flex flex-wrap gap-2.5">
+        <p className="mb-2 font-medium text-ivory-50">{t('settingsbody.dos_des_cartes')}</p>
+        <div role="radiogroup" aria-label={t('settingsbody.dos_des_cartes')} className="flex flex-wrap gap-2.5">
           {CARD_BACK_OPTIONS.map((b) => (
             <button
               key={b.id}

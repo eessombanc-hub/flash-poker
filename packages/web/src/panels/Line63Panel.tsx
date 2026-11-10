@@ -14,12 +14,14 @@ import { useSettings } from '../lib/settings';
 import { useTable } from '../lib/table';
 import type { LineResult, RoomView, SideBet, SideBetPool, SideBetResult } from '../lib/types';
 import { PanelShell, WaitingNote } from './Shell';
+import { useI18n } from '../i18n';
 
 /**
  * 6-3 : à chaque ligne, le joueur désigne 2 cartes privées. RÈGLE ABSOLUE : AUCUNE AIDE. Rien n'est calculé ni affiché
  * sur la force de la main ou de la paire choisie avant la résolution de la ligne (ni suggestion, ni indice).
  */
 export function Line63Panel() {
+  const { t } = useI18n();
   const client = useClient();
   const { view, game, round, me, canAct, timerKey } = useTable();
   const info = round ? line63Info(round) : null;
@@ -35,27 +37,26 @@ export function Line63Panel() {
       eyebrow="6-3"
       title={
         <>
-          LIGNE {info.line} <span className="text-gold-400">/ 3</span>
+          {t('line63.ligne', { line: info.line })} <span className="text-gold-400">/ 3</span>
         </>
       }
-      hint={`Désignez 2 de vos 6 cartes. ${info.teats > 0 ? `Votre meilleure main de 5 cartes peut combiner votre paire, les 5 cartes de la ligne et ${info.teats > 1 ? 'les 2 tétines' : 'la tétine'}. ` : ''}Aucune aide n’est fournie : la ligne est évaluée sur la paire que vous désignez. Sans paire complète à l’échéance, la ligne est perdue.`}
+      hint={t('line63.designez_2_de', { v: info.teats > 0 ? (t('line63.votre_meilleure_main', { v: info.teats > 1 ? t('line63.les_2_tetines') : t('line63.la_tetine') }) + " ") : '' })}
     >
       {canAct ? (
         <>
-          <SelectableHand label="Votre main" cards={hand} selected={draft} max={2} assist={assistCards(round)} disabled={validated} onToggle={(c) => toggle(c, 2)} />
-          <AssistBadge active={game.assistance} category={assistCategory(round)} waiting="Désignez 2 cartes" />
+          <SelectableHand label={t('line63.votre_main')} cards={hand} selected={draft} max={2} assist={assistCards(round)} disabled={validated} onToggle={(c) => toggle(c, 2)} />
+          <AssistBadge active={game.assistance} category={assistCategory(round)} waiting={t('line63.designez_2_cartes')} />
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className="text-sm text-ivory-200/80" aria-live="polite">
-              {draft.length} / 2 cartes désignées
-            </p>
+              {t('line63.2_cartes_designees', { n: draft.length })}</p>
             <Button disabled={validated || draft.length !== 2} onClick={() => void client.command({ type: 'VALIDATE' })} className="w-full sm:w-auto sm:min-w-[16rem]">
-              {validated ? 'Combinaison verrouillée' : 'Valider ma combinaison'}
+              {validated ? t('line63.combinaison_verrouillee') : t('line63.valider_ma_combinaison')}
             </Button>
-            {validated && <p className="text-sm text-ivory-200/80">Désignation secrète, dévoilée avec celle des autres ({info.validated.length} / {total})</p>}
+            {validated && <p className="text-sm text-ivory-200/80">{t('line63.designation_secrete_devoilee', { n: info.validated.length, total })}</p>}
           </div>
         </>
       ) : (
-        <WaitingNote>Vous suivez la partie en spectateur.</WaitingNote>
+        <WaitingNote>{t('line63.vous_suivez_la')}</WaitingNote>
       )}
       {info.pools.length > 0 && <PoolsRecap pools={info.pools} results={info.sideResults} view={view} />}
       {info.lines.length > 0 && <LinesRecap lines={info.lines} view={view} scale={info.unitsScale} />}
@@ -65,14 +66,14 @@ export function Line63Panel() {
 
 /** Lignes déjà closes : désignations dévoilées ensemble, gagnant et points de ligne. */
 export function LinesRecap({ lines, view, scale }: { lines: LineResult[]; view: RoomView; scale: number }) {
+  const { t, tp } = useI18n();
   const { fourColor } = useSettings();
   return (
-    <div className="mt-6 space-y-3 border-t border-ivory-100/10 pt-4" aria-label="Lignes terminées">
+    <div className="mt-6 space-y-3 border-t border-ivory-100/10 pt-4" aria-label={t('line63.lignes_terminees')}>
       {lines.map((l) => (
         <div key={l.line} className="rounded-xl border border-ivory-100/10 bg-ink-900/60 p-3">
           <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-ivory-50">
-            Ligne {l.line}
-            {l.winners.length === 0 ? <Badge tone="amber">Aucun gagnant</Badge> : <Badge tone="gold">{l.winners.map((w) => nick(view, w)).join(' + ')}, {formatLinePoints(l.unitsEach, scale)} pt{l.winners.length > 1 ? ' chacun' : ''}</Badge>}
+            {t('line63.ligne2', { line: l.line })}{l.winners.length === 0 ? <Badge tone="amber">{t('line63.aucun_gagnant')}</Badge> : <Badge tone="gold">{tp('line63.pt', l.winners.length, { join: l.winners.map((w) => nick(view, w)).join(' + '), formatLinePoints: formatLinePoints(l.unitsEach, scale) })}</Badge>}
           </p>
           <ul className="grid gap-2 sm:grid-cols-2">
             {Object.entries(l.designations).map(([pid, d]) => (
@@ -88,7 +89,7 @@ export function LinesRecap({ lines, view, scale }: { lines: LineResult[]; view: 
                     <span className="text-ivory-200/85">{categoryLabel(d.category)}</span>
                   </>
                 ) : (
-                  <span className="text-amber-200/90">Ligne perdue</span>
+                  <span className="text-amber-200/90">{t('line63.ligne_perdue')}</span>
                 )}
               </li>
             ))}
@@ -103,6 +104,7 @@ const QUICK = [10, 50, 100, 250];
 
 /** Phase de paris extérieurs : avant la distribution, chaque joueur choisit une ligne et un montant (jusqu'à un pari par ligne). */
 export function BetsPanel() {
+  const { t } = useI18n();
   const client = useClient();
   const { view, game, round, me, canAct, timerKey } = useTable();
   const info = round ? line63Info(round) : null;
@@ -136,21 +138,20 @@ export function BetsPanel() {
 
   return (
     <PanelShell
-      eyebrow="6-3, paris extérieurs"
-      title="Pariez avant la distribution"
-      hint="Choisissez une ligne et un montant. Un pari n’est actif que si au moins un autre joueur mise le même montant sur la même ligne. Le meilleur de ceux-là, sans tenir compte des tétines, remporte la cagnotte à la fin de la ligne. Sans partenaire, la mise est rendue."
+      eyebrow={t('line63.eyebrow')}
+      title={t('line63.pariez_avant_la')}
+      hint={t('line63.choisissez_une_ligne')}
     >
       {canAct ? (
         <>
           <p className="text-sm text-ivory-200/85">
-            Jetons disponibles : <strong className="text-gold-300">{info.budget}</strong>
+            {t('line63.jetons_disponibles')} <strong className="text-gold-300">{info.budget}</strong>
           </p>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-3" aria-label="Paris par ligne">
+          <ul className="mt-3 grid gap-2 sm:grid-cols-3" aria-label={t('line63.paris_par_ligne')}>
             {[1, 2, 3].map((line) => (
               <li key={line} className="rounded-xl border border-ivory-100/10 bg-ink-900/60 p-3">
                 <label htmlFor={`bet-${line}`} className="block text-sm font-semibold text-ivory-50">
-                  Ligne {line}
-                </label>
+                  {t('line63.ligne2', { line })}</label>
                 <input
                   id={`bet-${line}`}
                   inputMode="numeric"
@@ -167,24 +168,23 @@ export function BetsPanel() {
                     </button>
                   ))}
                   <button type="button" disabled={validated} onClick={() => set(line, '')} className="rounded-md border border-ivory-100/20 px-2 py-0.5 text-xs text-ivory-200/80 hover:bg-ivory-100/5 disabled:opacity-50">
-                    Aucun
-                  </button>
+                    {t('line63.aucun')}</button>
                 </div>
               </li>
             ))}
           </ul>
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className={`text-sm ${over ? 'text-red-300' : 'text-ivory-200/80'}`} aria-live="polite">
-              {over ? `Total ${total}, supérieur à vos jetons disponibles` : bets.length === 0 ? 'Aucun pari' : `Vous misez ${total} jetons`}
+              {over ? t('line63.total_superieur_a', { total }) : bets.length === 0 ? t('line63.aucun_pari') : t('line63.vous_misez_jetons', { total })}
             </p>
             <Button disabled={validated || over} onClick={() => void client.command({ type: 'VALIDATE' })} className="w-full sm:w-auto sm:min-w-[16rem]">
-              {validated ? 'Paris verrouillés' : bets.length === 0 ? 'Ne pas parier' : 'Valider mes paris'}
+              {validated ? t('line63.paris_verrouilles') : bets.length === 0 ? t('line63.ne_pas_parier') : t('line63.valider_mes_paris')}
             </Button>
-            {validated && <p className="text-sm text-ivory-200/80">En attente des autres joueurs ({info.validated.length} / {game.players.length})</p>}
+            {validated && <p className="text-sm text-ivory-200/80">{t('line63.en_attente_des', { n: info.validated.length, n2: game.players.length })}</p>}
           </div>
         </>
       ) : (
-        <WaitingNote>Vous suivez la partie en spectateur.</WaitingNote>
+        <WaitingNote>{t('line63.vous_suivez_la')}</WaitingNote>
       )}
     </PanelShell>
   );
@@ -192,16 +192,16 @@ export function BetsPanel() {
 
 /** Cagnottes engagées sur les lignes, avec leur issue une fois la ligne close. */
 export function PoolsRecap({ pools, results, view }: { pools: SideBetPool[]; results: SideBetResult[]; view: RoomView }) {
+  const { t } = useI18n();
   return (
-    <div className="mt-4 rounded-xl border border-gold-500/30 bg-gold-500/5 p-3" aria-label="Paris extérieurs">
-      <p className="mb-1.5 text-sm font-semibold text-gold-300">Paris extérieurs</p>
+    <div className="mt-4 rounded-xl border border-gold-500/30 bg-gold-500/5 p-3" aria-label={t('line63.paris_exterieurs')}>
+      <p className="mb-1.5 text-sm font-semibold text-gold-300">{t('line63.paris_exterieurs')}</p>
       <ul className="space-y-1 text-xs text-ivory-200/90">
         {pools.map((p) => {
           const r = results.find((x) => x.line === p.line && x.amount === p.amount);
           return (
             <li key={`${p.line}-${p.amount}`}>
-              Ligne {p.line} · {p.amount} jetons × {p.members.length} ({p.members.map((m) => nick(view, m)).join(', ')})
-              {r ? (r.refunded ? ', mises rendues' : `, remporté par ${r.winners.map((w) => nick(view, w)).join(' + ')}`) : ', en jeu'}
+              {t(r ? (r.refunded ? 'line63.ligne_jetons_rendu' : 'line63.ligne_jetons_gagne') : 'line63.ligne_jetons', { line: p.line, amount: p.amount, n: p.members.length, join: p.members.map((m) => nick(view, m)).join(', '), winners: r && !r.refunded ? r.winners.map((w) => nick(view, w)).join(' + ') : '' })}
             </li>
           );
         })}

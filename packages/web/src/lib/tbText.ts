@@ -6,6 +6,7 @@
 import type { I18n, Key } from '../i18n';
 import { ApiError } from './api';
 import type { ColumnHand } from './types';
+import { SERVER_MESSAGES } from './srvMessages';
 
 type T = Pick<I18n, 't' | 'tp' | 'lang'>;
 
@@ -106,17 +107,37 @@ export function adviceText(i: T, a: AdviceData & { afterCodes?: readonly string[
   return i.t(a.kind === 'improve' ? 'advice.improve' : a.kind === 'empty' ? 'advice.empty' : 'advice.dump', params);
 }
 
+const GENERIC = new Set(['BAD_REQUEST', 'NOT_FOUND', 'FORBIDDEN', 'RATE_LIMITED', 'HTTP', 'ERROR']);
+
+function serverMessage(i: T, message: string): string | null {
+  for (const [re, key, names] of SERVER_MESSAGES) {
+    const m = re.exec(message);
+    if (!m) continue;
+    const args: Record<string, string> = {};
+    names.forEach((n, k) => { args[n] = m[k + 1] ?? ''; });
+    return i.t(key as Key, args);
+  }
+  return null;
+}
+
 /** Message d'erreur localisé : code de règle, sinon code HTTP, sinon réseau ; repli sur le texte du serveur. */
 export function errorText(i: T, e: unknown, fallback?: string): string {
   if (e instanceof ApiError) {
     const code = e.ruleCode ?? e.code;
+    // Un code générique (requête invalide, introuvable…) cache souvent un message plus précis du serveur.
+    const precise = !e.ruleCode && GENERIC.has(e.code) && e.message;
+    if (precise) {
+      if (i.lang === 'fr') return e.message;
+      const known = serverMessage(i, e.message);
+      if (known) return known;
+    }
     const params = { code: /TB-[A-Z2-9]{4}/.exec(e.message)?.[0] ?? '' };
     for (const c of [e.ruleCode, e.code]) {
       const key = `err.${c}` as Key;
       if (c && i.t(key) !== key) return i.t(key, params);
     }
     if (i.lang === 'fr' || !code) return e.message || fallback || i.t('err.generic');
-    return fallback ?? i.t('err.generic');
+    return serverMessage(i, e.message) ?? fallback ?? i.t('err.generic');
   }
-  return i.t('err.NETWORK');
+  return fallback ?? i.t('err.NETWORK');
 }

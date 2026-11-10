@@ -131,7 +131,7 @@ Des parties appariées (sièges échangés) vérifient la hiérarchie des niveau
 
 ## Langues
 
-Sélecteur en haut de page (français, English, Español, Deutsch, Italiano) ; le choix est mémorisé dans le navigateur, à défaut la langue du navigateur est utilisée. Les textes sont des dictionnaires plats dans `packages/web/src/i18n/` (le français est la langue source ; un test vérifie que les cinq dictionnaires ont les mêmes clés et les mêmes paramètres). Pour Le Tableau, le serveur ne renvoie que des faits (cartes, catégories, codes d'erreur) : noms de combinaisons, conseils et messages sont composés dans le navigateur, dans la langue choisie (`lib/tbText.ts`).
+Sélecteur en haut de page (français, English, Español, Deutsch, Italiano) ; le choix est mémorisé dans le navigateur, à défaut la langue du navigateur est utilisée. Les textes sont des dictionnaires plats dans `packages/web/src/i18n/` (le français est la langue source ; un test vérifie que les cinq dictionnaires ont les mêmes clés et les mêmes paramètres). Pour Le Tableau, le serveur ne renvoie que des faits (cartes, catégories, codes d'erreur) : noms de combinaisons, conseils et messages sont composés dans le navigateur, dans la langue choisie (`lib/tbText.ts`). L’ensemble de l’interface suit la langue choisie, y compris les modules hors composants (`tr`, `trp`) et les messages d’erreur du serveur, rattachés à leur traduction par `lib/srvMessages.ts`. Les métadonnées statiques de `index.html` (aperçu de partage) restent en français.
 
 Traduit à ce jour : accueil, menu « Jouer en solo », Le Tableau et Tableau 5 cartes. Restent en français pour l'instant : tables de poker, Blackjack, comptes, mémo des règles (descriptions des variantes), paramètres.
 

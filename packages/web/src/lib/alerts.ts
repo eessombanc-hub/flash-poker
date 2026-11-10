@@ -1,10 +1,11 @@
+import { tr } from '../i18n';
 import { useEffect, useRef } from 'react';
 import { useSecondsLeft } from './context';
 import { Sound, vibrate } from './sound';
 import { useTable } from './table';
 
 const ORIGINAL_TITLE = typeof document === 'undefined' ? '' : document.title;
-const TURN_TITLE = 'À vous de jouer. Flash Poker';
+
 
 /** Suis-je attendu maintenant ? Une clé stable qui change à chaque NOUVEAU tour (pour ne sonner qu'une fois). */
 function myTurnKey(t: ReturnType<typeof useTable>): string | null {
@@ -67,7 +68,7 @@ export function useGameAlerts(enabled: boolean): void {
           let on = false;
           blinkTimer.current = window.setInterval(() => {
             on = !on;
-            document.title = on ? TURN_TITLE : ORIGINAL_TITLE;
+            document.title = on ? tr('ev.turn') : ORIGINAL_TITLE;
           }, 1200);
         }
       } else {

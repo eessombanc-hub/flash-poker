@@ -4,25 +4,32 @@ import { CoinIcon } from '../components/Icons3D';
 import { MultiTables } from '../components/blackjack/MultiTables';
 import { BjTable, ChipStack, type HelpData } from '../components/blackjack/BjTable';
 import { ChallengesPanel, HistoryPanel, LeaderboardPanel, LevelBar, StatsPanel } from '../components/blackjack/Panels';
-import { ApiError } from '../lib/api';
 import { useAccount, useAccountClient } from '../lib/context';
 import { formatChips } from '../lib/format';
-import { CHIP_COLORS, CHIP_VALUES, DOUBLE_LABEL, PEDAGOGIES, SPEEDS, loadPrefs, savePrefs, type BjPrefs, type Pedagogy, type Speed } from '../lib/blackjack';
+import { CHIP_COLORS, CHIP_VALUES, DOUBLE_LABEL, PEDAGOGIES, rulesSummary, SPEEDS, loadPrefs, savePrefs, type BjPrefs, type Pedagogy, type Speed } from '../lib/blackjack';
 import { useSettings } from '../lib/settings';
 import { Sound } from '../lib/sound';
 import type { BjAction, BjActive, BjOverview, BjResult, TablePreset, TableRules } from '../lib/types';
+import { currentI18n, locale, tr, useI18n } from '../i18n';
+import { errorText } from '../lib/tbText';
 
 type Tab = 'jouer' | 'plusieurs' | 'progression' | 'classement' | 'historique';
 const TABS: readonly Tab[] = ['jouer', 'plusieurs', 'progression', 'classement', 'historique'];
-const TAB_LABEL: Record<Tab, string> = { jouer: 'Solo', plusieurs: 'À plusieurs', progression: 'Progression', classement: 'Classement', historique: 'Historique' };
+const TAB_LABEL: Record<Tab, string> = {
+  get jouer() { return tr('bj.tab.jouer'); },
+  get plusieurs() { return tr('bj.tab.plusieurs'); },
+  get progression() { return tr('bj.tab.progression'); },
+  get classement() { return tr('bj.tab.classement'); },
+  get historique() { return tr('bj.tab.historique'); },
+};
 const FREE_ID = 'libre';
 const FREE_LIMITS = { minBet: 1, maxBet: 1000 };
 
-const rulesLine = (r: TableRules): string =>
-  `${r.decks} jeu${r.decks > 1 ? 'x' : ''}, croupier ${r.dealerHitsSoft17 ? 'tire' : 'reste'} sur 17 soft, Blackjack ${r.blackjackPays === '3:2' ? '3 contre 2' : '6 contre 5'}, doublement ${DOUBLE_LABEL[r.doubleOn].toLowerCase()}, ${r.surrender ? 'abandon' : 'sans abandon'}`;
+const rulesLine = rulesSummary;
 
 /** Point d'entrée : ouvert à tous. Invité ou connecté, jetons, niveau et manche en cours sont enregistrés côté serveur. */
 export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
+  const { t } = useI18n();
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
   // À la table, l'écran est réservé au jeu : bandeaux et en-têtes se réduisent pour que tout tienne sans défiler.
@@ -36,25 +43,22 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
     <div className="min-h-[calc(100dvh-3rem)]">
       <header className={`mx-auto flex max-w-4xl items-center justify-between px-4 ${playing ? 'py-2' : 'py-4'}`}>
         <button type="button" onClick={back} className="rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
-          ← Retour
-        </button>
+          {t('blackjack.retour')}</button>
         <p className="flex items-center gap-2 font-display text-xl tracking-wide text-ivory-50">
           <CoinIcon size={30} />
-          Blackjack
-        </p>
+          {t('blackjack.blackjack')}</p>
         <span className="w-16" aria-hidden="true" />
       </header>
       <main className="mx-auto max-w-4xl px-4 pb-12">
         {!ready ? (
-          <p className="py-10 text-center text-sm text-ivory-300/70">Chargement…</p>
+          <p className="py-10 text-center text-sm text-ivory-300/70">{t('blackjack.chargement')}</p>
         ) : (
           <>
             {!me && (
               <p className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gold-500/30 bg-gold-500/10 text-xs text-ivory-100 ${playing ? 'mb-2 px-3 py-1' : 'mb-4 px-4 py-2.5'}`} data-testid="bj-guest-note">
-                <span>{playing ? 'Invité. Jetons et progression restent sur cet appareil.' : 'Vous jouez en invité. Jetons et progression restent sur cet appareil. Avec un compte, ils vous suivent partout et vous apparaissez au classement.'}</span>
+                <span>{playing ? t('blackjack.invite_jetons_et') : t('blackjack.vous_jouez_en')}</span>
                 <button type="button" onClick={onLogin} className="font-semibold text-gold-300 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
-                  Se connecter
-                </button>
+                  {t('blackjack.se_connecter')}</button>
               </p>
             )}
             <Game onPlaying={setPlaying} stepBack={stepBack} />
@@ -66,6 +70,7 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
 }
 
 function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void; stepBack?: { current: (() => boolean) | null } } = {}) {
+  const { t } = useI18n();
   const account = useAccountClient()!;
   const { sound } = useSettings();
   const [prefs, setPrefs] = useState<BjPrefs>(loadPrefs);
@@ -93,7 +98,7 @@ function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void;
     });
   }, []);
 
-  const fail = (e: unknown) => setError(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.');
+  const fail = (e: unknown) => setError(errorText(currentI18n(), e, t('blackjack.une_erreur_est')));
 
   const refresh = useCallback(async () => {
     try {
@@ -210,7 +215,7 @@ function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void;
       {profile && playing && (
         <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ivory-100/10 bg-ink-900/60 px-3 py-1.5 text-sm text-ivory-200" data-testid="bj-compact">
           <span>
-            Niveau {profile.level} <span className="text-ivory-300/70">· {profile.xp ?? 0} XP</span>
+            {t('blackjack.niveau', { level: profile.level })} <span className="text-ivory-300/70">· {profile.xp ?? 0}  {t('blackjack.xp')}</span>
           </span>
           <span className="flex items-center gap-1.5">
             <CoinIcon size={20} />
@@ -226,7 +231,7 @@ function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void;
           <div className="flex items-center gap-2 rounded-2xl border border-gold-500/40 bg-gold-500/10 px-4 py-2.5">
             <CoinIcon size={34} />
             <div>
-              <p className="text-xs text-gold-300">Jetons Blackjack</p>
+              <p className="text-xs text-gold-300">{t('blackjack.jetons_blackjack')}</p>
               <p className="font-display text-2xl text-ivory-50" data-testid="bj-chips">
                 {formatChips(chips)}
               </p>
@@ -236,11 +241,10 @@ function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void;
       )}
       {profile?.refillAt && (
         <p className="rounded-xl border border-amber-400/30 bg-amber-950/40 px-4 py-2 text-xs text-amber-100">
-          Solde bas, recharge gratuite à {new Date(profile.refillAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.
-        </p>
+          {t('blackjack.solde_bas_recharge', { toLocaleTimeString: new Date(profile.refillAt).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) })}</p>
       )}
 
-      <div role="tablist" aria-label="Sections du Blackjack" className="flex gap-1 overflow-x-auto rounded-2xl bg-ink-900/70 p-1">
+      <div role="tablist" aria-label={t('blackjack.sections_du_blackjack')} className="flex gap-1 overflow-x-auto rounded-2xl bg-ink-900/70 p-1">
         {TABS.map((t) => (
           <button
             key={t}
@@ -289,21 +293,22 @@ function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void;
             />
           ))}
         {tab === 'plusieurs' && <MultiTables tables={overview?.tables ?? []} freeRules={prefs.rules} pedagogy={prefs.pedagogy} speed={prefs.speed} chips={chips} onSettled={onSettled} />}
-        {tab === 'progression' && (profile ? <div className="space-y-4"><StatsPanel profile={profile} /><ChallengesPanel challenges={overview!.challenges} achievements={overview!.achievements} /></div> : <p className="text-sm text-ivory-300/70">Chargement…</p>)}
+        {tab === 'progression' && (profile ? <div className="space-y-4"><StatsPanel profile={profile} /><ChallengesPanel challenges={overview!.challenges} achievements={overview!.achievements} /></div> : <p className="text-sm text-ivory-300/70">{t('blackjack.chargement')}</p>)}
         {tab === 'classement' && <LeaderboardPanel />}
         {tab === 'historique' && <HistoryPanel items={overview?.history ?? []} />}
       </div>
 
-      <p className="text-center text-xs text-ivory-300/60">Jetons virtuels sans valeur monétaire. Aucun achat, aucun gain en argent. Pas d’assurance au croupier dans cette version.</p>
+      <p className="text-center text-xs text-ivory-300/60">{t('blackjack.jetons_virtuels_sans')}</p>
     </div>
   );
 }
 
 function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onStart, sound }: { prefs: BjPrefs; patch: (p: Partial<BjPrefs>) => void; overview: BjOverview | null; busy: boolean; error: string | null; inProgress: boolean; onResume: () => void; onStart: (table: string, bet: number) => void; sound: boolean }) {
+  const { t } = useI18n();
   const level = overview?.profile.level ?? 1;
   const chips = overview?.profile.chips ?? 0;
   const tables: (TablePreset | { id: 'libre'; name: string; description: string; rules: TableRules; limits: { minBet: number; maxBet: number }; minLevel: number })[] = useMemo(
-    () => [...(overview?.tables.filter((t) => t.id !== FREE_ID) ?? []), { id: FREE_ID, name: 'Table libre', description: 'Vous fixez vous-même les règles. Nombre de jeux, croupier, Blackjack, doublement, abandon.', rules: prefs.rules, limits: FREE_LIMITS, minLevel: 1 }],
+    () => [...(overview?.tables.filter((t) => t.id !== FREE_ID) ?? []), { id: FREE_ID, name: t('blackjack.table_libre'), description: t('blackjack.vous_fixez_vous'), rules: prefs.rules, limits: FREE_LIMITS, minLevel: 1 }],
     [overview, prefs.rules],
   );
   const table = tables.find((t) => t.id === prefs.table) ?? tables[0]!;
@@ -326,33 +331,33 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
       {inProgress && (
         <Panel className="flex flex-wrap items-center justify-between gap-3 border-gold-500/50 p-4">
           <div>
-            <p className="font-display text-lg text-ivory-50">Manche en cours</p>
-            <p className="text-xs text-ivory-300/80">Elle a été interrompue. Reprenez-la exactement où vous l’aviez laissée.</p>
+            <p className="font-display text-lg text-ivory-50">{t('blackjack.manche_en_cours')}</p>
+            <p className="text-xs text-ivory-300/80">{t('blackjack.elle_a_ete')}</p>
           </div>
-          <Button onClick={onResume}>Reprendre la manche</Button>
+          <Button onClick={onResume}>{t('blackjack.reprendre_la_manche')}</Button>
         </Panel>
       )}
 
       <Panel className="p-4 sm:p-5">
-        <Eyebrow>Tables</Eyebrow>
-        <ul className="mt-2 grid gap-2 sm:grid-cols-2" aria-label="Tables disponibles">
-          {tables.map((t) => {
-            const isLocked = level < t.minLevel;
-            const selected = t.id === table.id;
+        <Eyebrow>{t('blackjack.tables')}</Eyebrow>
+        <ul className="mt-2 grid gap-2 sm:grid-cols-2" aria-label={t('blackjack.tables_disponibles')}>
+          {tables.map((tb) => {
+            const isLocked = level < tb.minLevel;
+            const selected = tb.id === table.id;
             return (
-              <li key={t.id}>
+              <li key={tb.id}>
                 <button
                   type="button"
-                  onClick={() => !isLocked && patch({ table: t.id })}
+                  onClick={() => !isLocked && patch({ table: tb.id })}
                   aria-pressed={selected}
                   aria-disabled={isLocked}
                   className={`h-full w-full rounded-2xl border p-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${selected ? 'border-gold-400 bg-gold-500/15' : 'border-ivory-100/12 bg-ink-900/60 hover:border-ivory-100/30'} ${isLocked ? 'cursor-not-allowed opacity-55' : ''}`}
                 >
                   <span className="flex items-center justify-between gap-2">
-                    <span className="font-display text-lg text-ivory-50">{t.name}</span>
-                    {isLocked ? <Badge tone="amber">Niveau {t.minLevel}</Badge> : <span className="text-xs text-gold-300">{t.id === FREE_ID ? '1' : t.limits.minBet} – {formatChips(t.limits.maxBet)}</span>}
+                    <span className="font-display text-lg text-ivory-50">{tb.name}</span>
+                    {isLocked ? <Badge tone="amber">{t('blackjack.niveau2', { minLevel: tb.minLevel })}</Badge> : <span className="text-xs text-gold-300">{tb.id === FREE_ID ? '1' : tb.limits.minBet} – {formatChips(tb.limits.maxBet)}</span>}
                   </span>
-                  <span className="mt-1 block text-xs text-ivory-200/80">{t.description}</span>
+                  <span className="mt-1 block text-xs text-ivory-200/80">{tb.description}</span>
                 </button>
               </li>
             );
@@ -364,28 +369,28 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
 
         {table.id === FREE_ID && (
           <fieldset className="mt-4 grid gap-4 rounded-2xl border border-ivory-100/10 p-3 sm:grid-cols-2">
-            <legend className="px-1 text-sm font-semibold text-gold-300">Règles de la table libre</legend>
-            <Field label="Nombre de jeux">
-              <Segmented<number> value={prefs.rules.decks} options={[1, 2, 4, 6, 8]} onChange={(v) => setRule('decks', v)} label="Nombre de jeux" />
+            <legend className="px-1 text-sm font-semibold text-gold-300">{t('blackjack.regles_de_la')}</legend>
+            <Field label={t('blackjack.nombre_de_jeux')}>
+              <Segmented<number> value={prefs.rules.decks} options={[1, 2, 4, 6, 8]} onChange={(v) => setRule('decks', v)} label={t('blackjack.nombre_de_jeux')} />
             </Field>
-            <Field label="Croupier sur 17 soft">
-              <Segmented<string> value={prefs.rules.dealerHitsSoft17 ? 'tire' : 'reste'} options={['reste', 'tire']} onChange={(v) => setRule('dealerHitsSoft17', v === 'tire')} label="Croupier sur 17 soft" format={(v) => (v === 'tire' ? 'Tire' : 'Reste')} />
+            <Field label={t('blackjack.croupier_sur_17')}>
+              <Segmented<string> value={prefs.rules.dealerHitsSoft17 ? 'tire' : 'reste'} options={['reste', 'tire']} onChange={(v) => setRule('dealerHitsSoft17', v === 'tire')} label={t('blackjack.croupier_sur_17')} format={(v) => (v === 'tire' ? t('blackjack.tire') : t('blackjack.reste'))} />
             </Field>
-            <Field label="Blackjack payé">
-              <Segmented<'3:2' | '6:5'> value={prefs.rules.blackjackPays} options={['3:2', '6:5']} onChange={(v) => setRule('blackjackPays', v)} label="Blackjack payé" format={(v) => (v === '3:2' ? '3 contre 2' : '6 contre 5')} />
+            <Field label={t('blackjack.blackjack_paye')}>
+              <Segmented<'3:2' | '6:5'> value={prefs.rules.blackjackPays} options={['3:2', '6:5']} onChange={(v) => setRule('blackjackPays', v)} label={t('blackjack.blackjack_paye')} format={(v) => (v === '3:2' ? '3 contre 2' : '6 contre 5')} />
             </Field>
-            <Field label="Doublement">
-              <Segmented<'any' | '9-11' | '10-11'> value={prefs.rules.doubleOn} options={['any', '9-11', '10-11']} onChange={(v) => setRule('doubleOn', v)} label="Doublement" format={(v) => (v === 'any' ? 'Tout' : v.replace('-', ' à '))} />
+            <Field label={t('blackjack.doublement')}>
+              <Segmented<'any' | '9-11' | '10-11'> value={prefs.rules.doubleOn} options={['any', '9-11', '10-11']} onChange={(v) => setRule('doubleOn', v)} label={t('blackjack.doublement')} format={(v) => (v === 'any' ? t('blackjack.tout') : v.replace('-', ' à '))} />
             </Field>
-            <Field label="Mains maximum après séparation">
-              <Segmented<number> value={prefs.rules.maxHands} options={[2, 3, 4]} onChange={(v) => setRule('maxHands', v)} label="Mains maximum" />
+            <Field label={t('blackjack.mains_maximum_apres')}>
+              <Segmented<number> value={prefs.rules.maxHands} options={[2, 3, 4]} onChange={(v) => setRule('maxHands', v)} label={t('blackjack.mains_maximum')} />
             </Field>
             <div className="grid grid-cols-1 gap-2 text-sm text-ivory-100">
               {(
                 [
-                  ['doubleAfterSplit', 'Doublement après séparation'],
-                  ['resplitAces', 'Séparer à nouveau les As'],
-                  ['surrender', 'Abandon autorisé'],
+                  ['doubleAfterSplit', t('blackjack.doublement_apres_separation')],
+                  ['resplitAces', t('blackjack.separer_a_nouveau')],
+                  ['surrender', t('blackjack.abandon_autorise')],
                 ] as const
               ).map(([k, label]) => (
                 <label key={k} className="flex min-h-[32px] cursor-pointer items-center gap-2">
@@ -399,16 +404,16 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
       </Panel>
 
       <Panel className="p-4 sm:p-5">
-        <Eyebrow>Mise</Eyebrow>
+        <Eyebrow>{t('blackjack.mise')}</Eyebrow>
         <div className="mt-2 flex flex-wrap items-center gap-4">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Ajouter des jetons">
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t('blackjack.ajouter_des_jetons')}>
             {CHIP_VALUES.map((v) => (
               <button
                 key={v}
                 type="button"
                 onClick={() => addChip(v)}
                 disabled={bet >= cap}
-                aria-label={`Ajouter ${v} jetons`}
+                aria-label={t('blackjack.ajouter_jetons', { v })}
                 className="grid h-14 w-14 place-items-center rounded-full border-4 border-dashed border-white/70 font-display text-sm text-white shadow-lg transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400 disabled:opacity-40 motion-reduce:transform-none"
                 style={{ background: CHIP_COLORS[v] }}
               >
@@ -420,29 +425,26 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
             <ChipStack amount={bet} size={34} />
             <div className="mt-1 flex gap-1 text-xs">
               <button type="button" className="rounded px-1.5 py-0.5 text-gold-300 underline-offset-2 hover:underline" onClick={() => setBet(minBet)}>
-                Min
-              </button>
+                {t('blackjack.min')}</button>
               <button type="button" className="rounded px-1.5 py-0.5 text-gold-300 underline-offset-2 hover:underline" onClick={() => setBet(cap)}>
-                Max
-              </button>
+                {t('blackjack.max')}</button>
             </div>
           </div>
           <div className="w-28">
             <label htmlFor="bj-bet" className="sr-only">
-              Montant de la mise
-            </label>
+              {t('blackjack.montant_de_la')}</label>
             <input id="bj-bet" type="number" inputMode="numeric" min={minBet} max={Math.max(cap, minBet)} value={bet} onChange={(e) => setBet(Number(e.target.value) || minBet)} className={inputClass} />
           </div>
         </div>
-        {locked && <p className="mt-2 text-sm text-amber-200">Cette table s’ouvre au niveau {table.minLevel}. Jouez, relevez des défis et montez en niveau.</p>}
-        {!locked && overview && chips < minBet && <p className="mt-2 text-sm text-amber-200">Solde insuffisant pour cette table. Une recharge gratuite est accordée quand le solde est trop bas.</p>}
+        {locked && <p className="mt-2 text-sm text-amber-200">{t('blackjack.cette_table_s', { minLevel: table.minLevel })}</p>}
+        {!locked && overview && chips < minBet && <p className="mt-2 text-sm text-amber-200">{t('blackjack.solde_insuffisant_pour')}</p>}
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Niveau pédagogique" hint={PEDAGOGIES.find((p) => p.id === prefs.pedagogy)?.text}>
-            <Segmented<Pedagogy> value={prefs.pedagogy} options={PEDAGOGIES.map((p) => p.id)} onChange={(v) => patch({ pedagogy: v })} label="Niveau pédagogique" format={(v) => PEDAGOGIES.find((p) => p.id === v)!.label} />
+          <Field label={t('blackjack.niveau_pedagogique')} hint={PEDAGOGIES.find((p) => p.id === prefs.pedagogy)?.text}>
+            <Segmented<Pedagogy> value={prefs.pedagogy} options={PEDAGOGIES.map((p) => p.id)} onChange={(v) => patch({ pedagogy: v })} label={t('blackjack.niveau_pedagogique')} format={(v) => PEDAGOGIES.find((p) => p.id === v)!.label} />
           </Field>
-          <Field label="Vitesse des animations">
-            <Segmented<Speed> value={prefs.speed} options={SPEEDS} onChange={(v) => patch({ speed: v })} label="Vitesse des animations" format={(v) => v[0]!.toUpperCase() + v.slice(1)} />
+          <Field label={t('blackjack.vitesse_des_animations')}>
+            <Segmented<Speed> value={prefs.speed} options={SPEEDS} onChange={(v) => patch({ speed: v })} label={t('blackjack.vitesse_des_animations')} format={(v) => v[0]!.toUpperCase() + v.slice(1)} />
           </Field>
         </div>
 
@@ -453,8 +455,7 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
         )}
         <div className="mt-5 flex flex-wrap gap-2">
           <Button onClick={() => onStart(table.id, bet)} disabled={!canDeal} className="min-w-[10rem]">
-            Distribuer · {formatChips(bet)}
-          </Button>
+            {t('blackjack.distribuer', { formatChips: formatChips(bet) })}</Button>
           <Button
             variant="secondary"
             disabled={busy || !overview || chips < 5}
@@ -464,8 +465,7 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
               onStart('decouverte', q);
             }}
           >
-            Partie rapide
-          </Button>
+            {t('blackjack.partie_rapide')}</Button>
         </div>
       </Panel>
     </div>

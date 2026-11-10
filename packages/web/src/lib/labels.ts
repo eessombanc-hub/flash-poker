@@ -1,3 +1,4 @@
+import { tr, type Key } from '../i18n';
 import type { InsuranceType, NextReason, NextReason10, RoundRecord, VariantId } from './types';
 
 export interface VariantInfo {
@@ -11,76 +12,68 @@ export interface VariantInfo {
 export const VARIANTS: readonly VariantInfo[] = [
   {
     id: 'V6_3',
-    name: '6-3',
-    tagline: 'Omaha en trois lignes',
-    description:
-      '6 cartes privées, flop et turn ouverts, puis trois rivers dévoilées ligne après ligne. À chaque ligne, désignez 2 cartes. Aucune aide, 60 secondes. En option, 1 ou 2 tétines qui glissent de ligne en ligne, et des paris extérieurs.',
+    get name() { return tr('var.V6_3.name'); },
+    get tagline() { return tr('var.V6_3.tagline'); },
+    get description() { return tr('var.V6_3.description'); },
   },
   {
     id: 'V6_1',
-    name: '6-1',
-    tagline: 'Omaha à révélations',
-    description:
-      '5 cartes cachées et 1 visible, plateau de 5 cartes ouvert. Le joueur à la main visible la plus faible retourne une carte, jusqu\u2019au showdown.',
+    get name() { return tr('var.V6_1.name'); },
+    get tagline() { return tr('var.V6_1.tagline'); },
+    get description() { return tr('var.V6_1.description'); },
   },
   {
     id: 'CLOSED_1',
-    name: 'Poker fermé (1 change)',
-    tagline: '5 cartes, un change',
-    description: '5 cartes privées. Un change simultané et secret de 0 à 3 cartes, puis showdown.',
+    get name() { return tr('var.CLOSED_1.name'); },
+    get tagline() { return tr('var.CLOSED_1.tagline'); },
+    get description() { return tr('var.CLOSED_1.description'); },
   },
   {
     id: 'CLOSED_2',
-    name: 'Poker fermé (2 changes)',
-    tagline: '5 cartes, deux changes',
-    description: '5 cartes privées. Deux changes simultanés et secrets de 0 à 3 cartes, puis showdown. De 2 à 5 joueurs.',
+    get name() { return tr('var.CLOSED_2.name'); },
+    get tagline() { return tr('var.CLOSED_2.tagline'); },
+    get description() { return tr('var.CLOSED_2.description'); },
   },
   {
     id: 'AVIATION',
-    name: 'Aviation',
-    tagline: 'Hold\u2019em à 4 cartes',
-    description:
-      'Après le flop, jetez 1 carte ; après le turn, jetez 1 carte. Il vous reste 2 cartes. Sans défausse à temps, votre main est couchée.',
+    get name() { return tr('var.AVIATION.name'); },
+    get tagline() { return tr('var.AVIATION.tagline'); },
+    get description() { return tr('var.AVIATION.description'); },
   },
   {
     id: 'AVIA_6',
-    name: 'Avia 6',
-    tagline: 'Hold\u2019em à 6 cartes',
-    description:
-      'Après le flop, jetez 2 cartes ; après le turn, jetez 2 cartes. Il vous reste 2 cartes. Sans défausse complète à temps, votre main est couchée.',
+    get name() { return tr('var.AVIA_6.name'); },
+    get tagline() { return tr('var.AVIA_6.tagline'); },
+    get description() { return tr('var.AVIA_6.description'); },
   },
   {
     id: 'MORPION',
-    name: 'Morpion',
-    tagline: 'Hold\u2019em en grille 3×3',
-    description:
-      '4 cartes privées. 9 cartes communes en grille, toutes visibles. Désignez 2 de vos cartes et un alignement (ligne, colonne ou diagonale). Aucune aide, 60 secondes.',
+    get name() { return tr('var.MORPION.name'); },
+    get tagline() { return tr('var.MORPION.tagline'); },
+    get description() { return tr('var.MORPION.description'); },
   },
   {
     id: 'LE10',
-    name: 'Le 10',
-    tagline: 'Hold\u2019em à révélations, sans plateau',
-    description:
-      '10 cartes privées, sans carte commune. Comme au 6-1, le joueur à la main visible la plus faible retourne une carte, jusqu\u2019au showdown. De 2 à 5 joueurs.',
+    get name() { return tr('var.LE10.name'); },
+    get tagline() { return tr('var.LE10.tagline'); },
+    get description() { return tr('var.LE10.description'); },
   },
 ];
 
 export const variantName = (id: VariantId): string => VARIANTS.find((v) => v.id === id)?.name ?? id;
 
-export const CATEGORY_LABELS = [
-  'Carte haute',
-  'Paire',
-  'Double paire',
-  'Brelan',
-  'Quinte',
-  'Couleur',
-  'Full',
-  'Carré',
-  'Quinte flush',
-] as const;
-const RANK_PLURAL = (r: number): string => (r === 14 ? 'as' : r === 13 ? 'rois' : r === 12 ? 'dames' : r === 11 ? 'valets' : String(r));
-const RANK_SINGULAR = (r: number): string => (r === 14 ? 'as' : r === 13 ? 'roi' : r === 12 ? 'dame' : r === 11 ? 'valet' : String(r));
-const OF = (r: number): string => (r === 14 ? 'd’' : 'de ') + RANK_PLURAL(r);
+
+/** Libellés des neuf catégories (tableau dont chaque case suit la langue active). */
+export const CATEGORY_LABELS: readonly string[] = (() => {
+  const a: string[] = [];
+  for (let i = 0; i < 9; i++) Object.defineProperty(a, i, { enumerable: true, get: () => tr(`cat.${i}` as Key) });
+  return a;
+})();
+
+type RankForm = 'sg' | 'pl' | 'of';
+function rankText(r: number, form: RankForm): string {
+  return r >= 11 ? tr(`rank.${form}.${r}` as Key) : tr(`rank.${form}.n` as Key, { n: r });
+}
 
 /**
  * Combinaison en clair à partir du rang complet d'une main (catégorie × 15⁵ + hauteurs en base 15, voir le moteur) :
@@ -97,45 +90,41 @@ export function describeRank(rank: number): string | null {
   }
   const [a = 0, b = 0] = k;
   switch (category) {
-    case 0: return a ? `Carte haute, ${RANK_SINGULAR(a)}` : null;
-    case 1: return `Paire ${OF(a)}`;
-    case 2: return `Double paire ${OF(a)} et ${b === 14 ? 'd’' : 'de '}${RANK_PLURAL(b)}`;
-    case 3: return `Brelan ${OF(a)}`;
-    case 4: return `Quinte, hauteur ${RANK_SINGULAR(a)}`;
-    case 5: return `Couleur, hauteur ${RANK_SINGULAR(a)}`;
-    case 6: return `Full aux ${RANK_PLURAL(a)} par les ${RANK_PLURAL(b)}`;
-    case 7: return `Carré ${OF(a)}`;
-    case 8: return a === 14 ? 'Quinte flush royale' : `Quinte flush, hauteur ${RANK_SINGULAR(a)}`;
+    case 0: return a ? tr('hd.high', { a: rankText(a, 'sg') }) : null;
+    case 1: return tr('hd.pair', { a: rankText(a, 'of') });
+    case 2: return tr('hd.two', { a: rankText(a, 'of'), b: rankText(b, 'of') });
+    case 3: return tr('hd.trips', { a: rankText(a, 'of') });
+    case 4: return tr('hd.straight', { a: rankText(a, 'sg') });
+    case 5: return tr('hd.flush', { a: rankText(a, 'sg') });
+    case 6: return tr('hd.full', { a: rankText(a, 'pl'), b: rankText(b, 'pl') });
+    case 7: return tr('hd.quads', { a: rankText(a, 'of') });
+    case 8: return a === 14 ? tr('hd.sfroyal') : tr('hd.sf', { a: rankText(a, 'sg') });
     default: return null;
   }
 }
 
-export const categoryLabel = (category: number): string => CATEGORY_LABELS[category] ?? '—';
+export const categoryLabel = (category: number): string => (category >= 0 && category <= 8 ? tr(`cat.${category}` as Key) : '—');
 
-export const NEXT_REASON_TEXT: Record<NextReason, string> = {
-  LOWEST_SIXTH_CARD: 'sixième carte la plus faible',
-  WEAKEST: 'main visible la plus faible',
-  TIE_LAST_REVEALER: 'égalité, le dernier à révéler rejoue',
-  TIE_POSITION: 'égalité, ordre des positions',
+const reasons = <K extends string>(keys: readonly K[]): Record<K, string> => {
+  const o = {} as Record<K, string>;
+  for (const k of keys) Object.defineProperty(o, k, { enumerable: true, get: () => tr(`reason.${k}` as Key) });
+  return o;
 };
+
+export const NEXT_REASON_TEXT: Record<NextReason, string> = reasons<NextReason>(['LOWEST_SIXTH_CARD', 'WEAKEST', 'TIE_LAST_REVEALER', 'TIE_POSITION']);
 
 /** Le 10 : mêmes raisons que le 6-1, sans plateau commun (comparaison sur les seules cartes visibles). */
-export const NEXT_REASON_TEXT_10: Record<NextReason10, string> = {
-  LOWEST_FIRST_CARD: 'première carte visible la plus faible',
-  WEAKEST: 'main visible la plus faible',
-  TIE_LAST_REVEALER: 'égalité, le dernier à révéler rejoue',
-  TIE_POSITION: 'égalité, ordre des positions',
-};
+export const NEXT_REASON_TEXT_10: Record<NextReason10, string> = reasons<NextReason10>(['LOWEST_FIRST_CARD', 'WEAKEST', 'TIE_LAST_REVEALER', 'TIE_POSITION']);
 
 export const INSURANCE_LABELS: Record<InsuranceType, { name: string; short: string }> = {
-  LOSER_NOT_PAYING: { name: 'Le perdant ne paye pas', short: 'Perdant non payeur' },
-  SPLIT_50_50: { name: 'Partage 50 / 50', short: '50 / 50' },
+  LOSER_NOT_PAYING: { get name() { return tr('ins.lnp.name'); }, get short() { return tr('ins.lnp.short'); } },
+  SPLIT_50_50: { get name() { return tr('ins.split.name'); }, get short() { return tr('ins.split.short'); } },
 };
 
 export const VICTORY_LABELS = {
-  SCORE: 'Objectif atteint',
-  STRAIGHT_FLUSH_63: 'Quinte flush au 6-3, victoire immédiate',
-} as const;
+  get SCORE() { return tr('victory.score'); },
+  get STRAIGHT_FLUSH_63() { return tr('victory.sf63'); },
+};
 
 /**
  * Ce qui a fait gagner la manche, en clair : « Brelan », « Quinte flush à la ligne 2 », « Ligne 1 : Couleur ·
@@ -144,12 +133,12 @@ export const VICTORY_LABELS = {
  */
 export function winningCombination(record: RoundRecord): string | null {
   const a = record.award;
-  if (a.kind === 'INSTANT_VICTORY') return `Quinte flush à la ligne ${a.line}`;
+  if (a.kind === 'INSTANT_VICTORY') return tr('win.sf', { line: a.line });
   if (a.kind !== 'POINTS') return null;
   const s = record.summary;
   if (!s) return null;
-  if (s.tiebreak) return `${categoryLabel(s.tiebreak.category)} au Hold’em de départage`;
-  if (s.byFold) return 'Tous les autres joueurs se sont couchés';
+  if (s.tiebreak) return tr('win.tiebreak', { cat: categoryLabel(s.tiebreak.category) });
+  if (s.byFold) return tr('win.fold');
   const hand = s.hands?.[a.winner];
   if (hand) return (hand.rank !== undefined ? describeRank(hand.rank) : null) ?? categoryLabel(hand.category);
   if (s.lines) {
@@ -157,7 +146,7 @@ export function winningCombination(record: RoundRecord): string | null {
     if (won.length === 0) return null;
     return won.map((l) => {
       const d = l.designations[a.winner];
-      return `Ligne ${l.line}, ${d ? categoryLabel(d.category).toLowerCase() : 'sans désignation'}`;
+      return tr('win.line', { line: l.line, cat: d ? categoryLabel(d.category).toLowerCase() : tr('win.nodes') });
     }).join('. ');
   }
   return null;

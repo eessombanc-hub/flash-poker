@@ -1,19 +1,20 @@
 import { useState, type FormEvent } from 'react';
-import { ApiError } from '../lib/api';
 import { useAccount, useClient } from '../lib/context';
 import { formatChips, STARTING_CHIPS } from '../lib/format';
 import { Avatar, AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Segmented, Title } from '../components/ui';
 import { VARIANTS } from '../lib/labels';
 import type { AccountPrivate, VariantId } from '../lib/types';
+import { currentI18n, useI18n } from '../i18n';
+import { errorText } from '../lib/tbText';
 
 /** Joueur inscrit : il joue sous le pseudo et l'avatar de son compte (modifiables dans « Mon espace »). */
 function AccountIdentity({ me }: { me: AccountPrivate }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-3 rounded-xl border border-gold-500/30 bg-gold-500/5 px-3 py-2.5">
       <Avatar nickname={me.nickname} avatar={me.avatar} size={40} />
       <p className="text-sm text-ivory-200">
-        Vous jouez sous le pseudo <strong className="text-ivory-50">{me.nickname}</strong>. La partie sera ajoutée à votre historique.
-      </p>
+        {t('forms.vous_jouez_sous')} <strong className="text-ivory-50">{me.nickname}</strong>{t('forms.la_partie_sera')}</p>
     </div>
   );
 }
@@ -27,6 +28,7 @@ export function normalizeCode(raw: string): string {
 }
 
 export function CreateRoom({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
   const client = useClient();
   const me = useAccount((s) => s.account);
   const [name, setName] = useState('');
@@ -41,8 +43,8 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const errors = {
-    name: name.trim() ? '' : 'Donnez un nom à la table.',
-    nickname: me || NICK_RE.test(nickname.trim()) ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).',
+    name: name.trim() ? '' : t('forms.donnez_un_nom'),
+    nickname: me || NICK_RE.test(nickname.trim()) ? '' : t('forms.pseudo_de_1'),
   };
   const invalid = Object.values(errors).some(Boolean);
 
@@ -54,7 +56,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
     try {
       await client.createRoom({ name: name.trim(), maxPlayers, targetPoints: target, stakeChips, assistance, private: privateRoom, nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? avatar });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Création impossible.');
+      setError(errorText(currentI18n(), err, t('forms.creation_impossible')));
       setBusy(false);
     }
   }
@@ -62,41 +64,40 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
   return (
     <main className="mx-auto max-w-xl px-4 py-8">
       <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">
-        ← Retour
-      </Button>
+        {t('forms.retour')}</Button>
       <Panel className="p-6 sm:p-8">
-        <Eyebrow>Nouvelle table</Eyebrow>
-        <Title className="mb-6 mt-1 text-3xl">Créer une partie</Title>
+        <Eyebrow>{t('forms.nouvelle_table')}</Eyebrow>
+        <Title className="mb-6 mt-1 text-3xl">{t('forms.creer_une_partie')}</Title>
         <form onSubmit={submit} className="space-y-5" noValidate>
-          <Field label="Nom de la table" htmlFor="name" error={name === '' ? '' : errors.name}>
-            <input id="name" className={inputClass} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder="Vendredi soir" autoComplete="off" />
+          <Field label={t('forms.nom_de_la')} htmlFor="name" error={name === '' ? '' : errors.name}>
+            <input id="name" className={inputClass} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder={t('forms.vendredi_soir')} autoComplete="off" />
           </Field>
-          <Field label="Nombre de joueurs (maximum)" hint="Vous pouvez démarrer dès 2 joueurs ; ce maximum limite aussi les arrivées en cours de partie.">
-            <Segmented label="Nombre de joueurs" value={maxPlayers} options={[2, 3, 4, 5, 6]} onChange={setMax} />
+          <Field label={t('forms.nombre_de_joueurs')} hint={t('forms.vous_pouvez_demarrer')}>
+            <Segmented label={t('forms.nombre_de_joueurs2')} value={maxPlayers} options={[2, 3, 4, 5, 6]} onChange={setMax} />
           </Field>
-          <Field label="Objectif en points" hint="Le premier à atteindre l’objectif remporte la cagnotte.">
-            <Segmented label="Objectif en points" value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
+          <Field label={t('forms.objectif_en_points')} hint={t('forms.le_premier_a')}>
+            <Segmented label={t('forms.objectif_en_points')} value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
           </Field>
           <Field
-            label="Mise par joueur (jetons)"
-            hint={`Chaque joueur reçoit ${formatChips(STARTING_CHIPS)} au début de la partie ; la mise est prise sur cette cave.${stakeChips > 0 ? ` Cagnotte de ${formatChips(stakeChips * maxPlayers)} à ${maxPlayers} joueurs.` : ' Sans mise, la partie se joue pour les points seulement.'}`}
+            label={t('forms.mise_par_joueur')}
+            hint={t('forms.chaque_joueur_recoit', { formatChips: formatChips(STARTING_CHIPS), extra: stakeChips > 0 ? (" " + t('forms.cagnotte_de_a', { formatChips: formatChips(stakeChips * maxPlayers), maxPlayers })) : (" " + t('forms.sans_mise_la')) })}
           >
-            <Segmented label="Mise par joueur" value={stakeChips} options={[0, 50, 100, 200, 500, 1000]} onChange={setStake} format={(v) => (v === 0 ? 'Sans' : v.toLocaleString('fr-FR'))} />
+            <Segmented label={t('forms.mise_par_joueur2')} value={stakeChips} options={[0, 50, 100, 200, 500, 1000]} onChange={setStake} format={(v) => (v === 0 ? t('forms.sans') : v.toLocaleString('fr-FR'))} />
           </Field>
-          <Field label="Niveau de la partie" hint={assistance ? 'Chaque joueur devra approuver l’assistance dans la salle d’attente ; sans l’accord de tous, la partie se jouera sans assistance.' : 'Aucune indication. Chacun juge seul la force de sa main.'}>
-            <Segmented label="Niveau de la partie" value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? 'Avec assistance' : 'Sans assistance')} />
+          <Field label={t('forms.niveau_de_la')} hint={assistance ? t('forms.chaque_joueur_devra') : t('forms.aucune_indication_chacun')}>
+            <Segmented label={t('forms.niveau_de_la')} value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? t('forms.avec_assistance') : t('forms.sans_assistance'))} />
           </Field>
-          <Field label="Visibilité" hint={privateRoom ? 'Salle privée. Absente des « Parties ouvertes ». Seules les personnes à qui vous donnez le code ou le lien d’invitation peuvent entrer.' : 'Salle publique. Visible de tous dans « Parties ouvertes ».'}>
-            <Segmented label="Visibilité" value={privateRoom ? 'privee' : 'publique'} options={['publique', 'privee'] as const} onChange={(v) => setPrivate(v === 'privee')} format={(v) => (v === 'privee' ? 'Privée' : 'Publique')} />
+          <Field label={t('forms.visibilite')} hint={privateRoom ? t('forms.salle_privee_absente') : t('forms.salle_publique_visible')}>
+            <Segmented label={t('forms.visibilite')} value={privateRoom ? 'privee' : 'publique'} options={['publique', 'privee'] as const} onChange={(v) => setPrivate(v === 'privee')} format={(v) => (v === 'privee' ? t('forms.privee') : t('forms.publique'))} />
           </Field>
           {me ? (
             <AccountIdentity me={me} />
           ) : (
             <>
-              <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' ? '' : errors.nickname}>
+              <Field label={t('forms.votre_pseudo')} htmlFor="nick" error={nickname === '' ? '' : errors.nickname}>
                 <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
               </Field>
-              <Field label="Avatar">
+              <Field label={t('forms.avatar')}>
                 <AvatarPicker value={avatar} onChange={setAvatar} />
               </Field>
             </>
@@ -107,7 +108,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
             </p>
           )}
           <Button type="submit" disabled={invalid || busy} className="w-full py-3.5 text-base">
-            {busy ? 'Création…' : 'Créer la table'}
+            {busy ? t('forms.creation') : t('forms.creer_la_table')}
           </Button>
         </form>
       </Panel>
@@ -120,6 +121,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
 const NOT_AT_SIX: readonly VariantId[] = ['CLOSED_2', 'LE10'];
 
 export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?: VariantId }) {
+  const { t } = useI18n();
   const client = useClient();
   const info = variant ? VARIANTS.find((v) => v.id === variant) : undefined;
   const maxCpu = variant && NOT_AT_SIX.includes(variant) ? 4 : 5;
@@ -141,9 +143,9 @@ export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?
     setBusy(true);
     setError(null);
     try {
-      await client.createRoom({ name: 'Entraînement', maxPlayers: cpu + 1, targetPoints: target, stakeChips: 0, assistance, cpu, nickname: nickname.trim(), avatar, ...(variant ? { variant, ...(variant === 'V6_3' ? { teats, sideBets } : {}) } : {}) });
+      await client.createRoom({ name: t('forms.entrainement'), maxPlayers: cpu + 1, targetPoints: target, stakeChips: 0, assistance, cpu, nickname: nickname.trim(), avatar, ...(variant ? { variant, ...(variant === 'V6_3' ? { teats, sideBets } : {}) } : {}) });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Création impossible.');
+      setError(errorText(currentI18n(), err, t('forms.creation_impossible')));
       setBusy(false);
     }
   }
@@ -151,41 +153,39 @@ export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?
   return (
     <main className="mx-auto max-w-xl px-4 py-8">
       <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">
-        ← Retour
-      </Button>
+        {t('forms.retour')}</Button>
       <Panel className="p-6 sm:p-8">
-        <Eyebrow>Entraînement</Eyebrow>
-        <Title className="mb-2 mt-1 text-3xl">{info ? `Solo, ${info.name}` : 'S’entraîner contre le CPU'}</Title>
+        <Eyebrow>{t('forms.entrainement')}</Eyebrow>
+        <Title className="mb-2 mt-1 text-3xl">{info ? t('forms.solo', { name: info.name }) : t('forms.s_entrainer_contre')}</Title>
         <p className="mb-6 text-sm text-ivory-200/85">
           {info
-            ? `${info.tagline}. Chaque manche se joue dans cette variante, sans mise, contre des adversaires gérés par l’ordinateur. Ils jouent avec les mêmes règles que vous et ne voient jamais vos cartes.`
-            : 'Une table privée, prête tout de suite et sans mise. Les CPU jouent avec les mêmes règles que vous et ne voient jamais vos cartes. Ils choisissent la variante au hasard quand vient leur tour et refusent toute assurance.'}
+            ? t('forms.chaque_manche_se', { tagline: info.tagline })
+            : t('forms.une_table_privee')}
         </p>
         <form onSubmit={submit} className="space-y-5" noValidate>
-          <Field label="Adversaires CPU" hint={variant ? (maxCpu === 4 ? 'Cette variante se joue jusqu’à 5 joueurs.' : undefined) : cpu === 5 ? 'À 6 joueurs, Le 10 et le Poker fermé à 2 changes ne sont pas jouables.' : `À ${cpu + 1} joueurs, toutes les variantes sont jouables.`}>
-            <Segmented label="Adversaires CPU" value={cpu} options={[1, 2, 3, 4, 5].slice(0, maxCpu)} onChange={setCpu} />
+          <Field label={t('forms.adversaires_cpu')} hint={variant ? (maxCpu === 4 ? t('forms.cette_variante_se') : undefined) : cpu === 5 ? t('forms.a_6_joueurs') : t('forms.a_joueurs_toutes', { n: cpu + 1 })}>
+            <Segmented label={t('forms.adversaires_cpu')} value={cpu} options={[1, 2, 3, 4, 5].slice(0, maxCpu)} onChange={setCpu} />
           </Field>
           {variant === 'V6_3' && (
             <>
-              <Field label="Tétines" hint="Cartes supplémentaires qui glissent de ligne en ligne.">
-                <Segmented label="Tétines" value={teats} options={[0, 1, 2]} onChange={setTeats} />
+              <Field label={t('forms.tetines')} hint={t('forms.cartes_supplementaires_qui')}>
+                <Segmented label={t('forms.tetines')} value={teats} options={[0, 1, 2]} onChange={setTeats} />
               </Field>
               <label className="flex cursor-pointer items-start gap-2 text-sm text-ivory-100">
                 <input type="checkbox" checked={sideBets} onChange={(e) => setSideBets(e.target.checked)} className="mt-1" />
-                Paris extérieurs sur les lignes
-              </label>
+                {t('forms.paris_exterieurs_sur')}</label>
             </>
           )}
-          <Field label="Objectif en points" hint="Le premier à atteindre l’objectif gagne la partie.">
-            <Segmented label="Objectif en points" value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
+          <Field label={t('forms.objectif_en_points')} hint={t('forms.le_premier_a2')}>
+            <Segmented label={t('forms.objectif_en_points')} value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
           </Field>
-          <Field label="Niveau de la partie" hint={assistance ? 'Le nom de votre combinaison s’affiche pendant que vous choisissez vos cartes.' : 'Aucune indication. Vous jugez seul la force de votre main.'}>
-            <Segmented label="Niveau de la partie" value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? 'Avec assistance' : 'Sans assistance')} />
+          <Field label={t('forms.niveau_de_la')} hint={assistance ? t('forms.le_nom_de') : t('forms.aucune_indication_vous')}>
+            <Segmented label={t('forms.niveau_de_la')} value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? t('forms.avec_assistance') : t('forms.sans_assistance'))} />
           </Field>
-          <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' || nickOk ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).'}>
+          <Field label={t('forms.votre_pseudo')} htmlFor="nick" error={nickname === '' || nickOk ? '' : t('forms.pseudo_de_1')}>
             <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
           </Field>
-          <Field label="Avatar">
+          <Field label={t('forms.avatar')}>
             <AvatarPicker value={avatar} onChange={setAvatar} />
           </Field>
           {error && (
@@ -194,7 +194,7 @@ export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?
             </p>
           )}
           <Button type="submit" disabled={!nickOk || busy} className="w-full py-3.5 text-base">
-            {busy ? 'Création…' : 'Lancer l’entraînement'}
+            {busy ? t('forms.creation') : t('forms.lancer_l_entrainement')}
           </Button>
         </form>
       </Panel>
@@ -203,6 +203,7 @@ export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?
 }
 
 export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; initialCode?: string }) {
+  const { t } = useI18n();
   const client = useClient();
   const me = useAccount((s) => s.account);
   const [code, setCode] = useState(initialCode);
@@ -223,7 +224,7 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
     try {
       await client.joinRoom(normalized, { nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? avatar });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Impossible de rejoindre la partie.');
+      setError(errorText(currentI18n(), err, t('forms.impossible_de_rejoindre')));
       setBusy(false);
     }
   }
@@ -231,23 +232,22 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
   return (
     <main className="mx-auto max-w-xl px-4 py-8">
       <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">
-        ← Retour
-      </Button>
+        {t('forms.retour')}</Button>
       <Panel className="p-6 sm:p-8">
-        <Eyebrow>Invitation</Eyebrow>
-        <Title className="mb-6 mt-1 text-3xl">Rejoindre une partie</Title>
+        <Eyebrow>{t('forms.invitation')}</Eyebrow>
+        <Title className="mb-6 mt-1 text-3xl">{t('forms.rejoindre_une_partie')}</Title>
         <form onSubmit={submit} className="space-y-5" noValidate>
-          <Field label="Code de la partie" htmlFor="code" hint="Format POKER-XXXX, communiqué par l’hôte.">
-            <input id="code" className={`${inputClass} font-mono tracking-widest`} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="POKER-7K2M" autoCapitalize="characters" autoComplete="off" />
+          <Field label={t('forms.code_de_la')} htmlFor="code" hint={t('forms.format_poker_xxxx')}>
+            <input id="code" className={`${inputClass} font-mono tracking-widest`} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t('forms.poker_7k2m')} autoCapitalize="characters" autoComplete="off" />
           </Field>
           {me ? (
             <AccountIdentity me={me} />
           ) : (
             <>
-              <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' || nickOk ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).'}>
+              <Field label={t('forms.votre_pseudo')} htmlFor="nick" error={nickname === '' || nickOk ? '' : t('forms.pseudo_de_1')}>
                 <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
               </Field>
-              <Field label="Avatar">
+              <Field label={t('forms.avatar')}>
                 <AvatarPicker value={avatar} onChange={setAvatar} />
               </Field>
             </>
@@ -258,7 +258,7 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
             </p>
           )}
           <Button type="submit" disabled={!codeOk || !nickOk || busy} className="w-full py-3.5 text-base">
-            {busy ? 'Connexion…' : 'Rejoindre la table'}
+            {busy ? t('forms.connexion') : t('forms.rejoindre_la_table')}
           </Button>
         </form>
       </Panel>

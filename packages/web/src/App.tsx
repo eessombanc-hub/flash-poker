@@ -127,13 +127,14 @@ function SoundBridge() {
 }
 
 function ConnectionBanner() {
+  const { t } = useI18n();
   const connection = useGame((s) => s.connection);
   const view = useGame((s) => s.view);
   if (connection === 'online' || connection === 'idle') return null;
   return (
     <div role="status" aria-live="polite" className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-amber-950/95 px-4 py-2 text-center text-sm text-amber-100 backdrop-blur">
       <span className="h-2 w-2 animate-pulseRing rounded-full bg-amber-400" />
-      {connection === 'connecting' && !view ? 'Connexion à la table…' : 'Connexion perdue, reconnexion en cours. Les minuteurs continuent de s’écouler.'}
+      {connection === 'connecting' && !view ? t('app.connexion_a_la2') : t('app.connexion_perdue_reconnexion')}
     </div>
   );
 }
@@ -175,7 +176,7 @@ function AppContent() {
 
   useEffect(() => {
     if (!account) return;
-    account.onFavoriteOnline = (who) => client.toast('info', `★ ${who.nickname}, un de vos joueurs favoris, vient de se connecter.`);
+    account.onFavoriteOnline = (who) => client.toast('info', t('app.un_de_vos', { nickname: who.nickname }));
     void account.init();
     return () => account.dispose();
   }, [account, client]);
@@ -196,11 +197,10 @@ function AppContent() {
       content = (
         <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
           <Panel className="w-full p-8">
-            <p className="font-display text-2xl text-ivory-50">Connexion à la partie {session.code}…</p>
-            <p className="mt-2 text-sm text-ivory-200/80">Votre siège vous attend.</p>
+            <p className="font-display text-2xl text-ivory-50">{t('app.connexion_a_la', { code: session.code })}</p>
+            <p className="mt-2 text-sm text-ivory-200/80">{t('app.votre_siege_vous')}</p>
             <Button variant="ghost" className="mt-5" onClick={() => client.leave()}>
-              Annuler et revenir à l’accueil
-            </Button>
+              {t('app.annuler_et_revenir')}</Button>
           </Panel>
         </main>
       );

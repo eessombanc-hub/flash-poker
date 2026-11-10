@@ -1,3 +1,4 @@
+import { tr, type Key } from '../i18n';
 export type Suit = 'c' | 'd' | 'h' | 's';
 
 export interface CardInfo {
@@ -12,9 +13,12 @@ export interface CardInfo {
 }
 
 const RANK_CHARS = '23456789TJQKA';
-const RANK_NAMES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'Valet', 'Dame', 'Roi', 'As'];
 const RANK_LABELS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-export const SUIT_NAMES: Record<Suit, string> = { c: 'trèfle', d: 'carreau', h: 'cœur', s: 'pique' };
+export const suitName = (s: Suit): string => tr(`suit.${s}` as Key);
+const rankName = (rank: number): string => {
+  const w = rank >= 11 ? tr(`rank.sg.${rank}` as Key) : String(rank);
+  return w.charAt(0).toUpperCase() + w.slice(1);
+};
 const SUIT_ORDER: Record<Suit, number> = { s: 0, h: 1, d: 2, c: 3 };
 
 export function isCardCode(v: unknown): v is string {
@@ -22,10 +26,10 @@ export function isCardCode(v: unknown): v is string {
 }
 
 export function parseCode(code: string): CardInfo {
-  if (!isCardCode(code)) throw new RangeError(`Code de carte invalide. ${String(code)}`);
+  if (!isCardCode(code)) throw new RangeError(`Invalid card code. ${String(code)}`);
   const i = RANK_CHARS.indexOf(code[0]!);
   const suit = code[1] as Suit;
-  return { code, rank: i + 2, suit, label: RANK_LABELS[i]!, name: `${RANK_NAMES[i]} de ${SUIT_NAMES[suit]}` };
+  return { code, rank: i + 2, suit, label: RANK_LABELS[i]!, name: tr('card.name', { rank: rankName(i + 2), suit: suitName(suit) }) };
 }
 
 /** Tri neutre de la main (rang décroissant, puis couleur) : un simple confort de lecture, jamais une évaluation. */

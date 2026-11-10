@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { clockText, initials } from '../lib/format';
 import type { Tone } from '../lib/events';
+import { useI18n } from '../i18n';
 
 // ---------- Boutons ----------
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -115,15 +116,16 @@ export function Avatar({ nickname, avatar, size = 40, dim = false }: { nickname:
 }
 
 export function AvatarPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t, tp } = useI18n();
   return (
-    <div role="radiogroup" aria-label="Avatar" className="flex flex-wrap gap-2">
+    <div role="radiogroup" aria-label={t('ui.avatar')} className="flex flex-wrap gap-2">
       {AVATAR_IDS.map((id) => (
         <button
           key={id}
           type="button"
           role="radio"
           aria-checked={value === id}
-          aria-label={`Avatar ${id}`}
+          aria-label={t('ui.avatar2', { id })}
           onClick={() => onChange(id)}
           className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-1 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${value === id ? 'ring-2 ring-gold-400' : 'opacity-70 hover:opacity-100'}`}
         >
@@ -148,8 +150,9 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
 
 /** Points d'un joueur : n pastilles sur l'objectif. */
 export function ScorePips({ score, target, small = false }: { score: number; target: number; small?: boolean }) {
+  const { t, tp } = useI18n();
   return (
-    <span className={`inline-flex items-center ${small ? 'gap-0.5' : 'gap-1'}`} role="img" aria-label={`${score} point${score > 1 ? 's' : ''} sur ${target}`}>
+    <span className={`inline-flex items-center ${small ? 'gap-0.5' : 'gap-1'}`} role="img" aria-label={tp('ui.point_sur', score, { target })}>
       {Array.from({ length: target }, (_, i) => (
         <span key={i} className={`${small ? 'h-2 w-2' : 'h-2.5 w-2.5'} rounded-full border ${i < score ? 'border-gold-400 bg-gold-400' : 'border-ivory-100/30'}`} />
       ))}
@@ -159,12 +162,13 @@ export function ScorePips({ score, target, small = false }: { score: number; tar
 
 /** Compte à rebours circulaire : or, ambre à 10 s, rouge à 5 s. */
 export function CountdownRing({ secondsLeft, total = 30, size = 56, label }: { secondsLeft: number; total?: number; size?: number; label?: string }) {
+  const { t, tp } = useI18n();
   const r = 22;
   const circ = 2 * Math.PI * r;
   const frac = Math.max(0, Math.min(1, secondsLeft / total));
   const color = secondsLeft <= 5 ? '#ef6a73' /* ruby-300 */ : secondsLeft <= 10 ? '#f0b25c' /* amber-400 */ : '#c9a25a' /* gold-500 */;
   return (
-    <div className={`relative inline-flex items-center justify-center ${secondsLeft <= 5 ? 'animate-pulseRing' : ''}`} style={{ width: size, height: size }} role="timer" aria-label={`${label ?? 'Temps restant'} : ${Math.ceil(secondsLeft)} secondes`}>
+    <div className={`relative inline-flex items-center justify-center ${secondsLeft <= 5 ? 'animate-pulseRing' : ''}`} style={{ width: size, height: size }} role="timer" aria-label={tp('ui.secondes', Math.ceil(secondsLeft), { label: label ?? t('ui.temps_restant') })}>
       <svg viewBox="0 0 52 52" width={size} height={size} className="-rotate-90">
         <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(244,239,228,.12)" strokeWidth="4" />
         <circle cx="26" cy="26" r={r} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - frac)} style={{ transition: 'stroke-dashoffset .25s linear, stroke .25s' }} />
@@ -225,6 +229,7 @@ export function ToastHost({ toasts, onDismiss }: { toasts: { id: number; tone: T
 }
 
 function ToastItem({ id, tone, text, onDismiss }: { id: number; tone: Tone; text: string; onDismiss: (id: number) => void }) {
+  const { t, tp } = useI18n();
   useEffect(() => {
     const t = setTimeout(() => onDismiss(id), tone === 'error' || tone === 'warning' ? 6000 : 4000);
     return () => clearTimeout(t);
@@ -232,7 +237,7 @@ function ToastItem({ id, tone, text, onDismiss }: { id: number; tone: Tone; text
   return (
     <motion.div layout initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }} className={`pointer-events-auto flex max-w-md items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-panel ${TOAST_TONE[tone]}`}>
       <span className="flex-1">{text}</span>
-      <button type="button" onClick={() => onDismiss(id)} aria-label="Fermer la notification" className="-mr-1 rounded px-1 text-lg leading-none opacity-70 hover:opacity-100">
+      <button type="button" onClick={() => onDismiss(id)} aria-label={t('ui.fermer_la_notification')} className="-mr-1 rounded px-1 text-lg leading-none opacity-70 hover:opacity-100">
         ×
       </button>
     </motion.div>

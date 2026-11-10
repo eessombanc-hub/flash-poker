@@ -70,6 +70,17 @@ function build(lang: Lang, setLang: (l: Lang) => void): I18n {
 const DEFAULT: I18n = build('fr', () => undefined);
 const Ctx = createContext<I18n>(DEFAULT);
 
+/** Langue active pour le code hors composants (libellés, annonces, messages d'erreur). Mise à jour à chaque rendu du fournisseur,
+ *  donc toujours cohérente avec ce que les composants affichent. */
+let current: I18n = DEFAULT;
+export const tr = (key: Key, params?: Params): string => current.t(key, params);
+export const trp = (base: string, n: number, params?: Params): string => current.tp(base, n, params);
+export const currentI18n = (): I18n => current;
+export const currentLang = (): Lang => current.lang;
+const LOCALES: Record<Lang, string> = { fr: 'fr-FR', en: 'en-GB', es: 'es-ES', de: 'de-DE', it: 'it-IT' };
+/** Étiquette de langue BCP 47 pour les dates et les nombres. */
+export const locale = (): string => LOCALES[current.lang];
+
 export function I18nProvider({ children, initial }: { children: ReactNode; initial?: Lang }) {
   const [lang, setLangState] = useState<Lang>(() => initial ?? detectLang());
   const setLang = useCallback((l: Lang) => {
@@ -84,6 +95,7 @@ export function I18nProvider({ children, initial }: { children: ReactNode; initi
     document.documentElement.lang = lang;
   }, [lang]);
   const value = useMemo(() => build(lang, setLang), [lang, setLang]);
+  current = value;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

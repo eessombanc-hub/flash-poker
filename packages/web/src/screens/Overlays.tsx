@@ -14,6 +14,7 @@ import { nick } from '../lib/selectors';
 import { useSettings } from '../lib/settings';
 import type { LineResult, RoomView, RoundEvent, RoundRecord, TiebreakOutcome } from '../lib/types';
 import { LinesRecap } from '../panels/Line63Panel';
+import { tr, type Key, locale, useI18n } from '../i18n';
 
 /**
  * Événements de la manche `roundNo` : depuis son « variante choisie » jusqu'à maintenant.
@@ -31,11 +32,7 @@ export function collectRoundEvents(feed: readonly FeedItem[], roundNo: number): 
   return feed.slice(start).map((f) => f.event);
 }
 
-const NO_POINT_REASON: Record<string, string> = {
-  ALL_FOLDED: 'toutes les mains sont couchées',
-  NO_DESIGNATION: 'personne n’a désigné de combinaison à temps',
-  TIE_SMALL_TABLE: 'égalité en tête à une table de 2 ou 3 joueurs',
-};
+const noPointReason = (r: string): string => (['ALL_FOLDED', 'NO_DESIGNATION', 'TIE_SMALL_TABLE'].includes(r) ? tr(`aw.r.${r}` as Key) : r);
 
 export function awardText(record: RoundRecord, view: RoomView): string {
   return awardTextBy(record, (id) => nick(view, id));
@@ -44,40 +41,40 @@ export function awardText(record: RoundRecord, view: RoomView): string {
 export function awardTextBy(record: RoundRecord, nameOf: (id: string) => string): string {
   const a = record.award;
   if (a.kind === 'POINTS') {
-    const capot = record.variant === 'V6_3' && a.points === 2 ? '. Capot, les 3 lignes gagnées' : '';
-    return `${nameOf(a.winner)} remporte la manche (+${pointsLabel(a.points)})${capot}${a.tiebreak ? ' après un Hold’em de départage' : ''}`;
+    const capot = record.variant === 'V6_3' && a.points === 2 ? tr('aw.capot') : '';
+    return `${tr('aw.points', { name: nameOf(a.winner), points: pointsLabel(a.points) })}${capot}${a.tiebreak ? tr('aw.tiebreak') : ''}`;
   }
-  if (a.kind === 'INSTANT_VICTORY') return `${nameOf(a.winner)} désigne une quinte flush à la ligne ${a.line}. Victoire immédiate`;
-  return `Aucun point. ${NO_POINT_REASON[a.reason] ?? a.reason}`;
+  if (a.kind === 'INSTANT_VICTORY') return tr('aw.sf', { name: nameOf(a.winner), line: a.line });
+  return tr('aw.none', { reason: noPointReason(a.reason) });
 }
 
 // ---------- Hold'em de départage ----------
 export function TiebreakSequence({ tiebreak, view }: { tiebreak: TiebreakOutcome; view: RoomView }) {
+  const { t } = useI18n();
   const { fourColor } = useSettings();
   const reduce = useReducedMotion();
   const total = tiebreak.rounds.length * 4;
-  const [t, setT] = useState(reduce ? total - 1 : 0);
+  const [tick, setT] = useState(reduce ? total - 1 : 0);
   useEffect(() => {
-    if (t >= total - 1) return;
+    if (tick >= total - 1) return;
     const id = setTimeout(() => setT((x) => x + 1), 1100);
     return () => clearTimeout(id);
-  }, [t, total]);
-  const r = tiebreak.rounds[Math.min(Math.floor(t / 4), tiebreak.rounds.length - 1)]!;
-  const step = t % 4; // 0 mains ouvertes, 1 flop, 2 turn, 3 river
+  }, [tick, total]);
+  const r = tiebreak.rounds[Math.min(Math.floor(tick / 4), tiebreak.rounds.length - 1)]!;
+  const step = tick % 4; // 0 mains ouvertes, 1 flop, 2 turn, 3 river
   const shown = step === 0 ? 0 : step === 1 ? 3 : step === 2 ? 4 : 5;
-  const done = t >= total - 1;
+  const done = tick >= total - 1;
   return (
-    <section aria-label="Hold’em de départage" className="rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
+    <section aria-label={t('overlays.hold_em_de')} className="rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
       <div className="flex items-center justify-between gap-3">
-        <Eyebrow>Hold’em de départage{tiebreak.rounds.length > 1 ? ` (tour ${Math.floor(t / 4) + 1})` : ''}</Eyebrow>
+        <Eyebrow>{t('overlays.hold_em_de')}{tiebreak.rounds.length > 1 ? (" " + t('overlays.tour', { v: Math.floor(tick / 4) + 1 })) : ''}</Eyebrow>
         {!done && (
           <Button variant="ghost" className="min-h-[32px] px-2 py-1 text-xs" onClick={() => setT(total - 1)}>
-            Passer
-          </Button>
+            {t('overlays.passer')}</Button>
         )}
       </div>
-      <div className="mt-3 flex items-end justify-center gap-1.5" role="group" aria-label="Cartes communes du départage">
-        {Array.from({ length: 5 }, (_, i) => (i < shown ? <PlayingCard key={`${t}-${i}`} code={r.board[i]!} size="sm" fourColor={fourColor} flip /> : <span key={i} className="aspect-[5/7] w-12 rounded-[9px] border border-dashed border-ivory-100/25" aria-hidden="true" />))}
+      <div className="mt-3 flex items-end justify-center gap-1.5" role="group" aria-label={t('overlays.cartes_communes_du')}>
+        {Array.from({ length: 5 }, (_, i) => (i < shown ? <PlayingCard key={`${tick}-${i}`} code={r.board[i]!} size="sm" fourColor={fourColor} flip /> : <span key={i} className="aspect-[5/7] w-12 rounded-[9px] border border-dashed border-ivory-100/25" aria-hidden="true" />))}
       </div>
       <ul className="mt-3 grid gap-2 sm:grid-cols-2">
         {r.players.map((p) => (
@@ -91,7 +88,7 @@ export function TiebreakSequence({ tiebreak, view }: { tiebreak: TiebreakOutcome
           </li>
         ))}
       </ul>
-      {done && <p className="mt-3 text-center text-sm font-semibold text-gold-300">Vainqueur du départage, {nick(view, tiebreak.winner)}</p>}
+      {done && <p className="mt-3 text-center text-sm font-semibold text-gold-300">{t('overlays.vainqueur_du_departage', { nick: nick(view, tiebreak.winner) })}</p>}
     </section>
   );
 }
@@ -113,6 +110,7 @@ export function finalBoard(known: readonly (string | null)[], events: readonly R
 }
 
 export function RoundResultModal({ record, events, board, view, onClose, final }: { record: RoundRecord; events: RoundEvent[]; board: readonly (string | null)[]; view: RoomView; onClose: () => void; final: boolean }) {
+  const { t, tp } = useI18n();
   const { fourColor } = useSettings();
   const showdown = [...events].reverse().find((e) => e.type === 'SHOWDOWN')?.data.hands as Record<string, { cards: string[]; category: number; rank?: number }> | undefined;
   const shownBoard = record.variant === 'AVIATION' || record.variant === 'AVIA_6' || record.variant === 'V6_1' ? finalBoard(board, events) : [];
@@ -129,11 +127,10 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
   }, [left, onClose, interacted]);
 
   return (
-    <Modal title={`Résultat de la manche ${record.roundNo}`} onClose={onClose} wide compact>
+    <Modal title={t('overlays.resultat_de_la', { roundNo: record.roundNo })} onClose={onClose} wide compact>
       <div onPointerDown={() => setInteracted(true)} onWheel={() => setInteracted(true)}>
       <Eyebrow>
-        Manche {record.roundNo}, {variantName(record.variant)}
-      </Eyebrow>
+        {t('overlays.manche', { roundNo: record.roundNo, variantName: variantName(record.variant) })}</Eyebrow>
       <h2 className="font-display text-xl leading-tight text-ivory-50 sm:text-2xl" aria-live="polite">
         {awardText(record, view)}
       </h2>
@@ -146,22 +143,22 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
       )}
 
       {shownBoard.length > 0 && (
-        <div className="mt-4 flex items-center justify-center gap-1.5" role="group" aria-label="Cartes communes">
+        <div className="mt-4 flex items-center justify-center gap-1.5" role="group" aria-label={t('overlays.cartes_communes')}>
           {shownBoard.map((c, i) => (c ? <PlayingCard key={i} code={c} size="sm" fourColor={fourColor} /> : <span key={i} className="aspect-[5/7] w-12 rounded-[9px] border border-dashed border-ivory-100/25" />))}
         </div>
       )}
-      {(record.summary?.teats ?? 0) > 0 && <p className="mt-3 text-center text-xs text-ivory-200/80">Manche jouée avec {record.summary!.teats === 1 ? 'une tétine' : '2 tétines'}.</p>}
+      {(record.summary?.teats ?? 0) > 0 && <p className="mt-3 text-center text-xs text-ivory-200/80">{t('overlays.manche_jouee_avec')} {record.summary!.teats === 1 ? t('overlays.une_tetine') : '2 tétines'}.</p>}
       {(record.summary?.sideBets ?? []).length > 0 && (
-        <ul className="mt-3 space-y-1 rounded-xl border border-gold-500/30 bg-gold-500/5 p-3 text-sm text-ivory-100" aria-label="Paris extérieurs">
+        <ul className="mt-3 space-y-1 rounded-xl border border-gold-500/30 bg-gold-500/5 p-3 text-sm text-ivory-100" aria-label={t('overlays.paris_exterieurs')}>
           {record.summary!.sideBets!.map((b) => (
             <li key={`${b.line}-${b.amount}`}>
-              Ligne {b.line}, {b.amount.toLocaleString('fr-FR')} jetons par joueur : {b.refunded || b.winners.length === 0 ? 'mises rendues' : `${b.winners.map((w) => nick(view, w)).join(' + ')} ${b.winners.length > 1 ? 'se partagent' : 'remporte'} la cagnotte`}
+              {t('overlays.ligne_jetons_par', { line: b.line, toLocaleString: b.amount.toLocaleString(locale()) })} {b.refunded || b.winners.length === 0 ? t('overlays.mises_rendues') : tp('overlays.la_cagnotte', b.winners.length, { join: b.winners.map((w) => nick(view, w)).join(' + ') })}
             </li>
           ))}
         </ul>
       )}
       {showdown && (
-        <ul className="mt-2 grid gap-1.5 md:grid-cols-2" aria-label="Mains dévoilées">
+        <ul className="mt-2 grid gap-1.5 md:grid-cols-2" aria-label={t('overlays.mains_devoilees')}>
           {Object.entries(showdown).map(([pid, h]) => (
             <li key={pid} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-1 ${pid === winner ? 'animate-winGlow bg-gold-500/15 ring-1 ring-gold-400' : 'bg-ink-900/60'}`}>
               <span className="w-16 truncate font-medium text-ivory-50">{nick(view, pid)}</span>
@@ -171,14 +168,14 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
                 ))}
               </span>
               <span className="text-sm text-ivory-200/85">{(h.rank !== undefined ? describeRank(h.rank) : null) ?? categoryLabel(h.category)}</span>
-              {pid === winner && <Badge tone="gold">Gagnant</Badge>}
+              {pid === winner && <Badge tone="gold">{t('overlays.gagnant')}</Badge>}
             </li>
           ))}
         </ul>
       )}
       {lines.length > 0 && <LinesRecap lines={lines} view={view} scale={60} />}
 
-      <h3 className="mb-1 mt-3 text-xs font-semibold uppercase tracking-widest text-gold-400">Scores</h3>
+      <h3 className="mb-1 mt-3 text-xs font-semibold uppercase tracking-widest text-gold-400">{t('overlays.scores')}</h3>
       <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {players.map((p) => (
           <li key={p.player} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg bg-ink-900/60 px-2.5 py-1.5 text-sm">
@@ -192,8 +189,8 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
       </ul>
       {/* Téléphone : le bouton reste visible en bas de la fenêtre, même quand le contenu défile. */}
       <div className={`flex items-center justify-end gap-3 sticky -bottom-4 z-10 -mx-4 -mb-4 mt-3 border-t border-ivory-100/10 bg-ink-800 px-4 pb-6 pt-2 sm:static sm:mx-0 sm:mb-0 sm:mt-3 sm:border-0 sm:bg-transparent sm:p-0`}>
-        {left !== null && !interacted && <span className="text-xs text-ivory-300/60">Fermeture dans {left} s</span>}
-        <Button onClick={onClose}>{final ? 'Voir le résultat final' : 'Continuer'}</Button>
+        {left !== null && !interacted && <span className="text-xs text-ivory-300/60">{t('overlays.fermeture_dans_s', { left })}</span>}
+        <Button onClick={onClose}>{final ? t('overlays.voir_le_resultat') : t('overlays.continuer')}</Button>
       </div>
       </div>
     </Modal>
@@ -202,6 +199,7 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
 
 // ---------- Fin de partie ----------
 export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onClose: () => void; onLeave: () => void }) {
+  const { t } = useI18n();
   const game = view.game!;
   const o = game.outcome!;
   const insured = o.insurance ? o.insurance.players : null;
@@ -211,7 +209,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <Modal title="Fin de partie" wide>
+    <Modal title={t('overlays.fin_de_partie')} wide>
       <Confetti />
       <CoinRain />
       <div className="flex items-center gap-4">
@@ -219,13 +217,13 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
           <SpinTrophy size={96} />
         </WinnerSpotlight>
         <div className="min-w-0">
-          <Eyebrow>Fin de partie</Eyebrow>
-          <VictoryTitle className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">Victoire {deNom(nick(view, o.winner))}</VictoryTitle>
+          <Eyebrow>{t('overlays.fin_de_partie')}</Eyebrow>
+          <VictoryTitle className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">{t('overlays.victoire', { v: deNom(nick(view, o.winner)) })}</VictoryTitle>
           <p className="mt-1 text-gold-300">{VICTORY_LABELS[o.victoryType]}</p>
         </div>
       </div>
 
-      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Classement</h3>
+      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">{t('overlays.classement')}</h3>
       <ol className="space-y-2">
         {o.standings.map((s) => (
           <li key={s.player} className="flex items-center gap-3 rounded-xl bg-ink-900/60 px-3 py-2.5">
@@ -242,7 +240,7 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
           .sort((a, b) => b.score - a.score)
           .map((p) => (
             <li key={p.player} className="flex items-center gap-3 rounded-xl bg-ink-900/40 px-3 py-2.5">
-              <span className="w-6 text-center font-display text-xl text-ivory-300/50" aria-label="non classé">–</span>
+              <span className="w-6 text-center font-display text-xl text-ivory-300/50" aria-label={t('overlays.non_classe')}>–</span>
               <Avatar nickname={nick(view, p.player)} avatar={view.players.find((x) => x.id === p.player)?.avatar} size={34} dim={p.excluded} />
               <span className="flex-1 font-medium text-ivory-100">{nick(view, p.player)}</span>
               <span className="text-sm text-ivory-200/70">{p.position} · {pointsLabel(p.score)}</span>
@@ -251,20 +249,19 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
       </ol>
       {o.insurance && insured && (
         <p className="mt-2 text-xs text-ivory-300/80">
-          Assurance appliquée entre {nick(view, insured[0])} et {nick(view, insured[1])} ({INSURANCE_LABELS[o.insurance.type].name}).
-        </p>
+          {t('overlays.assurance_appliquee_entre', { nick: nick(view, insured[0]), nick2: nick(view, insured[1]), name: INSURANCE_LABELS[o.insurance.type].name })}</p>
       )}
 
-      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Répartition de la cagnotte, en jetons</h3>
+      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">{t('overlays.repartition_de_la')}</h3>
       <table className="w-full text-sm">
-        <caption className="sr-only">Mise, gain, bilan et jetons en fin de partie de chaque joueur (cave de départ de {formatChips(STARTING_CHIPS)})</caption>
+        <caption className="sr-only">{t('overlays.mise_gain_bilan', { formatChips: formatChips(STARTING_CHIPS) })}</caption>
         <thead>
           <tr className="text-left text-xs uppercase tracking-wider text-ivory-300/70">
-            <th className="py-1 font-medium">Joueur</th>
-            <th className="hidden py-1 text-right font-medium sm:table-cell">Mise</th>
-            <th className="py-1 text-right font-medium">Reçoit</th>
-            <th className="py-1 text-right font-medium">Bilan</th>
-            <th className="py-1 text-right font-medium">Jetons finaux</th>
+            <th className="py-1 font-medium">{t('overlays.joueur')}</th>
+            <th className="hidden py-1 text-right font-medium sm:table-cell">{t('overlays.mise')}</th>
+            <th className="py-1 text-right font-medium">{t('overlays.recoit')}</th>
+            <th className="py-1 text-right font-medium">{t('overlays.bilan')}</th>
+            <th className="py-1 text-right font-medium">{t('overlays.jetons_finaux')}</th>
           </tr>
         </thead>
         <tbody>
@@ -275,18 +272,18 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
               <tr key={p.player} className="border-t border-ivory-100/10">
                 <td className="py-1.5 text-ivory-50">{nick(view, p.player)}</td>
                 <td className="hidden py-1.5 text-right tabular-nums text-ivory-200/80 sm:table-cell">{formatChips(game.stakeChips)}</td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-50"><span className="sm:hidden">{payout.toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatChips(payout)}</span></td>
-                <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}><span className="sm:hidden">{net > 0 ? '+' : net < 0 ? '−' : ''}{Math.abs(net).toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatSignedChips(net)}</span></td>
-                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net + (o.sideBets?.[p.player] ?? 0)).toLocaleString('fr-FR')}</td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-50"><span className="sm:hidden">{payout.toLocaleString(locale())}</span><span className="hidden sm:inline">{formatChips(payout)}</span></td>
+                <td className={`py-1.5 text-right font-semibold tabular-nums ${net > 0 ? 'text-jade-300' : net < 0 ? 'text-ruby-300' : 'text-ivory-200'}`}><span className="sm:hidden">{net > 0 ? '+' : net < 0 ? '−' : ''}{Math.abs(net).toLocaleString(locale())}</span><span className="hidden sm:inline">{formatSignedChips(net)}</span></td>
+                <td className="py-1.5 text-right tabular-nums text-ivory-50">{(STARTING_CHIPS + net + (o.sideBets?.[p.player] ?? 0)).toLocaleString(locale())}</td>
               </tr>
             );
           })}
         </tbody>
         <tfoot>
           <tr className="border-t border-gold-500/40 text-ivory-50">
-            <td className="py-1.5 font-semibold">Cagnotte</td>
+            <td className="py-1.5 font-semibold">{t('overlays.cagnotte')}</td>
             <td className="hidden sm:table-cell" />
-            <td className="py-1.5 text-right font-semibold tabular-nums"><span className="sm:hidden">{o.settlement.potChips.toLocaleString('fr-FR')}</span><span className="hidden sm:inline">{formatChips(o.settlement.potChips)}</span></td>
+            <td className="py-1.5 text-right font-semibold tabular-nums"><span className="sm:hidden">{o.settlement.potChips.toLocaleString(locale())}</span><span className="hidden sm:inline">{formatChips(o.settlement.potChips)}</span></td>
             <td />
             <td />
           </tr>
@@ -296,9 +293,8 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
 
       <div className={`flex flex-col gap-2 sm:flex-row sm:justify-end sticky -bottom-5 z-10 -mx-5 -mb-5 mt-6 border-t border-ivory-100/10 bg-ink-800 px-5 pb-8 pt-3 sm:static sm:mx-0 sm:mb-0 sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0`}>
         <Button variant="secondary" onClick={onClose}>
-          Revoir la table
-        </Button>
-        <Button onClick={onLeave}>Retour à l’accueil</Button>
+          {t('overlays.revoir_la_table')}</Button>
+        <Button onClick={onLeave}>{t('overlays.retour_a_l')}</Button>
       </div>
     </Modal>
   );
@@ -306,30 +302,32 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
 
 // ---------- Scores et historique ----------
 function Sparkline({ values, max }: { values: number[]; max: number }) {
+  const { t } = useI18n();
   if (values.length === 0) return <span className="text-xs text-ivory-300/50">—</span>;
   const w = 90;
   const h = 26;
   const pts = [0, ...values].map((v, i, a) => `${(i / Math.max(1, a.length - 1)) * w},${h - 2 - (v / Math.max(1, max)) * (h - 4)}`).join(' ');
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Évolution, ${values.join(', ')}`}>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={t('overlays.evolution2', { join: values.join(', ') })}>
       <polyline points={pts} fill="none" stroke="#c9a25a" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
 
 export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => void }) {
+  const { t } = useI18n();
   const game = view.game!;
   return (
-    <Modal title="Scores et historique" onClose={onClose} wide>
-      <Eyebrow>Objectif {pointsLabel(game.targetPoints)}</Eyebrow>
-      <h2 className="mt-1 font-display text-2xl text-ivory-50">Scores et historique</h2>
+    <Modal title={t('overlays.scores_et_historique')} onClose={onClose} wide>
+      <Eyebrow>{t('overlays.objectif', { pointsLabel: pointsLabel(game.targetPoints) })}</Eyebrow>
+      <h2 className="mt-1 font-display text-2xl text-ivory-50">{t('overlays.scores_et_historique')}</h2>
       <table className="mt-4 w-full text-sm">
-        <caption className="sr-only">Scores des joueurs</caption>
+        <caption className="sr-only">{t('overlays.scores_des_joueurs')}</caption>
         <thead>
           <tr className="text-left text-xs uppercase tracking-wider text-ivory-300/70">
-            <th className="py-1 font-medium">Joueur</th>
-            <th className="py-1 font-medium">Points</th>
-            <th className="hidden py-1 font-medium sm:table-cell">Évolution</th>
+            <th className="py-1 font-medium">{t('overlays.joueur')}</th>
+            <th className="py-1 font-medium">{t('overlays.points')}</th>
+            <th className="hidden py-1 font-medium sm:table-cell">{t('overlays.evolution')}</th>
           </tr>
         </thead>
         <tbody>
@@ -339,9 +337,9 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
               <tr key={p.player} className="border-t border-ivory-100/10">
                 <td className="py-2 text-ivory-50">
                   {nick(view, p.player)} <span className="text-xs text-gold-400">{p.position}</span>
-                  {view.players.find((x) => x.id === p.player)?.bot && <span className="ml-2 align-middle"><Badge tone="neutral">CPU</Badge></span>}
-                  {ins && <span className="ml-2 align-middle"><Badge tone="gold">Assuré avec {nick(view, ins.players.find((x) => x !== p.player)!)}</Badge></span>}
-                  {p.excluded && <span className="ml-2 align-middle"><Badge tone="red">Exclu</Badge></span>}
+                  {view.players.find((x) => x.id === p.player)?.bot && <span className="ml-2 align-middle"><Badge tone="neutral">{t('overlays.cpu')}</Badge></span>}
+                  {ins && <span className="ml-2 align-middle"><Badge tone="gold">{t('overlays.assure_avec', { v: nick(view, ins.players.find((x) => x !== p.player)!) })}</Badge></span>}
+                  {p.excluded && <span className="ml-2 align-middle"><Badge tone="red">{t('overlays.exclu')}</Badge></span>}
                 </td>
                 <td className="py-2"><ScorePips score={p.score} target={game.targetPoints} /></td>
                 <td className="hidden py-2 sm:table-cell"><Sparkline values={game.evolution[p.player] ?? []} max={game.targetPoints} /></td>
@@ -350,24 +348,24 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
           })}
         </tbody>
       </table>
-      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Historique des manches</h3>
+      <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">{t('overlays.historique_des_manches')}</h3>
       {game.history.length === 0 ? (
-        <p className="text-sm text-ivory-300/70">Aucune manche terminée.</p>
+        <p className="text-sm text-ivory-300/70">{t('overlays.aucune_manche_terminee')}</p>
       ) : (
         <ol className="space-y-1.5">
           {[...game.history].reverse().map((r) => (
             <li key={r.roundNo} className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg bg-ink-900/60 px-3 py-2 text-sm">
               <span className="text-ivory-50">
                 <span className="mr-2 text-ivory-300/60">#{r.roundNo}</span>
-                {variantName(r.variant)} <span className="text-xs text-ivory-300/60">(choisie par {nick(view, r.chooser)})</span>
+                {variantName(r.variant)} <span className="text-xs text-ivory-300/60">{t('overlays.choisie_par', { nick: nick(view, r.chooser) })}</span>
               </span>
-              <span className="text-ivory-200/85">{r.award.kind === 'POINTS' ? `${nick(view, r.award.winner)} +${r.award.points}${r.award.tiebreak ? ' (départage)' : ''}` : r.award.kind === 'INSTANT_VICTORY' ? 'Quinte flush, victoire' : 'Aucun point'}</span>
+              <span className="text-ivory-200/85">{r.award.kind === 'POINTS' ? t('overlays.txt', { nick: nick(view, r.award.winner), points: r.award.points, v: r.award.tiebreak ? (" " + t('overlays.departage')) : '' }) : r.award.kind === 'INSTANT_VICTORY' ? t('overlays.quinte_flush_victoire') : t('overlays.aucun_point')}</span>
             </li>
           ))}
         </ol>
       )}
       <div className="mt-6 flex justify-end">
-        <Button onClick={onClose}>Fermer</Button>
+        <Button onClick={onClose}>{t('overlays.fermer')}</Button>
       </div>
     </Modal>
   );
@@ -376,6 +374,7 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
 // ---------- Vainqueur de la manche et combinaison gagnante ----------
 /** Bandeau de fin de manche : qui gagne, avec quelle combinaison (et ses cartes quand elles sont connues). */
 export function WinnerBanner({ record, view }: { record: RoundRecord; view: RoomView }) {
+  const { t } = useI18n();
   const a = record.award;
   const winner = a.kind === 'POINTS' || a.kind === 'INSTANT_VICTORY' ? a.winner : null;
   const combo = winningCombination(record);
@@ -386,13 +385,13 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
       <Shine />
       <SpinTrophy size={38} />
       <div className="min-w-[10rem] flex-1">
-        <p className="text-xs uppercase tracking-widest text-gold-300">Vainqueur de la manche</p>
+        <p className="text-xs uppercase tracking-widest text-gold-300">{t('overlays.vainqueur_de_la')}</p>
         <p className="font-display text-xl text-ivory-50">
           {nick(view, winner)} <span className="text-gold-300">({combo})</span>
         </p>
       </div>
       {cards.length > 0 && (
-        <span className="flex -space-x-2" role="group" aria-label="Cartes de la combinaison gagnante">
+        <span className="flex -space-x-2" role="group" aria-label={t('overlays.cartes_de_la')}>
           {cards.map((c, i) => (
             <RevealCard key={c} code={c} size="xs" index={i + 1} />
           ))}
@@ -405,12 +404,13 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
 // ---------- Résultat de chaque manche (fin de partie) ----------
 /** Liste repliable des manches de la partie : variante, vainqueur, combinaison, points. */
 export function RoundsRecap({ history, view }: { history: readonly RoundRecord[]; view: RoomView }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   if (history.length === 0) return null;
   return (
-    <section className="mt-6" aria-label="Résultat de chaque manche">
+    <section className="mt-6" aria-label={t('overlays.resultat_de_chaque')}>
       <Button variant="secondary" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full justify-between">
-        <span>{open ? 'Masquer' : 'Voir'} le résultat de chaque manche ({history.length})</span>
+        <span>{open ? t('overlays.masquer') : t('overlays.voir')}  {t('overlays.le_resultat_de', { n: history.length })}</span>
         <span aria-hidden="true">{open ? '▴' : '▾'}</span>
       </Button>
       {open && <RoundList history={history} nameOf={(id) => nick(view, id)} />}
@@ -423,6 +423,7 @@ export function RoundsRecap({ history, view }: { history: readonly RoundRecord[]
  * « manche favorite » par manche (parties archivées de « Mon espace »).
  */
 export function RoundList({ history, nameOf, star }: { history: readonly RoundRecord[]; nameOf: (id: string) => string; star?: { isOn: (roundNo: number) => boolean; toggle: (roundNo: number) => void } }) {
+  const { t } = useI18n();
   return (
     <ol className="mt-3 space-y-2">
       {history.map((r) => {
@@ -434,7 +435,7 @@ export function RoundList({ history, nameOf, star }: { history: readonly RoundRe
           <li key={r.roundNo} className="rounded-xl bg-ink-900/60 px-3 py-2.5 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <span className="font-semibold text-ivory-50">
-                Manche {r.roundNo} · <span className="text-gold-300">{variantName(r.variant)}</span>
+                {t('overlays.manche2', { roundNo: r.roundNo })} <span className="text-gold-300">{variantName(r.variant)}</span>
               </span>
               <span className="flex items-center gap-2">
                 {pts !== null && <Badge tone="gold">+{pointsLabel(pts)}</Badge>}
@@ -443,8 +444,8 @@ export function RoundList({ history, nameOf, star }: { history: readonly RoundRe
                     type="button"
                     onClick={() => star.toggle(r.roundNo)}
                     aria-pressed={on}
-                    aria-label={`Manche ${r.roundNo} favorite`}
-                    title={on ? 'Retirer des manches favorites' : 'Ajouter aux manches favorites'}
+                    aria-label={t('overlays.manche_favorite', { roundNo: r.roundNo })}
+                    title={on ? t('overlays.retirer_des_manches') : t('overlays.ajouter_aux_manches')}
                     className={`rounded-full px-2 py-0.5 text-lg leading-none transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${on ? 'text-gold-300' : 'text-ivory-300/50 hover:text-gold-300'}`}
                   >
                     {on ? '★' : '☆'}

@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 import { formatChips } from './format';
 import type { InsuranceType } from './types';
 
@@ -9,11 +10,10 @@ import type { InsuranceType } from './types';
  */
 export function describeInsurance(type: InsuranceType, potChips: number, stakeChips: number): string {
   if (type === 'LOSER_NOT_PAYING') {
-    return `Si l’un de vous deux gagne, il reçoit ${formatChips(potChips - stakeChips)} (la cagnotte moins la mise de son partenaire) ; son partenaire récupère sa mise de ${formatChips(stakeChips)}.`;
+    return tr('ins.lnp', { win: formatChips(potChips - stakeChips), stake: formatChips(stakeChips) });
   }
   const half = Math.floor(potChips / 2);
-  return `Si l’un de vous deux gagne, vous vous partagez la cagnotte à parts égales. ${formatChips(half)} chacun${potChips % 2 === 1 ? ' (le jeton impair revient au vainqueur)' : ''}.`;
+  return tr(potChips % 2 === 1 ? 'ins.split.odd' : 'ins.split', { half: formatChips(half) });
 }
 
-export const INSURANCE_GENERAL_NOTE =
-  'Si quelqu’un d’autre gagne, il empoche toute la cagnotte. L’assurance ne change jamais le vainqueur. Une seule assurance par partie, entre deux joueurs exactement.';
+export const INSURANCE_GENERAL_NOTE_TEXT = (): string => tr('ins.general');

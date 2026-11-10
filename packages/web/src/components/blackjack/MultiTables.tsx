@@ -6,10 +6,12 @@ import { FairnessProof } from './Panels';
 import { ApiError } from '../../lib/api';
 import { useAccount, useAccountClient } from '../../lib/context';
 import { formatChips, formatSignedChips } from '../../lib/format';
-import { ACTION_LABEL, CHIP_COLORS, CHIP_VALUES, DOUBLE_LABEL, totalText, type Pedagogy, type Speed } from '../../lib/blackjack';
+import { ACTION_LABEL, CHIP_COLORS, CHIP_VALUES, DOUBLE_LABEL, totalText, paysText, decksText, type Pedagogy, type Speed } from '../../lib/blackjack';
 import { useSettings } from '../../lib/settings';
 import { Sound } from '../../lib/sound';
 import type { BjAction, BjSeatDto, BjTableDto, SeatKind, TablePreset, TableRules } from '../../lib/types';
+import { currentI18n, tr, trp, useI18n } from '../../i18n';
+import { errorText } from '../../lib/tbText';
 
 const KEY = 'poker.bj.table.v1';
 const NICK_KEY = 'poker.bj.nick.v1';
@@ -33,7 +35,11 @@ const write = (k: string, v: string): void => {
 const pct = (x: number): string => `${Math.round(x * 100)} %`;
 
 type Slot = 'none' | SeatKind;
-const SLOT_LABEL: Record<Slot, string> = { none: 'Aucune', human: 'Humain', cpu: 'CPU' };
+const SLOT_LABEL: Record<Slot, string> = {
+  get none() { return tr('bjmulti.slot.none'); },
+  get human() { return tr('bjmulti.slot.human'); },
+  get cpu() { return tr('bjmulti.slot.cpu'); },
+};
 
 interface Props {
   tables: TablePreset[];
@@ -56,6 +62,7 @@ export function MultiTables({ tables, freeRules, pedagogy, speed, chips, onSettl
 }
 
 function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; freeRules: TableRules; chips: number; onEnter: (code: string) => void }) {
+  const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const me = useAccount((s) => s.account);
   const [nick, setNick] = useState(() => read(NICK_KEY) || '');
@@ -78,7 +85,7 @@ function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; f
       const t = await f();
       onEnter(t.code);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.');
+      setError(errorText(currentI18n(), e, t('bjmulti.une_erreur_est')));
     } finally {
       setBusy(false);
     }
@@ -89,22 +96,22 @@ function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; f
   return (
     <div className="space-y-4">
       <Panel className="p-4 sm:p-5">
-        <Eyebrow>Créer une table</Eyebrow>
-        <h2 className="mt-1 font-display text-xl text-ivory-50">Jouez de 1 à 6, humains et CPU</h2>
-        <p className="mt-1 text-sm text-ivory-200/85">Tous les joueurs affrontent le même croupier, chacun à son tour. Pour chaque place, choisissez un joueur humain (il rejoint avec le code) ou un CPU.</p>
+        <Eyebrow>{t('bjmulti.creer_une_table')}</Eyebrow>
+        <h2 className="mt-1 font-display text-xl text-ivory-50">{t('bjmulti.jouez_de_1')}</h2>
+        <p className="mt-1 text-sm text-ivory-200/85">{t('bjmulti.tous_les_joueurs')}</p>
 
         {!me && (
           <div className="mt-4 max-w-xs">
-            <Field label="Votre pseudo" htmlFor="bj-nick">
-              <input id="bj-nick" className={inputClass} value={nick} maxLength={20} onChange={(e) => setNick(e.target.value)} placeholder="Invité" autoComplete="nickname" />
+            <Field label={t('bjmulti.votre_pseudo')} htmlFor="bj-nick">
+              <input id="bj-nick" className={inputClass} value={nick} maxLength={20} onChange={(e) => setNick(e.target.value)} placeholder={t('bjmulti.invite')} autoComplete="nickname" />
             </Field>
           </div>
         )}
 
         <div className="mt-4">
-          <p className="mb-1.5 text-sm font-medium text-ivory-100">Table</p>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Table">
-            {[...presets.map((t) => ({ id: t.id, name: t.name, hint: `${t.limits.minBet} – ${t.limits.maxBet}` })), { id: 'libre', name: 'Table libre', hint: 'vos règles' }].map((t) => (
+          <p className="mb-1.5 text-sm font-medium text-ivory-100">{t('bjmulti.table')}</p>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('bjmulti.table')}>
+            {[...presets.map((t) => ({ id: t.id, name: t.name, hint: `${t.limits.minBet} – ${t.limits.maxBet}` })), { id: 'libre', name: t('bjmulti.table_libre'), hint: t('bjmulti.vos_regles') }].map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -117,36 +124,32 @@ function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; f
               </button>
             ))}
           </div>
-          {table === 'libre' && <p className="mt-1 text-xs text-ivory-300/75">Règles de votre table libre (onglet Jouer) : {freeRules.decks} jeu{freeRules.decks > 1 ? 'x' : ''}, Blackjack {freeRules.blackjackPays === '3:2' ? '3 contre 2' : '6 contre 5'}, doublement {DOUBLE_LABEL[freeRules.doubleOn].toLowerCase()}.</p>}
+          {table === 'libre' && <p className="mt-1 text-xs text-ivory-300/75">{t('bjmulti.regles_de_votre', { decks: decksText(freeRules.decks), pays: paysText(freeRules.blackjackPays), double: DOUBLE_LABEL[freeRules.doubleOn].toLowerCase() })}</p>}
         </div>
 
         <fieldset className="mt-4">
-          <legend className="mb-1.5 text-sm font-medium text-ivory-100">Places ({seats.length} sur 6)</legend>
+          <legend className="mb-1.5 text-sm font-medium text-ivory-100">{t('bjmulti.places_sur_6', { n: seats.length })}</legend>
           <ul className="grid gap-2 sm:grid-cols-2">
             <li className="flex items-center justify-between rounded-xl border border-gold-500/40 bg-gold-500/10 px-3 py-2 text-sm text-ivory-50">
-              <span>Place 1</span>
-              <Badge tone="gold">Vous</Badge>
+              <span>{t('bjmulti.place_1')}</span>
+              <Badge tone="gold">{t('bjmulti.vous')}</Badge>
             </li>
             {slots.slice(1).map((s, k) => (
               <li key={k} className="rounded-xl border border-ivory-100/12 bg-ink-900/60 px-3 py-2">
-                <p className="mb-1 text-xs text-ivory-300/80">Place {k + 2}</p>
-                <Segmented<Slot> value={s} options={['none', 'human', 'cpu']} onChange={(v) => setSlot(k + 1, v)} label={`Place ${k + 2}`} format={(v) => SLOT_LABEL[v]} />
+                <p className="mb-1 text-xs text-ivory-300/80">{t('bjmulti.place', { v: k + 2 })}</p>
+                <Segmented<Slot> value={s} options={['none', 'human', 'cpu']} onChange={(v) => setSlot(k + 1, v)} label={t('bjmulti.place', { v: k + 2 })} format={(v) => SLOT_LABEL[v]} />
               </li>
             ))}
           </ul>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             <Button variant="ghost" className="min-h-[36px] px-3" onClick={() => preset(['human', 'cpu', 'cpu', 'cpu', 'cpu', 'cpu'])}>
-              Moi + 5 CPU
-            </Button>
+              {t('bjmulti.moi_5_cpu')}</Button>
             <Button variant="ghost" className="min-h-[36px] px-3" onClick={() => preset(['human', 'human', 'cpu', 'cpu', 'none', 'none'])}>
-              2 humains + 2 CPU
-            </Button>
+              {t('bjmulti.2_humains_2')}</Button>
             <Button variant="ghost" className="min-h-[36px] px-3" onClick={() => preset(['human', 'human', 'human', 'human', 'human', 'human'])}>
-              6 humains
-            </Button>
+              {t('bjmulti.6_humains')}</Button>
             <Button variant="ghost" className="min-h-[36px] px-3" onClick={() => preset(['human', 'none', 'none', 'none', 'none', 'none'])}>
-              Seul
-            </Button>
+              {t('bjmulti.seul')}</Button>
           </div>
         </fieldset>
 
@@ -157,13 +160,13 @@ function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; f
         )}
         <div className="mt-5">
           <Button disabled={busy || chips < 1} onClick={() => void run(() => account.bjTableCreate({ table, seats, nickname: guestNick, ...(table === 'libre' ? { rules: freeRules } : {}) }))}>
-            Créer la table{humans > 1 ? `, ${humans - 1} humain${humans > 2 ? 's' : ''} attendu${humans > 2 ? 's' : ''}` : ''}
+            {humans > 1 ? tp('bjmulti.creer_attente', humans - 1) : t('bjmulti.creer_la_table')}
           </Button>
         </div>
       </Panel>
 
       <Panel className="p-4 sm:p-5">
-        <Eyebrow>Rejoindre</Eyebrow>
+        <Eyebrow>{t('bjmulti.rejoindre')}</Eyebrow>
         <form
           className="mt-2 flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
@@ -172,13 +175,12 @@ function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; f
           }}
         >
           <div className="w-44">
-            <Field label="Code de la table" htmlFor="bj-join">
-              <input id="bj-join" className={inputClass} value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="BJ-XXXX" maxLength={12} autoComplete="off" />
+            <Field label={t('bjmulti.code_de_la')} htmlFor="bj-join">
+              <input id="bj-join" className={inputClass} value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder={t('bjmulti.bj_xxxx')} maxLength={12} autoComplete="off" />
             </Field>
           </div>
           <Button type="submit" variant="secondary" disabled={busy || !joinCode.trim()}>
-            Rejoindre
-          </Button>
+            {t('bjmulti.rejoindre')}</Button>
         </form>
       </Panel>
     </div>
@@ -199,6 +201,7 @@ function useCountdown(deadlineAt: number | null, serverNow: number, receivedAt: 
 }
 
 function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: string; pedagogy: Pedagogy; speed: Speed; onClose: () => void; onSettled: () => void }) {
+  const { t: tr, tp } = useI18n();
   const account = useAccountClient()!;
   const authed = useAccount((s) => s.account);
   const { sound, fourColor, cardBack } = useSettings();
@@ -239,7 +242,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
           closeRef.current();
           return;
         }
-        setError(e instanceof ApiError ? e.message : 'Connexion perdue, nouvelle tentative…');
+        setError(errorText(currentI18n(), e, tr('bjmulti.connexion_perdue_nouvelle')));
       }
       if (alive.current) timer = setTimeout(tick, POLL_MS);
     };
@@ -285,7 +288,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
     try {
       apply(await f());
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.');
+      setError(errorText(currentI18n(), e, tr('bjmulti.une_erreur_est')));
     } finally {
       if (alive.current) setBusy(false);
     }
@@ -300,7 +303,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
   };
 
   const left = useCountdown(t?.round?.deadlineAt ?? t?.phaseDeadlineAt ?? null, t?.now ?? 0, receivedAt.current);
-  if (!t) return <p className="py-8 text-center text-sm text-ivory-300/70">{error ?? 'Connexion à la table…'}</p>;
+  if (!t) return <p className="py-8 text-center text-sm text-ivory-300/70">{error ?? tr('bjmulti.connexion_a_la')}</p>;
 
   const mine: BjSeatDto | undefined = t.me !== null ? t.seats[t.me] : undefined;
   const isHost = t.me !== null && t.me === t.hostSeat;
@@ -317,12 +320,11 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
             {t.tableName} <span className="text-sm text-gold-300">· {t.code}</span>
           </p>
           <p className="text-xs text-ivory-300/80">
-            {t.rules.decks} jeu{t.rules.decks > 1 ? 'x' : ''} · mises {t.limits.minBet} – {formatChips(t.limits.maxBet)} · Blackjack {t.rules.blackjackPays === '3:2' ? '3 contre 2' : '6 contre 5'}
+            {tr('bjmulti.mises_blackjack', { decks: decksText(t.rules.decks), minBet: t.limits.minBet, formatChips: formatChips(t.limits.maxBet), pays: paysText(t.rules.blackjackPays) })}
           </p>
         </div>
         <Button variant="ghost" onClick={() => void leave()}>
-          Quitter la table
-        </Button>
+          {tr('bjmulti.quitter_la_table')}</Button>
       </div>
       {error && (
         <p role="alert" className="rounded-xl border border-ruby-500/50 bg-ruby-500/10 px-4 py-2 text-sm text-ruby-300">
@@ -334,8 +336,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
       {t.status === 'LOBBY' && (
         <Panel className="space-y-3 p-4 sm:p-5">
           <p className="text-sm text-ivory-200">
-            Partagez le code <strong className="font-display text-lg text-gold-300" data-testid="bj-table-code">{t.code}</strong> aux joueurs humains
-            {openSeats > 0 ? ` (${openSeats} place${openSeats > 1 ? 's' : ''} libre${openSeats > 1 ? 's' : ''})` : ''}.
+            {tr('bjmulti.partagez_le_code')} <strong className="font-display text-lg text-gold-300" data-testid="bj-table-code">{t.code}</strong>  {tr('bjmulti.aux_joueurs_humains')}{openSeats > 0 ? (" " + trp('bjmulti.place_libre', openSeats)) : ''}.
           </p>
           <ul className="grid gap-2 sm:grid-cols-2">
             {t.seats.map((s) => (
@@ -344,10 +345,10 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
           </ul>
           {isHost ? (
             <Button onClick={() => void call(() => account.bjTableStart(code))} disabled={busy}>
-              Lancer la partie{openSeats > 0 ? ` (les ${openSeats} place${openSeats > 1 ? 's' : ''} libre${openSeats > 1 ? 's' : ''} seront retirée${openSeats > 1 ? 's' : ''})` : ''}
+              {tr('bjmulti.lancer_la_partie')}{openSeats > 0 ? (" " + trp('bjmulti.les_place_libre', openSeats)) : ''}
             </Button>
           ) : (
-            <p className="text-sm text-ivory-300/80">En attente du lancement par l’hôte…</p>
+            <p className="text-sm text-ivory-300/80">{tr('bjmulti.en_attente_du')}</p>
           )}
         </Panel>
       )}
@@ -356,7 +357,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
       {t.status === 'BETTING' && (
         <Panel className="space-y-3 p-4 sm:p-5">
           <div className="flex items-center justify-between">
-            <p className="font-display text-lg text-ivory-50">Faites vos mises</p>
+            <p className="font-display text-lg text-ivory-50">{tr('bjmulti.faites_vos_mises')}</p>
             {left !== null && <span className="text-sm text-gold-300" aria-live="off">{left} s</span>}
           </div>
           <ul className="grid gap-2 sm:grid-cols-2">
@@ -371,7 +372,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
                   <button
                     key={v}
                     type="button"
-                    aria-label={`Ajouter ${v} jetons`}
+                    aria-label={tr('bjmulti.ajouter_jetons', { v })}
                     onClick={() => setBet((b) => Math.min(t.limits.maxBet, Math.max(t.limits.minBet, b + v)))}
                     className="grid h-12 w-12 place-items-center rounded-full border-4 border-dashed border-white/70 font-display text-xs text-white shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400"
                     style={{ background: CHIP_COLORS[v] }}
@@ -381,16 +382,14 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
                 ))}
                 <ChipStack amount={bet} size={30} />
                 <button type="button" className="text-xs text-gold-300 underline-offset-2 hover:underline" onClick={() => setBet(t.limits.minBet)}>
-                  Min
-                </button>
+                  {tr('bjmulti.min')}</button>
               </div>
               <Button disabled={busy || bet > mine.chips || bet < t.limits.minBet} onClick={() => void call(() => account.bjTableBet(code, bet))}>
-                Miser {formatChips(bet)}
-              </Button>
-              {bet > mine.chips && <p className="text-xs text-amber-200">Solde insuffisant, {formatChips(mine.chips)} disponibles.</p>}
+                {tr('bjmulti.miser', { formatChips: formatChips(bet) })}</Button>
+              {bet > mine.chips && <p className="text-xs text-amber-200">{tr('bjmulti.solde_insuffisant_disponibles', { formatChips: formatChips(mine.chips) })}</p>}
             </div>
           )}
-          {mine?.ready && <p className="text-sm text-ivory-300/80">Mise enregistrée, {formatChips(mine.bet)}. En attente des autres joueurs…</p>}
+          {mine?.ready && <p className="text-sm text-ivory-300/80">{tr('bjmulti.mise_enregistree_en', { formatChips: formatChips(mine.bet) })}</p>}
         </Panel>
       )}
 
@@ -398,7 +397,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
       {rv && (t.status === 'PLAYING' || t.status === 'DONE') && (
         <div className="felt relative rounded-[32px] px-3 py-5 sm:px-6" style={{ ['--felt-a' as string]: '#0f4a37', ['--felt-b' as string]: '#093327', ['--felt-c' as string]: '#04170f' }}>
           <div className="flex flex-col items-center">
-            <div className="mb-2 rounded-full border border-gold-500/40 bg-black/35 px-3.5 py-1 text-xs text-gold-200">Croupier · {t.rules.dealerHitsSoft17 ? 'tire sur 17 soft' : 'reste sur tous les 17'}</div>
+            <div className="mb-2 rounded-full border border-gold-500/40 bg-black/35 px-3.5 py-1 text-xs text-gold-200">{tr('bjmulti.croupier')} {t.rules.dealerHitsSoft17 ? tr('bjmulti.tire_sur_17') : tr('bjmulti.reste_sur_tous')}</div>
             <div className="flex min-h-[5.6rem] items-center [&>*:not(:first-child)]:-ml-6 sm:[&>*:not(:first-child)]:-ml-8" data-testid="dealer-cards">
               {rv.dealer.map((c, i) => (
                 <PlayingCard key={`${i}-${c ?? 'x'}`} code={c} size="md" fourColor={fourColor} back={cardBack} flip={i > 0 && !!c} />
@@ -412,13 +411,13 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
               const seat = t.seats[t.round!.participants[p]!]!;
               const turn = t.status === 'PLAYING' && rv.turn === p;
               return (
-                <li key={p} className={`rounded-2xl border p-2 ${turn ? 'border-gold-400 bg-black/30' : 'border-ivory-100/10 bg-black/15'}`} aria-label={`Place de ${seat.nickname}`}>
+                <li key={p} className={`rounded-2xl border p-2 ${turn ? 'border-gold-400 bg-black/30' : 'border-ivory-100/10 bg-black/15'}`} aria-label={tr('bjmulti.place_de', { nickname: seat.nickname })}>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1.5 text-sm text-ivory-50">
                       <Avatar nickname={seat.nickname} avatar={seat.avatar} size={24} />
                       <span className="truncate">{seat.nickname}</span>
-                      {seat.kind === 'cpu' && <Badge>CPU</Badge>}
-                      {seat.you && <Badge tone="gold">Vous</Badge>}
+                      {seat.kind === 'cpu' && <Badge>{tr('bjmulti.cpu')}</Badge>}
+                      {seat.you && <Badge tone="gold">{tr('bjmulti.vous')}</Badge>}
                     </span>
                     {turn && left !== null && seat.kind === 'human' && <span className="text-xs text-gold-300">{left} s</span>}
                   </div>
@@ -432,17 +431,17 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
               );
             })}
           </ul>
-          {compact && <span className="sr-only">Table de plus de trois joueurs</span>}
+          {compact && <span className="sr-only">{tr('bjmulti.table_de_plus')}</span>}
         </div>
       )}
-      {t.seats.some((s) => s.sittingOut && s.you) && t.status === 'PLAYING' && <p className="text-sm text-ivory-300/80">Vous ne participez pas à cette manche. Rejoignez la suivante.</p>}
+      {t.seats.some((s) => s.sittingOut && s.you) && t.status === 'PLAYING' && <p className="text-sm text-ivory-300/80">{tr('bjmulti.vous_ne_participez')}</p>}
 
       {/* Mes actions */}
       {t.status === 'PLAYING' && t.me !== null && (
         <div>
           {myTurn ? (
             <>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5" role="group" aria-label="Actions">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5" role="group" aria-label={tr('bjmulti.actions')}>
                 {ORDER.filter((a) => a !== 'SURRENDER' || t.rules.surrender).map((a) => (
                   <Button key={a} variant={pedagogy === 'coach' && help?.advice?.action === a ? 'primary' : a === 'HIT' || a === 'STAND' ? 'secondary' : 'ghost'} disabled={busy || !legal.has(a)} onClick={() => void call(() => account.bjTableAct(code, a))} className="border border-ivory-100/15">
                     {ACTION_LABEL[a]}
@@ -453,85 +452,82 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
                 <div className="mt-3 rounded-2xl border border-gold-500/30 bg-gold-500/10 p-3 text-sm text-ivory-100">
                   {pedagogy === 'coach' && help.advice && (
                     <p className="mb-1.5">
-                      <strong className="text-gold-300">Conseil. {ACTION_LABEL[help.advice.action]}.</strong> {help.advice.reason}
+                      <strong className="text-gold-300">{tr('bjmulti.conseil', { v: ACTION_LABEL[help.advice.action] })}</strong> {help.advice.reason}
                     </p>
                   )}
                   <p className="text-ivory-200/90">
-                    Risque de dépasser en tirant : <strong>{pct(help.odds.bustOnHit)}</strong>. Si vous restez, gagner <strong>{pct(help.odds.stand.win)}</strong>, égalité {pct(help.odds.stand.push)}, perdre {pct(help.odds.stand.lose)}.
-                  </p>
-                  <p className="mt-1 text-xs text-ivory-300/70">Probabilités calculées sans compter les cartes des autres places.</p>
+                    {tr('bj.odds', { bust: pct(help.odds.bustOnHit), win: pct(help.odds.stand.win), push: pct(help.odds.stand.push), lose: pct(help.odds.stand.lose) })}</p>
+                  <p className="mt-1 text-xs text-ivory-300/70">{tr('bjmulti.probabilites_calculees_sans')}</p>
                 </div>
               )}
             </>
           ) : (
-            t.round && t.round.turnSeat >= 0 && <p className="text-sm text-ivory-300/85" aria-live="polite">Tour de {t.seats[t.round.turnSeat]?.nickname}…</p>
+            t.round && t.round.turnSeat >= 0 && <p className="text-sm text-ivory-300/85" aria-live="polite">{tr('bjmulti.tour_de', { nickname: t.seats[t.round.turnSeat]?.nickname })}</p>
           )}
         </div>
       )}
 
       {/* Fin de manche */}
       {t.status === 'DONE' && (
-        <section aria-label="Résultat de la manche" className="rounded-3xl border border-ivory-100/15 bg-ink-800/80 p-4 sm:p-5">
+        <section aria-label={tr('bjmulti.resultat_de_la')} className="rounded-3xl border border-ivory-100/15 bg-ink-800/80 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               {t.result ? (
                 <>
                   <p className="font-display text-2xl text-ivory-50" data-testid="round-net">
-                    {t.result.net > 0 ? `Vous gagnez ${formatChips(t.result.net)}` : t.result.net < 0 ? `Vous perdez ${formatChips(-t.result.net)}` : 'Égalité, mise rendue'}
+                    {t.result.net > 0 ? tr('bj.won', { chips: formatChips(t.result.net) }) : t.result.net < 0 ? tr('bj.lost', { chips: formatChips(-t.result.net) }) : tr('bj.push')}
                   </p>
                   <p className="text-sm text-ivory-200/85">
-                    Solde {formatChips(mine?.chips ?? 0)}
-                    {t.result.xpGained > 0 ? `, +${t.result.xpGained} XP` : ''}
+                    {tr('bjmulti.solde', { formatChips: formatChips(mine?.chips ?? 0) })}{t.result.xpGained > 0 ? `, +${t.result.xpGained} XP` : ''}
                   </p>
                 </>
               ) : (
-                <p className="font-display text-xl text-ivory-50">Manche terminée</p>
+                <p className="font-display text-xl text-ivory-50">{tr('bjmulti.manche_terminee')}</p>
               )}
             </div>
             {t.me !== null && (
               <Button onClick={() => void call(() => account.bjTableNext(code))} disabled={busy}>
-                Manche suivante{left !== null ? ` (${left} s)` : ''}
+                {tr('bjmulti.manche_suivante')}{left !== null ? ` (${left} s)` : ''}
               </Button>
             )}
           </div>
-          {t.result?.level && <p className="mt-3 rounded-xl bg-gold-500/15 px-3 py-2 text-sm text-gold-200">Niveau {t.result.level.to} atteint ! Récompense : {formatChips(t.result.level.reward)}.</p>}
+          {t.result?.level && <p className="mt-3 rounded-xl bg-gold-500/15 px-3 py-2 text-sm text-gold-200">{tr('bjmulti.niveau_atteint_recompense', { to: t.result.level.to, formatChips: formatChips(t.result.level.reward) })}</p>}
           {t.result?.challengesDone.map((c) => (
             <p key={c.id} className="mt-2 text-sm text-emerald-200">
-              Défi accompli. {c.label}
-            </p>
+              {tr('bjmulti.defi_accompli', { label: c.label })}</p>
           ))}
           {t.result?.achievements.map((a) => (
             <p key={a.id} className="mt-2 text-sm text-gold-200">
-              Objectif débloqué. {a.label}
-            </p>
+              {tr('bjmulti.objectif_debloque', { label: a.label })}</p>
           ))}
           {t.round?.seed && (
             <details className="mt-3 text-xs text-ivory-300/80">
-              <summary className="cursor-pointer text-ivory-200">Vérifier l’équité du tirage</summary>
+              <summary className="cursor-pointer text-ivory-200">{tr('bjmulti.verifier_l_equite')}</summary>
               <FairnessProof seed={t.round.seed} commitment={t.round.commitment} />
             </details>
           )}
         </section>
       )}
 
-      {!authed && t.me !== null && <p className="text-center text-xs text-ivory-300/60">Vous jouez en invité. Un compte conserve votre progression sur tous vos appareils.</p>}
+      {!authed && t.me !== null && <p className="text-center text-xs text-ivory-300/60">{tr('bjmulti.vous_jouez_en')}</p>}
     </div>
   );
 }
 
 function SeatCard({ s }: { s: BjSeatDto }) {
+  const { t, tp } = useI18n();
   return (
     <li className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${s.you ? 'border-gold-500/50 bg-gold-500/10' : 'border-ivory-100/12 bg-ink-900/60'}`}>
       {s.open ? <span className="grid h-8 w-8 place-items-center rounded-full border border-dashed border-ivory-100/30 text-ivory-300/60" aria-hidden="true">+</span> : <Avatar nickname={s.nickname || '?'} avatar={s.avatar} size={32} />}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm text-ivory-50">
-          {s.open ? 'Place libre (humain)' : s.nickname}
-          {s.kind === 'cpu' && <span className="ml-1.5"><Badge>CPU</Badge></span>}
-          {s.you && <span className="ml-1.5"><Badge tone="gold">Vous</Badge></span>}
+          {s.open ? t('bjmulti.place_libre_humain') : s.nickname}
+          {s.kind === 'cpu' && <span className="ml-1.5"><Badge>{t('bjmulti.cpu')}</Badge></span>}
+          {s.you && <span className="ml-1.5"><Badge tone="gold">{t('bjmulti.vous')}</Badge></span>}
         </span>
         {!s.open && <span className="text-xs text-ivory-300/75">{formatChips(s.chips)}{s.ready ? `, mise ${formatChips(s.bet)}` : ''}</span>}
       </span>
-      {!s.open && s.ready && <Badge tone="green">Prêt</Badge>}
+      {!s.open && s.ready && <Badge tone="green">{t('bjmulti.pret')}</Badge>}
     </li>
   );
 }
