@@ -124,6 +124,14 @@ describe('Tableau : classé, ligues et défis', () => {
     expect(await within(screen.getByTestId('tb-leaderboard')).findByText('Personne n’est encore classé dans cette variante.')).toBeInTheDocument();
     expect(screen.getByTestId('tb-ranked')).toHaveTextContent('Pas de conseils en classé');
 
+    // Le sélecteur de variante commande tout le menu : classé, progression et classement suivent la variante choisie.
+    expect(within(progress).getByText('Tableau')).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: /5 cartes/ }));
+    await waitFor(() => expect(within(screen.getByTestId('tb-progress')).getByText(/5 cartes/)).toBeInTheDocument());
+    expect(within(screen.getByTestId('tb-ranked')).getByText(/5 cartes/)).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Tableau' }));
+    await waitFor(() => expect(within(screen.getByTestId('tb-progress')).getByText('Tableau')).toBeInTheDocument());
+
     await user.click(within(screen.getByTestId('tb-ranked')).getByRole('button', { name: 'Lancer une partie classée' }));
     await screen.findByTestId('tb-board-mine');
     expect(screen.queryByRole('button', { name: /conseil/i })).toBeNull();
@@ -140,6 +148,38 @@ describe('Tableau : classé, ligues et défis', () => {
     expect(lb[0]).toMatchObject({ nickname: 'Zoé', you: true });
     await expect(account.tbCreate({ mode: 'ranked', level: 'beginner' })).resolves.toMatchObject({ mode: 'ranked' });
   });
+});
+
+describe('Tableau : duel classé contre un humain', () => {
+  it('recherche, annulation, puis appariement avec un second joueur : la partie s’ouvre chez le premier', async () => {
+    const { make } = await serverAndClients();
+    const ana = make();
+    const ben = make();
+    await ana.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
+    await ben.register({ nickname: 'Ben', email: 'ben@x.fr', password: 'tapis-vert-42' });
+    const user = userEvent.setup();
+    render(
+      <AccountProvider account={ana}>
+        <Tableau onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    const panel = await screen.findByTestId('tb-duel');
+    expect(panel).toHaveTextContent('Duel classé');
+    await user.click(within(panel).getByRole('button', { name: 'Chercher un adversaire' }));
+    expect(await screen.findByTestId('tb-queue-wait')).toHaveTextContent(/Recherche en cours depuis \d+ secondes/);
+    await user.click(within(screen.getByTestId('tb-duel')).getByRole('button', { name: 'Annuler la recherche' }));
+    expect(within(screen.getByTestId('tb-duel')).getByRole('button', { name: 'Chercher un adversaire' })).toBeInTheDocument();
+    expect(await ana.tbQueueStatus()).toMatchObject({ status: 'idle' });
+
+    await user.click(within(screen.getByTestId('tb-duel')).getByRole('button', { name: 'Chercher un adversaire' }));
+    await screen.findByTestId('tb-queue-wait');
+    const matched = await ben.tbQueueJoin('classic');
+    expect(matched.status).toBe('matched');
+    // Le sondage du premier joueur découvre la partie et l'ouvre, avec le classement de l'adversaire.
+    expect(await screen.findByTestId('tb-board-mine', undefined, { timeout: 10000 })).toBeInTheDocument();
+    expect(screen.getByText(/800 points/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /conseil/i })).toBeNull();
+  }, 30000);
 });
 
 describe('Tableau : de bout en bout', () => {

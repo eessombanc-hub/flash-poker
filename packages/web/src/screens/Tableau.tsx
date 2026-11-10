@@ -13,7 +13,7 @@ import { VictoryTitle, WinnerSpotlight } from '../components/Winner';
 import { announce, clockSkew, COMBOS, inviteUrl, LEVELS, outcomeKey, ROMAN, secondsLeft, VARIANT_OPTIONS } from '../lib/tableau';
 import { adviceText, columnLabel, errorText, handLabel } from '../lib/tbText';
 import { useI18n, type Key } from '../i18n';
-import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry } from '../lib/types';
+import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbQueueDto } from '../lib/types';
 
 const NICK_KEY = 'poker.tb.nick.v1';
 const CONFIRM_KEY = 'poker.tb.confirm.v1';
@@ -89,6 +89,75 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
   const [active, setActive] = useState<{ code: string; mode: string } | null>(null);
   const [history, setHistory] = useState<TbHistoryEntry[]>([]);
   const [help, setHelp] = useState(false);
+  const [queue, setQueue] = useState<TbQueueDto | null>(null);
+  const [clock, setClock] = useState(() => Date.now());
+  const queueSince = useRef(0);
+
+  // Duel classé : reprise d'une attente en cours à l'ouverture du menu.
+  useEffect(() => {
+    if (guest) return;
+    let off = false;
+    client.tbQueueStatus().then((q) => {
+      if (off || q.status !== 'waiting') return;
+      queueSince.current = Date.now() - q.waitedMs;
+      setQueue(q);
+    }).catch(() => undefined);
+    return () => {
+      off = true;
+    };
+  }, [client, guest]);
+
+  // Tant qu'on attend : interrogation toutes les 2 s (la fenêtre d'appariement s'élargit à chaque appel) et compteur.
+  const waiting = queue?.status === 'waiting';
+  useEffect(() => {
+    if (!waiting) return;
+    let off = false;
+    const tick = setInterval(() => setClock(Date.now()), 1000);
+    const poll = setInterval(() => {
+      client.tbQueueStatus().then(async (q) => {
+        if (off) return;
+        if (q.status === 'matched' && q.code) {
+          off = true;
+          setQueue(null);
+          try {
+            onGame(await client.tbGet(q.code));
+          } catch (e) {
+            setError(errorText(i18n, e));
+          }
+        } else if (q.status !== 'waiting') {
+          setQueue(q);
+        }
+      }).catch(() => undefined);
+    }, 2000);
+    return () => {
+      off = true;
+      clearInterval(tick);
+      clearInterval(poll);
+    };
+  }, [waiting, client, onGame, i18n]);
+
+  const joinQueue = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const q = await client.tbQueueJoin(variant);
+      if (q.status === 'matched' && q.code) {
+        onGame(await client.tbGet(q.code));
+        return;
+      }
+      queueSince.current = Date.now();
+      setClock(Date.now());
+      setQueue(q);
+    } catch (e) {
+      setError(errorText(i18n, e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const cancelQueue = () => {
+    setQueue(null);
+    client.tbQueueCancel().catch(() => undefined);
+  };
 
   useEffect(() => {
     let off = false;
@@ -136,7 +205,7 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
       {active && (
         <Panel className="flex flex-wrap items-center justify-between gap-3 border-gold-400/60 p-4">
           <p className="text-sm text-ivory-100">
-            {t(`tb.resume.${active.mode === 'ranked' ? 'ranked' : active.mode === 'training' ? 'training' : 'friendly'}` as Key, { code: active.code })}
+            {t(`tb.resume.${active.mode === 'ranked' || active.mode === 'duel' || active.mode === 'training' ? active.mode : 'friendly'}` as Key, { code: active.code })}
           </p>
           <Button disabled={busy} onClick={() => void run(() => client.tbGet(active.code))}>
             {t('tb.resume.btn')}
@@ -196,7 +265,9 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
         </Panel>
 
         <Panel className="p-5" data-testid="tb-ranked">
-          <h2 className="font-display text-xl text-ivory-50">{t('tb.ranked')}</h2>
+          <h2 className="flex flex-wrap items-center gap-2 font-display text-xl text-ivory-50">
+            {t('tb.ranked')} <Badge tone="neutral">{t(`tb.variant.${variant}` as Key)}</Badge>
+          </h2>
           <p className="mt-1 text-sm text-ivory-200/85">{t('tb.ranked.text')}</p>
           {guest ? (
             <p className="mt-3 text-sm text-gold-200">{t('tb.ranked.guest')}</p>
@@ -208,6 +279,33 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
               <p className="mt-2 text-xs text-ivory-300/80">{t('tb.ranked.rules')}</p>
               <Button className="mt-3 w-full" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'ranked', level, variant }))}>
                 {t('tb.ranked.start')}
+              </Button>
+            </>
+          )}
+        </Panel>
+        <Panel className="p-5" data-testid="tb-duel">
+          <h2 className="flex flex-wrap items-center gap-2 font-display text-xl text-ivory-50">
+            {t('tb.duel')} <Badge tone="neutral">{t(`tb.variant.${variant}` as Key)}</Badge>
+          </h2>
+          <p className="mt-1 text-sm text-ivory-200/85">{t('tb.duel.text')}</p>
+          {guest ? (
+            <p className="mt-3 text-sm text-gold-200">{t('tb.ranked.guest')}</p>
+          ) : waiting ? (
+            <div className="mt-3 space-y-2" role="status" aria-live="polite">
+              <p className="text-sm text-gold-200" data-testid="tb-queue-wait">
+                {t('tb.duel.waiting', { s: Math.max(0, Math.floor((clock - queueSince.current) / 1000)) })}
+              </p>
+              <p className="text-xs text-ivory-300/80">{t('tb.duel.range')}</p>
+              <Button variant="secondary" className="w-full" onClick={cancelQueue}>
+                {t('tb.duel.cancel')}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {queue?.status === 'expired' && <p className="mt-3 text-sm text-ivory-100" role="status">{t('tb.duel.expired')}</p>}
+              <p className="mt-2 text-xs text-ivory-300/80">{t('tb.duel.rules')}</p>
+              <Button className="mt-3 w-full" disabled={busy} onClick={() => void joinQueue()}>
+                {t('tb.duel.start')}
               </Button>
             </>
           )}
@@ -466,7 +564,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
 
       {/* Adversaire */}
       <div className="lg:col-start-1 lg:row-start-1">
-      <PlayerBar name={oppName} avatar={opponent?.avatar ?? null} badge={`${opponent?.kind === 'cpu' ? t('tb.badge.level', { level: t(`tb.level.${opponent.level ?? 'intermediate'}` as Key) }) : t('tb.badge.friend')}${hand5 ? t('tb.badge.hand', { n: view.handCount[opp] }) : ''}`} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
+      <PlayerBar name={oppName} avatar={opponent?.avatar ?? null} badge={`${opponent?.kind === 'cpu' ? t('tb.badge.level', { level: t(`tb.level.${opponent.level ?? 'intermediate'}` as Key) }) : opponent?.rating != null ? t('tb.badge.rated', { r: opponent.rating }) : t('tb.badge.friend')}${hand5 ? t('tb.badge.hand', { n: view.handCount[opp] }) : ''}`} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
       </div>
 
       <div className="lg:col-start-1 lg:row-start-2">

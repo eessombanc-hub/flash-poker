@@ -103,6 +103,12 @@ const BJ_SCHEMA = `
         PRIMARY KEY (user_id, variant)
       );
       CREATE INDEX IF NOT EXISTS tb_profile_rating ON tb_profile (variant, rating);
+      CREATE TABLE IF NOT EXISTS tb_queue (
+        user_id TEXT PRIMARY KEY,
+        variant TEXT NOT NULL,
+        rating INTEGER NOT NULL,
+        since INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS tb_daily (
         user_id TEXT NOT NULL,
         day TEXT NOT NULL,

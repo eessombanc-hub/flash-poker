@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tbClampRating, tbDailyChallenges, tbDayKey, tbEloDelta, tbLeagueOf, TB_CHALLENGES, TB_CPU_RATING, TB_LEAGUES, TB_START_RATING, type TbGameFacts } from '../src';
+import { tbCanPair, tbClampRating, tbIsRated, tbMatchWindow, tbDailyChallenges, tbDayKey, tbEloDelta, tbLeagueOf, TB_CHALLENGES, TB_CPU_RATING, TB_LEAGUES, TB_START_RATING, type TbGameFacts } from '../src';
 
 describe('Tableau : ligues', () => {
   it('dix ligues, seuils croissants, départ en ligue 1', () => {
@@ -70,5 +70,31 @@ describe('Tableau : défis du jour', () => {
   it('le jour civil suit l’heure de Paris', () => {
     expect(tbDayKey(Date.UTC(2026, 10, 10, 22, 30))).toBe('2026-11-10');
     expect(tbDayKey(Date.UTC(2026, 10, 10, 23, 30))).toBe('2026-11-11');
+  });
+});
+
+describe('Tableau : duel classé, appariement', () => {
+  it('modes qui font évoluer le classement', () => {
+    expect(tbIsRated('ranked')).toBe(true);
+    expect(tbIsRated('duel')).toBe(true);
+    expect(tbIsRated('friendly')).toBe(false);
+    expect(tbIsRated('training')).toBe(false);
+  });
+  it('la fenêtre d’appariement s’élargit avec l’attente, puis disparaît', () => {
+    expect(tbMatchWindow(0)).toBe(100);
+    expect(tbMatchWindow(9_999)).toBe(100);
+    expect(tbMatchWindow(10_000)).toBe(150);
+    expect(tbMatchWindow(50_000)).toBe(350);
+    expect(tbMatchWindow(60_000)).toBe(Infinity);
+  });
+  it('deux joueurs s’apparient selon l’écart et le temps d’attente du plus patient', () => {
+    expect(tbCanPair({ rating: 1000, waitedMs: 0 }, { rating: 1090, waitedMs: 0 })).toBe(true);
+    expect(tbCanPair({ rating: 1000, waitedMs: 0 }, { rating: 1300, waitedMs: 0 })).toBe(false);
+    expect(tbCanPair({ rating: 1000, waitedMs: 0 }, { rating: 1300, waitedMs: 45_000 })).toBe(true);
+    expect(tbCanPair({ rating: 800, waitedMs: 70_000 }, { rating: 1800, waitedMs: 0 })).toBe(true);
+  });
+  it('contre un humain, le gain dépend de l’écart réel de classement', () => {
+    expect(tbEloDelta(1200, 1400, 'win', 20)).toBeGreaterThan(tbEloDelta(1200, 1200, 'win', 20));
+    expect(tbEloDelta(1200, 1400, 'win', 20) + tbEloDelta(1400, 1200, 'loss', 20)).toBe(0); // somme nulle à K égal
   });
 });

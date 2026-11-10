@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
-  adviseColumn, AI_LEVELS, chooseMove, TABLEAU_VARIANTS, compareColumns, CryptoRng, describePartial, evaluateColumn, TableauError, TableauGame, tableauCommitment, thinkDelayMs, TURN_MS,
+  adviseColumn, AI_LEVELS, chooseMove, TABLEAU_VARIANTS, compareColumns, CryptoRng, describePartial, evaluateColumn, TableauError, TableauGame, tableauCommitment, tbCanPair, thinkDelayMs, tbIsRated, TURN_MS,
   type AiLevel, type TableauVariant, type ColumnHand, type Placement, type Rng, type Seat, type TableauResult, type TableauView,
 } from '@poker/engine';
 import type { AccountDb } from '../accounts/db';
@@ -18,9 +18,11 @@ export const GRACE_MS = 1_500; // tolérance réseau après les 30 s affichées
 export const MAX_IDLE_TURNS = 3; // timeouts consécutifs avant abandon (amical) ou pause (entraînement)
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const WAITING_TTL_MS = 3_600_000;
+/** Attente maximale dans la file du duel classé. */
+export const QUEUE_TTL_MS = 180_000;
 const STALE_MS = 24 * 3_600_000;
 
-export type TbMode = 'training' | 'friendly' | 'ranked';
+export type TbMode = 'training' | 'friendly' | 'ranked' | 'duel';
 export type TbStatus = 'waiting' | 'playing' | 'finished';
 
 interface Player {
@@ -53,7 +55,9 @@ interface Room {
   xpDone: boolean;
   /** Statistiques déjà enregistrées (une seule fois par partie). */
   statsDone?: boolean;
-  /** Variation de classement d'une partie classée terminée. */
+  /** Variation de classement par siège d'une partie classée terminée (classé et duel). */
+  ratings?: (TbRatingChange | null)[];
+  /** Ancien format (une seule variation, siège 0). */
   rating?: TbRatingChange | null;
 }
 
@@ -62,6 +66,8 @@ export interface TbPlayerDto {
   avatar: string | null;
   kind: 'human' | 'cpu';
   level: AiLevel | null;
+  /** Classement du joueur dans la variante, pour les modes classés (comme l'affichage d'une partie d'échecs). */
+  rating: number | null;
   you: boolean;
 }
 export interface TbGameDto {
@@ -92,6 +98,13 @@ export interface TbGameDto {
   /** Partie classée terminée : classement avant, après et variation (pour le siège de l'appelant). */
   rating: TbRatingChange | null;
   reveal: { seed: string; commitment: string; order: string[] } | null;
+}
+export interface TbQueueDto {
+  status: 'idle' | 'waiting' | 'matched' | 'expired';
+  /** Code de la partie une fois l'adversaire trouvé. */
+  code: string | null;
+  variant: TableauVariant;
+  waitedMs: number;
 }
 export interface TbHistoryEntry {
   code: string;
@@ -174,7 +187,7 @@ export class TableauService {
     const rows = this.db.prepare('SELECT code, data, updated_at FROM tb_game WHERE updated_at < ?').all(t - WAITING_TTL_MS) as { code: string; data: string; updated_at: number }[];
     for (const r of rows) {
       const room = JSON.parse(r.data) as Room;
-      if (room.mode === 'ranked' && room.status === 'playing') {
+      if (tbIsRated(room.mode) && room.status === 'playing') {
         // Une partie classée abandonnée ne disparaît pas sans trace : l'horloge la conclut par un forfait enregistré.
         try {
           const e = this.load(r.code);
@@ -241,6 +254,10 @@ export class TableauService {
     room.statsDone = true;
     const result = game.result();
     const winner = this.winnerOf(room, game);
+    const variant = room.variant ?? 'classic';
+    // Classements d'avant la partie, relevés avant toute mise à jour : les deux joueurs d'un duel sont notés sur les mêmes valeurs.
+    const pre = room.seats.map((p) => (p?.kind === 'human' && p.userId ? this.stats.ratingOf(p.userId, variant) : null));
+    room.ratings = [null, null];
     room.seats.forEach((p, i) => {
       if (!p || p.kind !== 'human' || !p.userId || !TableauStats.eligible(p.userId)) return;
       const seat = i as Seat;
@@ -253,10 +270,10 @@ export class TableauService {
         columnsPlayed: result && room.forfeit === null ? result.columns.length : 0,
         straightFlushWin: room.forfeit === null && result?.straightFlush?.seat === seat,
         straightFlushMade: columns.some((c) => c.length === 5 && evaluateColumn(c).category >= 8),
-        opponentLevel: opp?.kind === 'cpu' ? opp.level : null, forfeit: forfeited,
+        opponentLevel: opp?.kind === 'cpu' ? opp.level : null, opponentRating: room.mode === 'duel' ? (pre[1 - seat] ?? null) : null, forfeit: forfeited,
       } as const;
       const change = this.stats.record(p.userId, { ...facts, outcome: facts.outcome });
-      if (change && room.mode === 'ranked') room.rating = change;
+      if (change && tbIsRated(room.mode)) room.ratings![seat] = change;
     });
   }
 
@@ -318,10 +335,12 @@ export class TableauService {
     const existing = this.activeOf(who.userId);
     if (existing) {
       const r = existing.room;
-      if (r.mode === 'ranked' && r.status === 'playing') throw rule(`Une partie classée est déjà en cours (${r.code})`, 'TB_RANKED_ACTIVE');
+      if (tbIsRated(r.mode) && r.status === 'playing') throw rule(`Une partie classée est déjà en cours (${r.code})`, 'TB_RANKED_ACTIVE');
       if (r.mode === 'friendly' && r.status === 'playing') throw rule(`Une partie amicale est déjà en cours (${r.code})`, 'TB_FRIENDLY_ACTIVE');
       this.drop(r.code); // entraînement ou salle d'attente non démarrée : remplacée
     }
+    this.queueDrop(who.userId);
+    if (req.mode === 'duel') throw new ServerError('BAD_REQUEST', 'Le duel passe par la file d’attente');
     if (req.mode === 'ranked' && !TableauStats.eligible(who.userId)) throw rule('Le mode Classé est réservé aux comptes connectés', 'TB_RANKED_ACCOUNT');
     const level = req.level ?? 'intermediate';
     const variant = req.variant ?? 'classic';
@@ -458,6 +477,97 @@ export class TableauService {
     return out;
   }
 
+  // ---------- Duel classé : file d'attente ----------
+
+  private queueDrop(userId: string): void {
+    this.db.prepare('DELETE FROM tb_queue WHERE user_id = ?').run(userId);
+  }
+  private whoOf(userId: string): Who {
+    const u = this.db.prepare('SELECT nickname, avatar FROM users WHERE id = ?').get(userId) as { nickname: string; avatar: string | null } | undefined;
+    return { userId, nickname: u?.nickname ?? 'Joueur', avatar: u?.avatar ?? null };
+  }
+  /** Partie de duel en cours d'un joueur, s'il en a une (l'appariement a pu se faire pendant qu'il attendait). */
+  private duelOf(userId: string): string | null {
+    const a = this.activeOf(userId);
+    return a && a.room.mode === 'duel' ? a.room.code : null;
+  }
+
+  /**
+   * Cherche un adversaire de force proche (écart de 100 points, élargi de 50 toutes les 10 s, sans limite après 60 s).
+   * Le premier arrivé fixe la table ; les deux joueurs voient la même partie. Réservé aux comptes connectés.
+   */
+  private tryMatch(me: { userId: string; rating: number; since: number }, variant: TableauVariant): string | null {
+    const now = this.now();
+    const rows = this.db.prepare('SELECT user_id, rating, since FROM tb_queue WHERE variant = ? AND user_id != ? ORDER BY since ASC').all(variant, me.userId) as { user_id: string; rating: number; since: number }[];
+    for (const r of rows) {
+      if (now - r.since > QUEUE_TTL_MS || this.activeOf(r.user_id)) {
+        this.queueDrop(r.user_id); // attente expirée, ou joueur déjà reparti dans une autre partie
+        continue;
+      }
+      if (!tbCanPair({ rating: me.rating, waitedMs: now - me.since }, { rating: r.rating, waitedMs: now - r.since })) continue;
+      this.queueDrop(r.user_id);
+      this.queueDrop(me.userId);
+      return this.newDuel(this.whoOf(r.user_id), this.whoOf(me.userId), variant).code;
+    }
+    return null;
+  }
+
+  private newDuel(a: Who, b: Who, variant: TableauVariant): Room {
+    const seed = this.opts.seed ? this.opts.seed() : randomBytes(32).toString('hex');
+    const now = this.now();
+    const pl = (w: Who): Player => ({ kind: 'human', userId: w.userId, nickname: w.nickname, avatar: w.avatar, level: null, idle: 0 });
+    const room: Room = {
+      code: this.newCode(), mode: 'duel', variant, seed, commitment: tableauCommitment(seed), seats: [pl(a), pl(b)], status: 'playing',
+      log: [], turnSince: now, cpuDelay: 0, paused: false, forfeit: null, createdAt: now, finishedAt: null, version: 0, updatedAt: now, xpDone: false,
+    };
+    const game = new TableauGame(seed, variant);
+    this.begin(room, game, now);
+    this.cache.set(room.code, { room, game });
+    this.save(room);
+    this.index(a.userId, room.code);
+    this.index(b.userId, room.code);
+    return room;
+  }
+
+  queueJoin(who: Who, variant: TableauVariant = 'classic'): TbQueueDto {
+    this.sweep();
+    if (!TableauStats.eligible(who.userId)) throw rule('Le duel classé est réservé aux comptes connectés', 'TB_RANKED_ACCOUNT');
+    if (!TABLEAU_VARIANTS.includes(variant)) throw new ServerError('BAD_REQUEST', 'Variante inconnue');
+    const existing = this.activeOf(who.userId);
+    if (existing) {
+      const r = existing.room;
+      if (r.mode === 'duel' && r.status === 'playing') return { status: 'matched', code: r.code, variant, waitedMs: 0 };
+      if (r.status === 'playing' && r.mode !== 'training') throw rule(`Une partie est déjà en cours (${r.code})`, 'TB_ALREADY_PLAYING');
+      this.drop(r.code);
+    }
+    const me = { userId: who.userId, rating: this.stats.ratingOf(who.userId, variant), since: this.now() };
+    const code = this.tryMatch(me, variant);
+    if (code) return { status: 'matched', code, variant, waitedMs: 0 };
+    this.db.prepare('INSERT INTO tb_queue (user_id, variant, rating, since) VALUES (?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET variant = excluded.variant, rating = excluded.rating, since = excluded.since').run(me.userId, variant, me.rating, me.since);
+    return { status: 'waiting', code: null, variant, waitedMs: 0 };
+  }
+
+  /** Où en est l'attente : apparié (code de la partie), en attente (la fenêtre s'élargit à chaque appel), ou rien. */
+  queueStatus(userId: string): TbQueueDto {
+    const code = this.duelOf(userId);
+    if (code) return { status: 'matched', code, variant: this.load(code).room.variant ?? 'classic', waitedMs: 0 };
+    const row = this.db.prepare('SELECT variant, rating, since FROM tb_queue WHERE user_id = ?').get(userId) as { variant: TableauVariant; rating: number; since: number } | undefined;
+    if (!row) return { status: 'idle', code: null, variant: 'classic', waitedMs: 0 };
+    const waited = this.now() - row.since;
+    if (waited > QUEUE_TTL_MS) {
+      this.queueDrop(userId);
+      return { status: 'expired', code: null, variant: row.variant, waitedMs: waited };
+    }
+    const found = this.tryMatch({ userId, rating: row.rating, since: row.since }, row.variant);
+    if (found) return { status: 'matched', code: found, variant: row.variant, waitedMs: waited };
+    return { status: 'waiting', code: null, variant: row.variant, waitedMs: waited };
+  }
+
+  queueLeave(userId: string): { left: true } {
+    this.queueDrop(userId);
+    return { left: true };
+  }
+
   // ---------- Profil, classement, défis ----------
 
   profile(userId: string, variant: TableauVariant = 'classic'): TbProfileDto {
@@ -480,7 +590,7 @@ export class TableauService {
     const last = game.log.at(-1) ?? null;
     return {
       code: room.code, mode: room.mode, variant: room.variant ?? 'classic', status: room.status, version: room.version, serverNow: this.now(), you,
-      players: room.seats.map((p, i) => (p ? { nickname: p.nickname, avatar: p.avatar, kind: p.kind, level: p.level, you: i === you } : null)),
+      players: room.seats.map((p, i) => (p ? { nickname: p.nickname, avatar: p.avatar, kind: p.kind, level: p.level, rating: tbIsRated(room.mode) && p.kind === 'human' && p.userId ? this.stats.ratingOf(p.userId, room.variant ?? 'classic') : null, you: i === you } : null)),
       commitment: room.commitment,
       view: room.status === 'waiting' ? null : game.view(you),
       labels: room.status === 'waiting' ? null : ([0, 1] as const).map((sd) => game.columnsOf(sd).map((c) => (c.length === 5 ? evaluateColumn(c).label : describePartial(c)))) as [string[], string[]],
@@ -499,7 +609,7 @@ export class TableauService {
       result: complete ? game.result() : null,
       forfeit: room.forfeit,
       winner: finished ? this.winnerOf(room, game) : null,
-      rating: finished && room.mode === 'ranked' ? (room.rating ?? null) : null,
+      rating: finished && tbIsRated(room.mode) ? (room.ratings?.[you] ?? (you === 0 ? (room.rating ?? null) : null)) : null,
       reveal: finished ? { seed: room.seed, commitment: room.commitment, order: [...game.deal.initial[0], ...game.deal.initial[1], ...game.deal.deck[0], ...game.deal.deck[1]] } : null,
     };
   }

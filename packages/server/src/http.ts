@@ -53,6 +53,8 @@ export interface ServerOptions {
   /** Route de diagnostic `/_ip` (affiche l'adresse vue par le serveur) : à n'activer que pour régler `trustProxy`. */
   debugIp?: boolean;
   onError?: (err: unknown) => void;
+  /** Destination des erreurs signalées par le navigateur (journal du serveur par défaut). */
+  onClientError?: (report: { message: string; stack: string; where: string; agent: string }) => void;
 }
 
 export interface WireError {
@@ -199,6 +201,18 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   };
 
   app.get('/health', async () => ({ ok: true }));
+  // Journal des erreurs du navigateur : de quoi comprendre un affichage cassé sans avoir l'appareil sous la main.
+  // Taille bornée, 10 signalements par minute et par adresse, aucune donnée de compte.
+  const clientErrors = new RateLimiter(10, 60_000, now);
+  app.post('/client-errors', async (req, reply) => {
+    if (!clientErrors.hit(req.ip)) return reply.status(429).send({ ok: false });
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const cut = (v: unknown, n: number): string => (typeof v === 'string' ? v.replace(/[\r\n\t]+/g, ' ').slice(0, n) : '');
+    const report = { message: cut(b.message, 300), stack: cut(b.stack, 1500), where: cut(b.where, 200), agent: cut(req.headers['user-agent'], 200) };
+    if (!report.message) throw new ServerError('BAD_REQUEST', 'Signalement vide');
+    (opts.onClientError ?? ((r) => console.warn('[navigateur]', JSON.stringify(r))))(report);
+    return reply.status(204).send();
+  });
   if (opts.debugIp) app.get('/_ip', async (req) => ({ ip: req.ip, forwardedFor: req.headers['x-forwarded-for'] ?? null, socket: req.socket.remoteAddress ?? null }));
   app.get('/rooms', async (req, reply) => {
     guard('list', req.ip); // limite le polling de la liste, distinct de la création/arrivée

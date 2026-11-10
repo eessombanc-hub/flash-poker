@@ -502,6 +502,22 @@ describe('Tableau, mode Classé, ligues et défis', () => {
     expect(env.tb.profile(u.userId).games).toBe(1);
   });
 
+  it('Tableau 5 cartes : classé, statistiques et classement propres à la variante', () => {
+    const env = setup();
+    const u = addUser(env, 'u1', 'Zoé');
+    const c = env.tb.create(u, { mode: 'ranked', level: 'expert', variant: 'hand5' });
+    expect(c).toMatchObject({ mode: 'ranked', variant: 'hand5' });
+    expect(() => env.tb.advice(c.code, u.userId)).toThrow(/Entraînement/);
+    const v = finishTraining(env, c.code, u);
+    expect(v.status).toBe('finished');
+    expect(v.rating).not.toBeNull();
+    const five = env.tb.profile(u.userId, 'hand5');
+    expect(five).toMatchObject({ games: 1, rankedGames: 1, position: 1 });
+    expect(env.tb.profile(u.userId, 'classic')).toMatchObject({ games: 0, rating: 800, position: null });
+    expect(env.tb.leaderboard(u.userId, 'hand5')).toHaveLength(1);
+    expect(env.tb.leaderboard(u.userId, 'classic')).toEqual([]);
+  });
+
   it('abandonner une partie classée est une défaite enregistrée', () => {
     const env = setup();
     const u = addUser(env, 'u1', 'Zoé');
@@ -575,6 +591,141 @@ describe('Tableau, routes du profil et du classement', () => {
       const lb = await inj('/tableau/leaderboard', ga);
       expect(lb.statusCode).toBe(200);
       expect(lb.json()).toEqual({ leaderboard: [] });
+    } finally {
+      await server.close();
+    }
+  });
+});
+
+describe('Tableau : duel classé contre un humain', () => {
+  const setRating = (env: Env, id: string, rating: number) => void env.store.db.prepare('INSERT INTO tb_profile (user_id, variant, rating, peak) VALUES (?, ?, ?, ?) ON CONFLICT(user_id, variant) DO UPDATE SET rating = excluded.rating').run(id, 'classic', rating, rating);
+
+  it('réservé aux comptes ; le premier attend, le second déclenche l’appariement', () => {
+    const env = setup();
+    expect(() => env.tb.queueJoin(A)).toThrow(/comptes/);
+    const a = addUser(env, 'ua', 'Alice');
+    const b = addUser(env, 'ub', 'Bruno');
+    expect(env.tb.queueJoin(a)).toMatchObject({ status: 'waiting' });
+    expect(env.tb.queueStatus(a.userId)).toMatchObject({ status: 'waiting' });
+    const m = env.tb.queueJoin(b);
+    expect(m).toMatchObject({ status: 'matched' });
+    expect(env.tb.queueStatus(a.userId)).toMatchObject({ status: 'matched', code: m.code });
+    const ga = env.tb.get(m.code!, a.userId);
+    const gb = env.tb.get(m.code!, b.userId);
+    expect(ga).toMatchObject({ mode: 'duel', status: 'playing' });
+    expect(ga.players.map((p) => p!.nickname).sort()).toEqual(['Alice', 'Bruno']);
+    expect(ga.players.every((p) => p!.rating === 800)).toBe(true);
+    expect(gb.you).not.toBe(ga.you);
+    // plus personne dans la file
+    expect(env.store.db.prepare('SELECT COUNT(*) AS n FROM tb_queue').get()).toEqual({ n: 0 });
+    expect(() => env.tb.create(a, { mode: 'training' })).toThrow(/classée est déjà en cours/);
+    expect(env.tb.queueJoin(a)).toMatchObject({ status: 'matched', code: m.code });
+  });
+
+  it('l’écart de classement tolérée s’élargit avec l’attente', () => {
+    const env = setup();
+    const a = addUser(env, 'ua', 'Alice');
+    const b = addUser(env, 'ub', 'Bruno');
+    setRating(env, 'ua', 1000);
+    setRating(env, 'ub', 1400);
+    expect(env.tb.queueJoin(a).status).toBe('waiting');
+    expect(env.tb.queueJoin(b).status).toBe('waiting'); // 400 points d'écart : pas d'appariement immédiat
+    env.tick(20_000);
+    expect(env.tb.queueStatus(a.userId).status).toBe('waiting'); // fenêtre de 200
+    env.tick(45_000);
+    expect(env.tb.queueStatus(a.userId).status).toBe('matched'); // plus de limite après 60 s
+  });
+
+  it('variantes séparées, annulation, expiration', () => {
+    const env = setup();
+    const a = addUser(env, 'ua', 'Alice');
+    const b = addUser(env, 'ub', 'Bruno');
+    env.tb.queueJoin(a, 'classic');
+    expect(env.tb.queueJoin(b, 'hand5').status).toBe('waiting'); // pas la même variante
+    expect(env.tb.queueLeave(b.userId)).toEqual({ left: true });
+    expect(env.tb.queueStatus(b.userId).status).toBe('idle');
+    env.tick(200_000);
+    expect(env.tb.queueStatus(a.userId).status).toBe('expired');
+    expect(env.tb.queueStatus(a.userId).status).toBe('idle');
+  });
+
+  it('partie terminée : les deux joueurs sont notés sur leurs classements d’avant la partie', () => {
+    const env = setup();
+    const a = addUser(env, 'ua', 'Alice');
+    const b = addUser(env, 'ub', 'Bruno');
+    setRating(env, 'ua', 1100);
+    setRating(env, 'ub', 1000);
+    env.tb.queueJoin(a);
+    const code = env.tb.queueJoin(b).code!;
+    let v = env.tb.get(code, a.userId);
+    for (let i = 0; i < 200 && v.status === 'playing'; i++) {
+      const who = v.view!.turn === v.you ? a : b;
+      const cur = env.tb.get(code, who.userId);
+      v = env.tb.place(code, who.userId, cur.view!.legal[0]!);
+      v = env.tb.get(code, a.userId);
+    }
+    expect(v.status).toBe('finished');
+    const ra = env.tb.get(code, a.userId).rating!;
+    const rb = env.tb.get(code, b.userId).rating!;
+    expect([ra.before, rb.before]).toEqual([1100, 1000]);
+    expect(ra.delta + rb.delta).toBe(0); // somme nulle : même facteur pour les deux (classements provisoires)
+    expect(ra.leagueAfter).toBeGreaterThanOrEqual(1);
+    const pa = env.tb.profile('ua');
+    const pb = env.tb.profile('ub');
+    expect(pa).toMatchObject({ games: 1, rankedGames: 1, provisional: true });
+    expect(pa.rating).toBe(ra.after);
+    expect(pb.rating).toBe(rb.after);
+    const board = env.tb.leaderboard('ua');
+    expect(board.map((r) => r.nickname).sort()).toEqual(['Alice', 'Bruno']);
+    expect(board.every((r) => r.provisional)).toBe(true);
+  });
+
+  it('quitter un duel est une défaite pour celui qui part, une victoire pour l’autre', () => {
+    const env = setup();
+    const a = addUser(env, 'ua', 'Alice');
+    const b = addUser(env, 'ub', 'Bruno');
+    env.tb.queueJoin(a);
+    const code = env.tb.queueJoin(b).code!;
+    expect(env.tb.leave(code, a.userId)).toMatchObject({ forfeit: true });
+    expect(env.tb.profile('ua')).toMatchObject({ losses: 1, rating: 784 });
+    expect(env.tb.profile('ub')).toMatchObject({ wins: 1, rating: 816, streak: 1 });
+    expect(env.tb.get(code, b.userId)).toMatchObject({ winner: env.tb.get(code, b.userId).you, rating: { delta: 16 } });
+  });
+
+  it('trois tours sans jouer en duel : forfait et défaite enregistrés', () => {
+    const env = setup();
+    const a = addUser(env, 'ua', 'Alice');
+    const b = addUser(env, 'ub', 'Bruno');
+    env.tb.queueJoin(a);
+    const code = env.tb.queueJoin(b).code!;
+    for (let i = 0; i < 400 && env.tb.get(code, a.userId).status === 'playing'; i++) env.tick(40_000);
+    const g = env.tb.get(code, a.userId);
+    expect(g.status).toBe('finished');
+    expect(g.forfeit).not.toBeNull();
+    expect(env.tb.profile('ua').games + env.tb.profile('ub').games).toBe(2);
+  });
+});
+
+describe('Journal des erreurs du navigateur', () => {
+  it('accepte un signalement borné, refuse le vide, limite le débit', async () => {
+    const { LogMailer } = await import('../src/accounts/mailer');
+    const { RoomManager } = await import('../src/roomManager');
+    const { ManualScheduler } = await import('../src/scheduler');
+    const store = new AccountDb(':memory:');
+    const accounts = new AccountService(store, new LogMailer(false, () => undefined), { appUrl: 'https://jeu.test', log: () => undefined });
+    const blackjack = new BlackjackService(store);
+    const tableau = new TableauService(store, blackjack, { aiSims: 8, rng: new SeededRng(5) });
+    const manager = new RoomManager({ rng: new SeededRng(7), scheduler: new ManualScheduler(), accounts: { isReservedNickname: () => false, onGameFinished: () => undefined } });
+    const seen: { message: string; stack: string }[] = [];
+    const server = await buildServer({ manager, accounts, blackjack, tableau, onError: () => undefined, onClientError: (r) => void seen.push(r) });
+    try {
+      const post = (payload: unknown) => server.app.inject({ method: 'POST', url: '/client-errors', payload: payload as object });
+      expect((await post({})).statusCode).toBe(400);
+      expect((await post({ message: 'x'.repeat(900), stack: 'a\nb', where: '/#/tableau' })).statusCode).toBe(204);
+      expect(seen[0]!.message).toHaveLength(300);
+      expect(seen[0]!.stack).toBe('a b');
+      for (let i = 0; i < 12; i++) await post({ message: `e${i}` });
+      expect((await post({ message: 'trop' })).statusCode).toBe(429);
     } finally {
       await server.close();
     }

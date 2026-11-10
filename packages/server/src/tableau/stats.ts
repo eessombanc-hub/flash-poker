@@ -1,5 +1,5 @@
 import {
-  tbClampRating, tbDailyChallenges, tbDayKey, tbEloDelta, tbLeagueOf, TB_CHALLENGE_XP, TB_CPU_RATING, TB_START_RATING,
+  tbClampRating, tbDailyChallenges, tbDayKey, tbEloDelta, tbIsRated, tbLeagueOf, TB_CHALLENGE_XP, TB_CPU_RATING, TB_PLACEMENT_GAMES, TB_START_RATING,
   type TableauVariant, type TbGameFacts, type TbLeagueStanding,
 } from '@poker/engine';
 import type { AccountDb } from '../accounts/db';
@@ -26,6 +26,8 @@ export interface TbProfileDto {
   colsPlayed: number;
   rankedGames: number;
   rankedWins: number;
+  /** Classement provisoire : moins de 10 parties classées (comme aux échecs, il bouge plus vite). */
+  provisional: boolean;
   /** Les trois défis du jour. */
   day: string;
   challenges: { id: string; label: string; goal: number; progress: number; done: boolean }[];
@@ -37,6 +39,7 @@ export interface TbLeaderboardRow {
   rating: number;
   leagueId: number;
   rankedGames: number;
+  provisional: boolean;
   you: boolean;
 }
 export interface TbRatingChange {
@@ -81,8 +84,9 @@ export class TableauStats {
     const streak = f.outcome === 'win' ? num('streak') + 1 : 0;
     let rating = num('rating');
     let change: TbRatingChange | null = null;
-    if (f.mode === 'ranked' && f.opponentLevel) {
-      const delta = tbEloDelta(rating, TB_CPU_RATING[f.opponentLevel], f.outcome, num('ranked_games'));
+    const oppRating = f.opponentRating ?? (f.opponentLevel ? TB_CPU_RATING[f.opponentLevel] : null);
+    if (tbIsRated(f.mode) && oppRating !== null) {
+      const delta = tbEloDelta(rating, oppRating, f.outcome, num('ranked_games'));
       const after = tbClampRating(rating + delta);
       change = { before: rating, after, delta: after - rating, leagueBefore: tbLeagueOf(rating).league.id, leagueAfter: tbLeagueOf(after).league.id };
       rating = after;
@@ -92,7 +96,7 @@ export class TableauStats {
          cols_won = cols_won + ?, cols_played = cols_played + ?, ranked_games = ranked_games + ?, ranked_wins = ranked_wins + ? WHERE user_id = ? AND variant = ?`,
     ).run(
       rating, Math.max(num('peak'), rating), wins, losses, draws, streak, Math.max(num('best_streak'), streak), f.straightFlushWin && f.outcome === 'win' ? 1 : 0,
-      f.columnsWon, f.columnsPlayed, f.mode === 'ranked' ? 1 : 0, f.mode === 'ranked' && f.outcome === 'win' && !f.forfeit ? 1 : 0, userId, f.variant,
+      f.columnsWon, f.columnsPlayed, tbIsRated(f.mode) ? 1 : 0, tbIsRated(f.mode) && f.outcome === 'win' && !f.forfeit ? 1 : 0, userId, f.variant,
     );
     this.progress(userId, f);
     return change;
@@ -111,6 +115,13 @@ export class TableauStats {
     }
   }
 
+  /** Classement courant sans créer de profil (départ si le joueur n'a encore rien joué). */
+  ratingOf(userId: string, variant: TableauVariant): number {
+    if (!TableauStats.eligible(userId)) return TB_START_RATING;
+    const r = this.db.prepare('SELECT rating FROM tb_profile WHERE user_id = ? AND variant = ?').get(userId, variant) as Row | undefined;
+    return (r?.rating as number | undefined) ?? TB_START_RATING;
+  }
+
   position(userId: string, variant: TableauVariant): number | null {
     const me = this.db.prepare('SELECT rating FROM tb_profile WHERE user_id = ? AND variant = ? AND ranked_games > 0').get(userId, variant) as Row | undefined;
     if (!me) return null;
@@ -126,7 +137,7 @@ export class TableauStats {
     return {
       variant, rating: n('rating'), peak: n('peak'), standing: tbLeagueOf(n('rating')), position: this.position(userId, variant),
       games: n('games'), wins: n('wins'), losses: n('losses'), draws: n('draws'), streak: n('streak'), bestStreak: n('best_streak'),
-      sfWins: n('sf_wins'), colsWon: n('cols_won'), colsPlayed: n('cols_played'), rankedGames: n('ranked_games'), rankedWins: n('ranked_wins'),
+      sfWins: n('sf_wins'), colsWon: n('cols_won'), colsPlayed: n('cols_played'), rankedGames: n('ranked_games'), rankedWins: n('ranked_wins'), provisional: n('ranked_games') < TB_PLACEMENT_GAMES,
       day,
       challenges: tbDailyChallenges(day).map((c) => {
         const s = stored.find((x) => x.challenge_id === c.id);
@@ -142,7 +153,7 @@ export class TableauStats {
     ).all(variant, limit) as Row[];
     return rows.map((r, i) => ({
       position: i + 1, nickname: r.nickname as string, avatar: (r.avatar as string | null) ?? null, rating: r.rating as number,
-      leagueId: tbLeagueOf(r.rating as number).league.id, rankedGames: r.ranked_games as number, you: r.user_id === userId,
+      leagueId: tbLeagueOf(r.rating as number).league.id, rankedGames: r.ranked_games as number, provisional: (r.ranked_games as number) < TB_PLACEMENT_GAMES, you: r.user_id === userId,
     }));
   }
 }

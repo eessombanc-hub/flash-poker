@@ -7,7 +7,11 @@ import type { AiLevel } from './ai';
 
 export type TbRankedVariant = 'classic' | 'hand5';
 export type TbOutcome = 'win' | 'loss' | 'draw';
-export type TbMode = 'training' | 'friendly' | 'ranked';
+/** `ranked` : classé contre l'ordinateur. `duel` : classé contre un autre joueur (même classement). */
+export type TbMode = 'training' | 'friendly' | 'ranked' | 'duel';
+
+/** Modes qui font évoluer le classement. */
+export const tbIsRated = (m: TbMode): boolean => m === 'ranked' || m === 'duel';
 
 // ---------- Ligues ----------
 
@@ -57,7 +61,7 @@ export function tbLeagueOf(rating: number): TbLeagueStanding {
 /** Force de jeu attribuée à chaque niveau du CPU : un adversaire fixe, donc des gains prévisibles. */
 export const TB_CPU_RATING: Record<AiLevel, number> = { beginner: 850, intermediate: 1150, expert: 1450 };
 
-/** Les premières parties classées bougent plus vite, pour trouver sa place sans longue attente. */
+/** Les premières parties classées bougent plus vite (classement provisoire), pour trouver sa place sans longue attente. */
 export const TB_PLACEMENT_GAMES = 10;
 
 export function tbEloDelta(rating: number, opponent: number, outcome: TbOutcome, rankedGames: number): number {
@@ -83,6 +87,8 @@ export interface TbGameFacts {
   /** Le joueur a complété au moins une quinte flush. */
   straightFlushMade: boolean;
   opponentLevel: AiLevel | null;
+  /** Classement de l'adversaire avant la partie (duel contre un humain) ; absent contre l'ordinateur. */
+  opponentRating?: number | null;
   forfeit: boolean;
 }
 
@@ -103,8 +109,8 @@ export const TB_CHALLENGES: readonly TbChallengeDef[] = [
   { id: 'cols8', label: 'Gagner 8 colonnes', goal: 8, gain: (f) => f.columnsWon },
   { id: 'cols4', label: 'Gagner une partie avec au moins 4 colonnes', goal: 1, gain: (f) => (win(f) && f.columnsWon >= 4 ? 1 : 0) },
   { id: 'sf', label: 'Réussir une quinte flush', goal: 1, gain: (f) => (f.straightFlushMade ? 1 : 0) },
-  { id: 'ranked', label: 'Jouer une partie classée', goal: 1, gain: (f) => (f.mode === 'ranked' ? 1 : 0) },
-  { id: 'rankedWin', label: 'Gagner une partie classée', goal: 1, gain: (f) => (f.mode === 'ranked' && win(f) ? 1 : 0) },
+  { id: 'ranked', label: 'Jouer une partie classée', goal: 1, gain: (f) => (tbIsRated(f.mode) ? 1 : 0) },
+  { id: 'rankedWin', label: 'Gagner une partie classée', goal: 1, gain: (f) => (tbIsRated(f.mode) && win(f) ? 1 : 0) },
   { id: 'beatExpert', label: 'Battre le CPU expert', goal: 1, gain: (f) => (win(f) && f.opponentLevel === 'expert' ? 1 : 0) },
   { id: 'friend', label: 'Jouer une partie amicale', goal: 1, gain: (f) => (f.mode === 'friendly' ? 1 : 0) },
 ];
@@ -136,4 +142,15 @@ export function tbDailyChallenges(day: string): TbChallengeDef[] {
 /** Jour civil à Paris (le défi change à minuit, heure de France). */
 export function tbDayKey(ms: number): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
+}
+
+/** Écart de classement toléré pour apparier deux joueurs : 100 points, +50 toutes les 10 s d'attente, sans limite après 60 s. */
+export function tbMatchWindow(waitedMs: number): number {
+  if (waitedMs >= 60_000) return Infinity;
+  return 100 + 50 * Math.floor(Math.max(0, waitedMs) / 10_000);
+}
+
+/** Deux joueurs en attente (le plus patient fixe la fenêtre) peuvent-ils jouer ensemble ? */
+export function tbCanPair(a: { rating: number; waitedMs: number }, b: { rating: number; waitedMs: number }): boolean {
+  return Math.abs(a.rating - b.rating) <= tbMatchWindow(Math.max(a.waitedMs, b.waitedMs));
 }

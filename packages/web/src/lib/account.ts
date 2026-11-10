@@ -2,7 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
 import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
-import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbStatus } from './types';
+import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbQueueDto, TbStatus } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
@@ -205,6 +205,9 @@ export class AccountClient {
   tbActive = () => this.bj<{ active: { code: string; mode: TbMode; status: TbStatus } | null }>('GET', '/me/tableau/active').then((r) => r.active);
   tbProfile = (variant: TableauVariant) => this.bj<{ profile: TbProfileDto }>('GET', `/me/tableau/profile?variant=${variant}`).then((r) => r.profile);
   tbLeaderboard = (variant: TableauVariant) => this.bj<{ leaderboard: TbLeaderboardRow[] }>('GET', `/tableau/leaderboard?variant=${variant}`).then((r) => r.leaderboard);
+  tbQueueJoin = (variant: TableauVariant) => this.bj<TbQueueDto>('POST', '/tableau/queue', { variant });
+  tbQueueStatus = () => this.bj<TbQueueDto>('GET', '/me/tableau/queue');
+  tbQueueCancel = () => this.bj<{ left: true }>('POST', '/tableau/queue/cancel', {});
   tbHistory = () => this.bj<{ history: TbHistoryEntry[] }>('GET', '/me/tableau/history').then((r) => r.history);
   blackjack = () => this.bj<BjOverview>('GET', '/me/blackjack');
   // ----- Tables à plusieurs -----

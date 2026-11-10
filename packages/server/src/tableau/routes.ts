@@ -51,6 +51,13 @@ export function registerTableauRoutes(app: FastifyInstance, tb: TableauService, 
     const m = identity(req);
     return { leaderboard: tb.leaderboard(m.account ? m.userId : null, variantOf(req)) };
   });
+  app.post('/tableau/queue', async (req) => {
+    const p = z.object({ variant: z.enum(['classic', 'hand5']).optional() }).safeParse(req.body ?? {});
+    if (!p.success) throw new ServerError('BAD_REQUEST', 'Variante inconnue');
+    return tb.queueJoin(me(req), p.data.variant ?? 'classic');
+  });
+  app.get('/me/tableau/queue', async (req) => tb.queueStatus(me(req).userId));
+  app.post('/tableau/queue/cancel', async (req) => tb.queueLeave(me(req).userId));
   app.get('/me/tableau/active', async (req) => ({ active: tb.activeCode(me(req).userId) }));
   app.get('/me/tableau/history', async (req) => ({ history: tb.history(me(req).userId) }));
   app.get<{ Params: { code: string } }>('/tableau/games/:code', async (req) => tb.get(code(req), me(req).userId));

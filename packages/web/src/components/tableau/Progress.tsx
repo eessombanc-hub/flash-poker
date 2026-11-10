@@ -46,7 +46,10 @@ export function ProgressPanel({ client, variant, refreshKey }: { client: Account
       <Panel className="p-5" data-testid="tb-progress">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-xl text-ivory-50">{t('tb.profile.title')}</h2>
-          <LeagueBadge id={s.league.id} />
+          <span className="flex items-center gap-2">
+            <Badge tone="neutral">{t(`tb.variant.${variant}` as Key)}</Badge>
+            <LeagueBadge id={s.league.id} />
+          </span>
         </div>
         <p className="mt-1 text-sm text-ivory-200">
           <span className="tabular-nums text-lg text-gold-300">{t('tb.profile.points', { r: profile.rating })}</span>
@@ -68,6 +71,7 @@ export function ProgressPanel({ client, variant, refreshKey }: { client: Account
         <p className="mt-1 text-xs text-ivory-300/85">
           {profile.position !== null ? t('tb.profile.position', { p: profile.position }) : t('tb.profile.unranked')}
         </p>
+        {profile.provisional && <p className="mt-1 text-xs text-ivory-300/85">{t('tb.profile.provisional')}</p>}
         <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {stats.map(([k, v]) => (
             <div key={k} className="rounded-xl bg-ink-900/60 px-3 py-2">
@@ -111,7 +115,10 @@ export function ProgressPanel({ client, variant, refreshKey }: { client: Account
                   {r.you ? <span className="ml-1.5 text-xs text-gold-300">({t('tb.lb.you')})</span> : null}
                 </span>
                 <LeagueBadge id={r.leagueId} className="hidden sm:inline-flex" />
-                <span className="w-16 shrink-0 text-right tabular-nums">{r.rating}</span>
+                <span className="w-16 shrink-0 text-right tabular-nums" title={r.provisional ? t('tb.provisional') : undefined}>
+                  {r.rating}
+                  {r.provisional ? <span aria-label={t('tb.provisional')}>?</span> : null}
+                </span>
               </li>
             ))}
           </ol>
