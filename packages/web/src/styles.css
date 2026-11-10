@@ -67,9 +67,48 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 .felt {
-  /* Couleur choisie dans les Paramètres (variables posées en style inline sur l'élément) ; vert par défaut. */
-  background: radial-gradient(ellipse at 50% 38%, var(--felt-a, #1a6b51) 0%, var(--felt-b, #0e4130) 52%, var(--felt-c, #06261c) 100%);
-  box-shadow: inset 0 0 0 6px rgb(var(--ink-950)), inset 0 0 0 8px rgba(201, 162, 90, 0.55), inset 0 0 90px rgba(0, 0, 0, 0.55), 0 24px 60px rgba(0, 0, 0, 0.5);
+  /* Table de casino : tapis feutré (couleur choisie dans les Paramètres, variables posées en style inline),
+     bordé d'un rail capitonné aux couleurs du thème, d'un liseré doré et d'un pointillé de couture. */
+  --rail: 11px;
+  position: relative;
+  border: var(--rail) solid transparent;
+  background:
+    /* grain du feutre */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E") padding-box,
+    /* halo de lampe au centre */
+    radial-gradient(ellipse 70% 60% at 50% 34%, rgba(255, 255, 255, 0.09), transparent 70%) padding-box,
+    /* tapis */
+    radial-gradient(ellipse at 50% 38%, var(--felt-a, #1a6b51) 0%, var(--felt-b, #0e4130) 52%, var(--felt-c, #06261c) 100%) padding-box,
+    /* rail : reflet en haut à gauche, ombre en bas à droite */
+    linear-gradient(155deg, rgb(var(--ink-600)) 0%, rgb(var(--ink-800)) 28%, rgb(var(--ink-950)) 62%, rgb(var(--ink-800)) 100%) border-box;
+  background-origin: border-box;
+  box-shadow:
+    /* liseré doré à la jonction rail / tapis, puis lèvre sombre */
+    inset 0 0 0 2px rgba(201, 162, 90, 0.75),
+    inset 0 0 0 4px rgba(0, 0, 0, 0.55),
+    inset 0 0 70px rgba(0, 0, 0, 0.5),
+    /* arête dorée extérieure et relief du rail */
+    0 0 0 1px rgba(201, 162, 90, 0.4),
+    0 -1px 0 1px rgba(255, 255, 255, 0.07),
+    0 26px 60px rgba(0, 0, 0, 0.55),
+    0 6px 14px rgba(0, 0, 0, 0.4);
+}
+.felt::before {
+  /* ligne de couture du tapis, très discrète */
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border: 1px dashed rgba(201, 162, 90, 0.2);
+  border-radius: inherit;
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .felt {
+    --rail: 8px;
+  }
+  .felt::before {
+    inset: 5px;
+  }
 }
 .scroll-thin {
   scrollbar-width: thin;
