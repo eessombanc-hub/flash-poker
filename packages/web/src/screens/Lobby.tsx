@@ -21,7 +21,7 @@ export function Lobby() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      client.toast('warning', 'Copie impossible : sélectionnez le code manuellement.');
+      client.toast('warning', 'Copie impossible. Sélectionnez le code manuellement.');
     }
   }
 
@@ -60,7 +60,7 @@ export function Lobby() {
         {view.config.private && (
           <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-sm text-gold-200">
             <LockIcon size={22} />
-            Salle privée : invisible dans « Parties ouvertes », entrée par code ou lien d’invitation uniquement
+            Salle privée, invisible dans « Parties ouvertes », entrée par code ou lien d’invitation uniquement
           </p>
         )}
 
@@ -116,11 +116,11 @@ export function Lobby() {
               {mine?.assistanceApproved === null && <span className="text-xs text-ivory-300/70">Vous n’avez pas encore répondu.</span>}
             </div>
             <p className="mt-2 text-xs text-ivory-300/70" aria-live="polite">
-              {allApproved ? 'Tous les joueurs ont approuvé : la partie démarrera avec assistance.' : 'Tant que tout le monde n’a pas approuvé, la partie démarrera sans assistance.'}
+              {allApproved ? 'Tous les joueurs ont approuvé. La partie démarrera avec assistance.' : 'Tant que tout le monde n’a pas approuvé, la partie démarrera sans assistance.'}
             </p>
           </section>
         ) : (
-          <p className="mt-3 text-center text-xs text-ivory-300/70">Partie sans assistance : aucune indication, chacun juge seul la force de sa main.</p>
+          <p className="mt-3 text-center text-xs text-ivory-300/70">Partie sans assistance. Aucune indication, chacun juge seul la force de sa main.</p>
         )}
 
         <h3 className="mb-2 mt-7 text-sm font-semibold uppercase tracking-widest text-gold-400">Joueurs connectés</h3>
@@ -135,7 +135,7 @@ export function Lobby() {
               {p.isHost && <Badge tone="gold">Hôte</Badge>}
               {view.config.assistance && (
                 <Badge tone={p.assistanceApproved === true ? 'green' : p.assistanceApproved === false ? 'red' : 'neutral'}>
-                  {p.assistanceApproved === true ? 'Assistance : oui' : p.assistanceApproved === false ? 'Assistance : non' : 'Assistance : en attente'}
+                  {p.assistanceApproved === true ? 'Assistance approuvée' : p.assistanceApproved === false ? 'Assistance refusée' : 'Assistance en attente'}
                 </Badge>
               )}
               <span className={`inline-flex items-center gap-1.5 text-xs ${p.connected ? 'text-jade-300' : 'text-ivory-300/60'}`}>

@@ -67,7 +67,7 @@ export const TABLE_PRESETS: readonly TablePreset[] = [
   {
     id: 'carte-unique',
     name: 'Jeu unique',
-    description: '1 seul jeu : plus d’information, mais Blackjack payé 6 contre 5 et doublement sur 9 à 11 seulement.',
+    description: '1 seul jeu. Plus d’information, mais Blackjack payé 6 contre 5 et doublement sur 9 à 11 seulement.',
     rules: { ...DEFAULT_RULES, decks: 1, blackjackPays: '6:5', doubleOn: '9-11', doubleAfterSplit: false, surrender: false, maxHands: 2 },
     limits: { minBet: 5, maxBet: 100 },
     minLevel: 2,
@@ -94,11 +94,11 @@ export const FREE_TABLE_ID = 'libre';
 export const FREE_TABLE_LIMITS: TableLimits = { minBet: 1, maxBet: 1000 };
 
 export function validateRules(r: TableRules): string | null {
-  if (!Number.isInteger(r.decks) || r.decks < 1 || r.decks > 8) return 'Nombre de jeux : 1 à 8';
+  if (!Number.isInteger(r.decks) || r.decks < 1 || r.decks > 8) return 'Nombre de jeux de 1 à 8';
   if (typeof r.dealerHitsSoft17 !== 'boolean' || typeof r.doubleAfterSplit !== 'boolean' || typeof r.resplitAces !== 'boolean' || typeof r.surrender !== 'boolean') return 'Règles invalides';
   if (r.blackjackPays !== '3:2' && r.blackjackPays !== '6:5') return 'Gain du Blackjack invalide';
   if (r.doubleOn !== 'any' && r.doubleOn !== '9-11' && r.doubleOn !== '10-11') return 'Règle de doublement invalide';
-  if (!Number.isInteger(r.maxHands) || r.maxHands < 2 || r.maxHands > 4) return 'Mains maximales : 2 à 4';
+  if (!Number.isInteger(r.maxHands) || r.maxHands < 2 || r.maxHands > 4) return 'Mains maximales de 2 à 4';
   return null;
 }
 

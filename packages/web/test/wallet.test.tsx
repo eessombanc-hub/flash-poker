@@ -8,10 +8,10 @@ describe('Portefeuille', () => {
   it('solde suffisant : rappelle la règle de recharge', () => {
     render(<WalletCard wallet={base} />);
     expect(screen.getByTestId('wallet-balance').textContent).toMatch(/5\s?000/);
-    expect(screen.getByText(/recharge à .*2\s?000.* après 2 h sans partie/)).toBeInTheDocument();
+    expect(screen.getByText(/[Rr]echarge à .*2\s?000.* après 2 h sans partie/)).toBeInTheDocument();
   });
   it('solde sous le seuil : annonce l’heure de la recharge', () => {
     render(<WalletCard wallet={{ ...base, balance: 400, nextRefillAt: Date.UTC(2026, 10, 8, 18, 30) }} />);
-    expect(screen.getByText(/Solde sous .*1\s?000.* recharge à .*2\s?000/)).toBeInTheDocument();
+    expect(screen.getByText(/Solde sous .*1\s?000.* [Rr]echarge à .*2\s?000/)).toBeInTheDocument();
   });
 });

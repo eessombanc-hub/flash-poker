@@ -25,7 +25,7 @@ export function InsurancePanel() {
         <Panel className="border-gold-500/50 p-4 sm:p-5" aria-live="assertive">
           <Eyebrow>Proposition d’assurance</Eyebrow>
           <p className="mt-1 text-lg text-ivory-50">
-            <strong>{nick(view, p.proposer)}</strong> vous propose une assurance : <strong>{INSURANCE_LABELS[p.type].name}</strong>.
+            <strong>{nick(view, p.proposer)}</strong> vous propose une assurance. <strong>{INSURANCE_LABELS[p.type].name}</strong>.
           </p>
           <p className="mt-2 text-sm text-ivory-200/85">{describeInsurance(p.type, game.potChips, game.stakeChips)}</p>
           <p className="mt-1 text-xs text-ivory-300/70">{INSURANCE_GENERAL_NOTE}</p>
@@ -83,7 +83,7 @@ export function InsurancePanel() {
           </div>
         </fieldset>
         <p className="mt-2 text-xs text-ivory-300/70">
-          Cagnotte actuelle : {formatChips(game.potChips)}. {INSURANCE_GENERAL_NOTE}
+          Cagnotte actuelle de {formatChips(game.potChips)}. {INSURANCE_GENERAL_NOTE}
         </p>
         <Button className="mt-3 w-full sm:w-auto" disabled={!chosen} onClick={() => void client.command({ type: 'PROPOSE_INSURANCE', partner: chosen, insuranceType: type })}>
           Proposer l’assurance

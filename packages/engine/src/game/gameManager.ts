@@ -80,7 +80,7 @@ export interface RoundRecord {
  */
 export interface RoundSummary {
   /** Mains montrées à l'abattage, avec leur catégorie (toutes les variantes sauf le 6-3). */
-  hands?: Record<PlayerId, { cards: string[]; category: number }>;
+  hands?: Record<PlayerId, { cards: string[]; category: number; /** Rang complet de la main (détail de la combinaison). */ rank?: number; /** Les 5 cartes de la meilleure combinaison (Hold'em, Omaha). */ best?: string[] }>;
   /** 6-3 : résultat de chaque ligne. */
   lines?: LineResult[];
   /** 6-3 : nombre de tétines jouées (absent = 0). */
@@ -247,13 +247,13 @@ export class GameManager {
       throw new RuleError('BAD_CONFIG', 'Une partie réunit de 2 à 6 joueurs distincts');
     }
     if (!Number.isInteger(maxPlayers) || maxPlayers < players.length || maxPlayers > 6) {
-      throw new RuleError('BAD_CONFIG', 'Nombre maximal de joueurs : entier de 2 à 6, au moins égal au nombre de joueurs');
+      throw new RuleError('BAD_CONFIG', 'Le nombre maximal de joueurs doit être un entier de 2 à 6, au moins égal au nombre de joueurs');
     }
     if (!Number.isInteger(targetPoints) || targetPoints < 1 || targetPoints > MAX_TARGET_POINTS) {
-      throw new RuleError('BAD_CONFIG', `Objectif : entier de 1 à ${MAX_TARGET_POINTS} points`);
+      throw new RuleError('BAD_CONFIG', `Objectif invalide, un entier de 1 à ${MAX_TARGET_POINTS} points est attendu`);
     }
     if (!Number.isInteger(stakeChips) || stakeChips < 0 || stakeChips > MAX_STAKE_CHIPS) {
-      throw new RuleError('BAD_CONFIG', 'Mise : de 0 à 10 000 jetons (nombre entier)');
+      throw new RuleError('BAD_CONFIG', 'Mise invalide, un entier de 0 à 10 000 jetons est attendu');
     }
     if (config.fixedVariant !== undefined && (!VARIANT_IDS.includes(config.fixedVariant) || !isVariantAvailable(config.fixedVariant, players.length))) {
       throw new RuleError('BAD_CONFIG', `${String(config.fixedVariant)} n'est pas jouable à ${players.length} joueurs`);
@@ -399,7 +399,7 @@ export class GameManager {
         if (this.pending) throw new RuleError('INSURANCE_PENDING', 'Une proposition d\'assurance est en attente de réponse');
         this.assertKnownActive(cmd.player);
         if (cmd.player !== this.chooser()) throw new RuleError('NOT_YOUR_TURN', `${cmd.player} ne choisit pas la variante`);
-        if (!VARIANT_IDS.includes(cmd.variant)) throw new RuleError('BAD_COMMAND', `Variante inconnue : ${String(cmd.variant)}`);
+        if (!VARIANT_IDS.includes(cmd.variant)) throw new RuleError('BAD_COMMAND', `Variante inconnue. ${String(cmd.variant)}`);
         if (!isVariantAvailable(cmd.variant, this.config.players.length)) {
           throw new RuleError('VARIANT_UNAVAILABLE', `${cmd.variant} n'est pas jouable à ${this.config.players.length} joueurs`);
         }
@@ -410,7 +410,7 @@ export class GameManager {
           throw new RuleError('BAD_CONFIG', 'Les tétines et les paris extérieurs ne concernent que le 6-3');
         }
         if (!Number.isInteger(teats) || teats < 0 || teats > MAX_TEATS) {
-          throw new RuleError('BAD_CONFIG', `Nombre de tétines invalide : de 0 à ${MAX_TEATS}`);
+          throw new RuleError('BAD_CONFIG', `Nombre de tétines invalide. De 0 à ${MAX_TEATS}`);
         }
         this.startRound(cmd.variant, cmd.player, events, false, { teats, sideBets });
         return events;
@@ -433,7 +433,7 @@ export class GameManager {
           throw new RuleError('INSURANCE_NOT_ELIGIBLE', 'L\'assurance n\'est proposable qu\'à partir de 4 joueurs');
         }
         if (cmd.insuranceType !== 'LOSER_NOT_PAYING' && cmd.insuranceType !== 'SPLIT_50_50') {
-          throw new RuleError('BAD_INSURANCE', `Type d'assurance inconnu : ${String(cmd.insuranceType)}`);
+          throw new RuleError('BAD_INSURANCE', `Type d'assurance inconnu. ${String(cmd.insuranceType)}`);
         }
         for (const p of [cmd.player, cmd.partner]) if (this.isExcluded(p)) throw new RuleError('EXCLUDED', `${p} est exclu`);
         if (this.declinedPairs.includes(this.pairKey(cmd.player, cmd.partner))) {
@@ -493,7 +493,7 @@ export class GameManager {
         return events;
       }
       case 'EXCLUDE_PLAYER': {
-        if (!this.config.players.includes(cmd.player)) throw new RuleError('UNKNOWN_PLAYER', `Joueur inconnu : ${cmd.player}`);
+        if (!this.config.players.includes(cmd.player)) throw new RuleError('UNKNOWN_PLAYER', `Joueur inconnu. ${cmd.player}`);
         if (this.isExcluded(cmd.player)) throw new RuleError('EXCLUDED', `${cmd.player} est déjà exclu`);
         if (this.config.players.filter((p) => !this.isExcluded(p)).length <= 1) {
           throw new RuleError('BAD_COMMAND', 'Au moins un joueur doit rester en jeu');
@@ -508,7 +508,7 @@ export class GameManager {
   }
 
   private assertKnownActive(player: PlayerId): void {
-    if (!this.config.players.includes(player)) throw new RuleError('UNKNOWN_PLAYER', `Joueur inconnu : ${player}`);
+    if (!this.config.players.includes(player)) throw new RuleError('UNKNOWN_PLAYER', `Joueur inconnu. ${player}`);
     if (this.isExcluded(player)) throw new RuleError('EXCLUDED', `${player} a été exclu de la partie`);
   }
 

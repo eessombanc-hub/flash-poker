@@ -37,7 +37,7 @@ export interface ProposalContext {
 /** Refuse (RuleError) toute proposition contraire aux règles ; ne modifie rien. */
 export function assertInsuranceAllowed(proposer: PlayerId, partner: PlayerId, ctx: ProposalContext): void {
   for (const p of [proposer, partner]) {
-    if (!ctx.order.includes(p)) throw new RuleError('UNKNOWN_PLAYER', `Joueur inconnu : ${p}`);
+    if (!ctx.order.includes(p)) throw new RuleError('UNKNOWN_PLAYER', `Joueur inconnu. ${p}`);
   }
   if (proposer === partner) throw new RuleError('BAD_INSURANCE', 'Une assurance concerne exactement 2 joueurs');
   const eligible = playersOneFromEnd(ctx.order, ctx.scores, ctx.targetPoints);
@@ -82,14 +82,14 @@ export interface Settlement {
  */
 export function settle(input: SettlementInput): Settlement {
   const { players, stakeChips, winner, insurances } = input;
-  if (!players.includes(winner)) throw new RuleError('UNKNOWN_PLAYER', `Vainqueur inconnu : ${winner}`);
+  if (!players.includes(winner)) throw new RuleError('UNKNOWN_PLAYER', `Vainqueur inconnu. ${winner}`);
   if (!Number.isInteger(stakeChips) || stakeChips < 0) throw new RuleError('BAD_CONFIG', 'Mise invalide');
   const seen = new Set<PlayerId>();
   for (const ins of insurances) {
     const [a, b] = ins.players;
     if (a === b) throw new RuleError('BAD_INSURANCE', 'Une assurance concerne exactement 2 joueurs');
     for (const p of [a, b]) {
-      if (!players.includes(p)) throw new RuleError('UNKNOWN_PLAYER', `Joueur assuré inconnu : ${p}`);
+      if (!players.includes(p)) throw new RuleError('UNKNOWN_PLAYER', `Joueur assuré inconnu. ${p}`);
       if (seen.has(p)) throw new RuleError('INSURANCE_ALREADY_INSURED', `${p} figure dans deux assurances`);
       seen.add(p);
     }

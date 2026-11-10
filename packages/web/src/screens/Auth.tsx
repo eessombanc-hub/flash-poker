@@ -144,7 +144,7 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
               </Field>
             )}
             {mode === 'register' && (
-              <Field label="Pseudo" htmlFor="nick" hint="Il vous est réservé : personne d’autre ne pourra jouer sous ce nom." error={nickname === '' ? '' : errors.nickname}>
+              <Field label="Pseudo" htmlFor="nick" hint="Il vous est réservé. Personne d’autre ne pourra jouer sous ce nom." error={nickname === '' ? '' : errors.nickname}>
                 <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
               </Field>
             )}

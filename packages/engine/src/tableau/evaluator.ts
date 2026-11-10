@@ -34,16 +34,16 @@ export const TABLEAU_LABELS_FR: Record<TableauCategory, string> = {
 
 /** Aide-mémoire pédagogique, de la plus faible à la plus forte. */
 export const TABLEAU_HELP_FR: readonly { category: TableauCategory; label: string; example: string; text: string }[] = [
-  { category: TableauCategory.HighCard, label: 'Carte haute', example: 'As Rd 9h 6c 3s', text: 'Aucune combinaison : la carte la plus haute décide.' },
+  { category: TableauCategory.HighCard, label: 'Carte haute', example: 'As Rd 9h 6c 3s', text: 'Aucune combinaison. La carte la plus haute décide.' },
   { category: TableauCategory.Pair, label: 'Paire', example: '8h 8d As 5c 2s', text: 'Deux cartes de même valeur.' },
   { category: TableauCategory.TwoPair, label: 'Double paire', example: 'Kh Kd 4s 4c 9d', text: 'Deux paires différentes.' },
   { category: TableauCategory.ThreeOfAKind, label: 'Brelan', example: '7h 7d 7s Kc 2d', text: 'Trois cartes de même valeur.' },
-  { category: TableauCategory.Straight, label: 'Quinte', example: '5h 6d 7s 8c 9d', text: 'Cinq valeurs consécutives (l’As compte haut ou bas : A-2-3-4-5).' },
+  { category: TableauCategory.Straight, label: 'Quinte', example: '5h 6d 7s 8c 9d', text: 'Cinq valeurs consécutives (l’As compte haut ou bas, A-2-3-4-5).' },
   { category: TableauCategory.Flush, label: 'Couleur', example: 'Ah 9h 7h 4h 2h', text: 'Cinq cartes de la même couleur.' },
   { category: TableauCategory.FullHouse, label: 'Full', example: 'Qh Qd Qs 3c 3d', text: 'Un brelan et une paire.' },
   { category: TableauCategory.FourOfAKind, label: 'Carré', example: '9h 9d 9s 9c Kd', text: 'Quatre cartes de même valeur.' },
   { category: TableauCategory.StraightFlush, label: 'Quinte flush', example: '4h 5h 6h 7h 8h', text: 'Une quinte, toutes de la même couleur.' },
-  { category: TableauCategory.RoyalFlush, label: 'Quinte flush royale', example: 'Th Jh Qh Kh Ah', text: 'La plus haute quinte flush : 10 à As.' },
+  { category: TableauCategory.RoyalFlush, label: 'Quinte flush royale', example: 'Th Jh Qh Kh Ah', text: 'La plus haute quinte flush, du 10 à l’As.' },
 ];
 
 const RANK_SINGULAR = ['', '', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'valet', 'dame', 'roi', 'as'];
@@ -86,7 +86,7 @@ function describe(category: TableauCategory, ordered: readonly Card[]): string {
   const r = (i: number): number => ordered[i]!.rank;
   switch (category) {
     case TableauCategory.HighCard:
-      return `Carte haute : ${RANK_SINGULAR[r(0)]}`;
+      return `Carte haute, ${RANK_SINGULAR[r(0)]}`;
     case TableauCategory.Pair:
       return `Paire ${RANK_ELIDE(r(0))}${RANK_PLURAL[r(0)]}`;
     case TableauCategory.TwoPair:
@@ -152,16 +152,16 @@ export function describePartial(codes: readonly string[]): string {
   if (top[1] === 4) return `Carré ${RANK_ELIDE(top[0])}${RANK_PLURAL[top[0]]}`;
   if (top[1] === 3) return groups[1]?.[1] === 2 ? `Full aux ${RANK_PLURAL[top[0]]}` : `Brelan ${RANK_ELIDE(top[0])}${RANK_PLURAL[top[0]]}`;
   if (top[1] === 2) return groups[1]?.[1] === 2 ? `Double paire ${RANK_ELIDE(top[0])}${RANK_PLURAL[top[0]]} et ${RANK_ELIDE(groups[1]![0])}${RANK_PLURAL[groups[1]![0]]}` : `Paire ${RANK_ELIDE(top[0])}${RANK_PLURAL[top[0]]}`;
-  if (cards.length >= 2 && cards.every((c) => c.suit === cards[0]!.suit)) return `${cards.length} cartes de la même couleur : couleur possible`;
+  if (cards.length >= 2 && cards.every((c) => c.suit === cards[0]!.suit)) return `${cards.length} cartes de la même couleur. Couleur possible`;
   const ranks = [...new Set(cards.map((c) => c.rank))];
   if (ranks.length >= 3) {
     const pts = ranks.includes(14) ? [...ranks, 1] : ranks;
     for (let lo = 1; lo <= 10; lo++) {
       if (ranks.every((x) => (x >= lo && x <= lo + 4) || (x === 14 && lo === 1))) {
         const inWin = pts.filter((x) => x >= lo && x <= lo + 4).length;
-        if (inWin >= ranks.length) return `${ranks.length} cartes proches : quinte possible`;
+        if (inWin >= ranks.length) return `${ranks.length} cartes proches. Quinte possible`;
       }
     }
   }
-  return `Carte haute : ${RANK_SINGULAR[Math.max(...ranks)]}`;
+  return `Carte haute, ${RANK_SINGULAR[Math.max(...ranks)]}`;
 }

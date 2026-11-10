@@ -158,7 +158,7 @@ export class RoomManager {
   createRoom(input: unknown, account?: AccountRef | null): { code: string; playerId: string; token: string } {
     const cfg = this.parse(createRoomSchema, input);
     // Plafond global de tables simultanées (mémoire du serveur) : au-delà, on invite à réessayer plus tard.
-    if (this.rooms.size >= (this.deps.maxRooms ?? 1000)) throw new ServerError('UNAVAILABLE', 'Le serveur est très sollicité : réessayez dans quelques minutes');
+    if (this.rooms.size >= (this.deps.maxRooms ?? 1000)) throw new ServerError('UNAVAILABLE', 'Le serveur est très sollicité. Réessayez dans quelques minutes');
     const now = this.deps.scheduler.now();
     const who = this.identity(cfg.nickname, cfg.avatar ?? null, account);
     this.assertAffordable(who.accountId, cfg.stakeChips);
@@ -741,7 +741,7 @@ export class RoomManager {
     const res = schema.safeParse(input);
     if (!res.success) {
       const i = res.error.issues[0];
-      throw new ServerError('BAD_REQUEST', i ? `${i.path.join('.') || 'requête'} : ${i.message}` : 'Requête invalide');
+      throw new ServerError('BAD_REQUEST', i ? `${i.path.join('.') || 'requête'}. ${i.message}` : 'Requête invalide');
     }
     return res.data;
   }
@@ -750,13 +750,13 @@ export class RoomManager {
   private assertAffordable(accountId: string | null, stake: number): void {
     if (!accountId || stake <= 0) return;
     const ok = this.deps.accounts?.canAfford?.(accountId, stake) ?? true;
-    if (!ok) throw new ServerError('RULE', 'Solde insuffisant pour cette mise : consultez votre portefeuille dans votre espace (recharge programmée)');
+    if (!ok) throw new ServerError('RULE', 'Solde insuffisant pour cette mise. Consultez votre portefeuille dans votre espace (recharge programmée)');
   }
 
   private identity(nickname: string, avatar: string | null, account?: AccountRef | null): { nickname: string; avatar: string | null; accountId: string | null } {
     if (account) return { nickname: account.nickname, avatar: account.avatar ?? avatar, accountId: account.id };
     if (this.deps.accounts?.isReservedNickname(nickname)) {
-      throw new ServerError('NICKNAME_RESERVED', 'Ce pseudo appartient à un joueur inscrit : connectez-vous ou choisissez-en un autre');
+      throw new ServerError('NICKNAME_RESERVED', 'Ce pseudo appartient à un joueur inscrit. Connectez-vous ou choisissez-en un autre');
     }
     return { nickname, avatar, accountId: null };
   }

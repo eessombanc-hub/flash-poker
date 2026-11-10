@@ -22,7 +22,7 @@ export function isCardCode(v: unknown): v is string {
 }
 
 export function parseCode(code: string): CardInfo {
-  if (!isCardCode(code)) throw new RangeError(`Code de carte invalide : ${String(code)}`);
+  if (!isCardCode(code)) throw new RangeError(`Code de carte invalide. ${String(code)}`);
   const i = RANK_CHARS.indexOf(code[0]!);
   const suit = code[1] as Suit;
   return { code, rank: i + 2, suit, label: RANK_LABELS[i]!, name: `${RANK_NAMES[i]} de ${SUIT_NAMES[suit]}` };

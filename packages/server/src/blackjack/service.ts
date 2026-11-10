@@ -201,7 +201,7 @@ export class BlackjackService {
 
   startRound(userId: string, input: { table: string; rules?: TableRules; bet: number }): { active: BjActive; result: BjResult | null } {
     this.concludeStale(userId);
-    if (this.active(userId)) throw new ServerError('WRONG_STATE', 'Une manche est déjà en cours : reprenez-la');
+    if (this.active(userId)) throw new ServerError('WRONG_STATE', 'Une manche est déjà en cours. Reprenez-la');
     if (this.busyCheck(userId)) throw new ServerError('WRONG_STATE', 'Vous êtes en pleine manche à une table partagée');
     const table = resolveTable(input.table, input.rules);
     if (!table) throw new ServerError('BAD_REQUEST', 'Table ou règles invalides');
@@ -209,7 +209,7 @@ export class BlackjackService {
     const level = levelFromXp(row.xp as number);
     if (level < table.minLevel) throw new ServerError('RULE', `Cette table demande le niveau ${table.minLevel}`);
     const bet = input.bet;
-    if (!Number.isInteger(bet) || bet < table.limits.minBet || bet > table.limits.maxBet) throw new ServerError('RULE', `Mise : de ${table.limits.minBet} à ${table.limits.maxBet} jetons`);
+    if (!Number.isInteger(bet) || bet < table.limits.minBet || bet > table.limits.maxBet) throw new ServerError('RULE', `Mise de ${table.limits.minBet} à ${table.limits.maxBet} jetons`);
     const chips = row.chips as number;
     if (bet > chips) throw new ServerError('RULE', 'Jetons insuffisants pour cette mise');
     const seed = this.newSeed();

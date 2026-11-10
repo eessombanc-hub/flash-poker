@@ -170,7 +170,7 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
   // Carte cliquable : c'est le bouton qui porte le nom ; le dessin est alors décoratif (sinon le nom serait
   // lu deux fois, et le texte dessiné « K ♦ » ne correspondrait pas au nom « Roi de carreau »).
   const inner = (
-    <svg viewBox="0 0 100 140" className="block h-auto w-full" {...(onClick ? { 'aria-hidden': true, focusable: false } : { role: 'img', 'aria-label': hint ? `${label} : ${hint}` : label })}>
+    <svg viewBox="0 0 100 140" className="block h-auto w-full" {...(onClick ? { 'aria-hidden': true, focusable: false } : { role: 'img', 'aria-label': hint ? `${label}, ${hint}` : label })}>
       {code ? <Face code={code} fourColor={fourColor} /> : <Back id={`back-${uid}`} back={back} />}
     </svg>
   );
@@ -199,7 +199,7 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
       >
         {/* Nom du bouton porté par un texte réservé aux lecteurs d'écran, le dessin étant décoratif : le
             rang dessiné en double (coins, centre) n'entre pas en conflit avec le nom (WCAG 2.5.3). */}
-        <span className="sr-only">{hint ? `${label} : ${hint}` : label}</span>
+        <span className="sr-only">{hint ? `${label}, ${hint}` : label}</span>
         {inner}
       </motion.button>
     );

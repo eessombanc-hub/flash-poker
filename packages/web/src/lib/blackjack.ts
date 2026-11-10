@@ -19,7 +19,7 @@ export interface BjPrefs {
 export const SPEED_MS: Record<Speed, number> = { lente: 900, normale: 520, rapide: 220 };
 export const SPEEDS: readonly Speed[] = ['lente', 'normale', 'rapide'];
 export const PEDAGOGIES: readonly { id: Pedagogy; label: string; text: string }[] = [
-  { id: 'libre', label: 'Libre', text: 'Aucune aide : vous jouez seul.' },
+  { id: 'libre', label: 'Libre', text: 'Aucune aide. Vous jouez seul.' },
   { id: 'indices', label: 'Indices', text: 'Probabilités exactes de dépasser 21 et de gagner si vous restez.' },
   { id: 'coach', label: 'Coach', text: 'Le coup recommandé par la stratégie de base, avec son explication.' },
 ];
@@ -92,7 +92,7 @@ export function handTotal(cards: readonly (string | null)[]): { total: number; s
 
 export function totalText(cards: readonly (string | null)[]): string {
   const { total, soft } = handTotal(cards.filter(Boolean));
-  if (total > 21) return `${total} · dépasse`;
+  if (total > 21) return `${total}, dépasse`;
   return soft && total < 21 ? `${total - 10} / ${total}` : String(total);
 }
 

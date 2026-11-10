@@ -219,7 +219,7 @@ function ProfileTab() {
 
       <section className="space-y-3 border-t border-ivory-100/10 pt-6" aria-label="Alertes par e-mail">
         <H3>Alertes par e-mail</H3>
-        <p className="text-sm text-ivory-200/80">Quand un de vos joueurs favoris se connecte et que vous n’êtes pas sur Flash Poker : un e-mail au plus par jour et par favori.</p>
+        <p className="text-sm text-ivory-200/80">Quand un de vos joueurs favoris se connecte alors que vous n’êtes pas sur Flash Poker, vous recevez un e-mail, au plus un par jour et par favori.</p>
         <Segmented label="Alertes par e-mail" value={me.notifyEmail ? 'oui' : 'non'} options={['oui', 'non'] as const} format={(v) => (v === 'oui' ? 'Activées' : 'Désactivées')} onChange={(v) => void account.updateProfile({ notifyEmail: v === 'oui' }).catch(() => undefined)} />
       </section>
 
@@ -267,7 +267,7 @@ function ProfileTab() {
           </div>
         ) : (
           <form onSubmit={deleteAccount} className="space-y-3 rounded-lg border border-red-400/30 p-4">
-            <p className="text-sm text-ivory-100/80">Cette action est définitive : votre compte, votre historique, vos statistiques et vos jetons seront effacés. Confirmez avec votre mot de passe.</p>
+            <p className="text-sm text-ivory-100/80">Cette action est définitive. Votre compte, votre historique, vos statistiques et vos jetons seront effacés. Confirmez avec votre mot de passe.</p>
             <Field label="Mot de passe" htmlFor="sp-del">
               <input id="sp-del" type="password" className={inputClass} value={del.password} onChange={(e) => setDel({ ...del, password: e.target.value })} autoComplete="current-password" />
             </Field>
@@ -376,7 +376,7 @@ function Standings({ game, nameOf, favPlayers, onFavorite }: { game: GameDetail;
   return (
     <div className="space-y-2 text-sm">
       <p className="text-ivory-100">
-        <TrophyIcon size={22} className="mr-1 inline align-[-5px]" /> Vainqueur : <strong className="text-gold-200">{nameOf(winner)}</strong> · cagnotte {formatChips(game.outcome.settlement.potChips)}
+        <TrophyIcon size={22} className="mr-1 inline align-[-5px]" /> Vainqueur <strong className="text-gold-200">{nameOf(winner)}</strong>, cagnotte {formatChips(game.outcome.settlement.potChips)}
       </p>
       {others.length > 0 && (
         <p className="flex flex-wrap items-center gap-2 text-ivory-300/80">
@@ -510,7 +510,7 @@ function BankrollTab() {
     <div>
       <H2>Bankroll</H2>
       {wallet && <WalletCard wallet={wallet} />}
-      <p className="mt-1 text-sm text-ivory-300/80">Bilan de vos parties en jetons : gains moins mises, assurances comprises.</p>
+      <p className="mt-1 text-sm text-ivory-300/80">Bilan de vos parties en jetons. Gains moins mises, assurances comprises.</p>
       {data === null && !error ? (
         <Loading />
       ) : (
@@ -541,7 +541,7 @@ export function WalletCard({ wallet }: { wallet: Wallet }) {
       <p className="font-display text-2xl text-ivory-50" data-testid="wallet-balance">{formatChips(wallet.balance)}</p>
       <p className="mt-1 text-xs text-ivory-200/85">
         {low
-          ? `Solde sous ${formatChips(wallet.threshold)} : recharge à ${formatChips(wallet.refillTo)} à ${when} (après ${wallet.refillDelayMs / 3_600_000} h sans partie).`
+          ? `Solde sous ${formatChips(wallet.threshold)}. Recharge à ${formatChips(wallet.refillTo)} à ${when} (après ${wallet.refillDelayMs / 3_600_000} h sans partie).`
           : `Vous avez reçu ${formatChips(wallet.startingChips)} à l’inscription. Sous ${formatChips(wallet.threshold)}, une recharge à ${formatChips(wallet.refillTo)} est accordée après ${wallet.refillDelayMs / 3_600_000} h sans partie.`}
       </p>
     </section>
@@ -566,7 +566,7 @@ export function BankrollChart({ bankroll }: { bankroll: Bankroll }) {
   const color = last >= 0 ? '#5bc79f' : '#ef6a73';
   return (
     <figure className="mt-5">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`Bilan cumulé sur ${bankroll.games} partie${bankroll.games > 1 ? 's' : ''} : ${formatSignedChips(last)}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label={`Bilan cumulé sur ${bankroll.games} partie${bankroll.games > 1 ? 's' : ''}, ${formatSignedChips(last)}`}>
         <defs>
           <linearGradient id="bk-area" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0" stopColor={color} stopOpacity="0.35" />
@@ -794,7 +794,7 @@ function InviteTab() {
                 </Button>
               </form>
             ) : (
-              <p className="rounded-xl border border-dashed border-ivory-100/15 px-4 py-3 text-sm text-ivory-300/80">L’envoi d’e-mails n’est pas encore activé sur ce serveur : utilisez votre lien d’invitation ci-dessus.</p>
+              <p className="rounded-xl border border-dashed border-ivory-100/15 px-4 py-3 text-sm text-ivory-300/80">L’envoi d’e-mails n’est pas encore activé sur ce serveur. Utilisez votre lien d’invitation ci-dessus.</p>
             )}
             {info.sent.length > 0 && (
               <ul className="space-y-1.5" aria-label="Invitations envoyées">

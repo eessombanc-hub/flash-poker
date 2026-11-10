@@ -59,7 +59,7 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', 
 
 /** Mise en page commune des e-mails : sobre, lisible sur téléphone, avec une version texte. */
 export function mail(to: string, subject: string, paragraphs: string[], action?: { label: string; url: string }): MailMessage {
-  const text = [...paragraphs, ...(action ? [`${action.label} : ${action.url}`] : []), '', '— Flash Poker'].join('\n\n');
+  const text = [...paragraphs, ...(action ? [`${action.label}. ${action.url}`] : []), '', 'Flash Poker'].join('\n\n');
   const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#14213d">
 <h1 style="font-family:Georgia,serif;color:#a9843f;font-weight:normal">Flash Poker</h1>
 ${paragraphs.map((p) => `<p style="font-size:15px;line-height:1.5">${escapeHtml(p)}</p>`).join('\n')}

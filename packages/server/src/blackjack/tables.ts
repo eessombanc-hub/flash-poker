@@ -145,7 +145,7 @@ export class BlackjackTables {
 
   create(who: Who, input: { table: string; rules?: TableRules; seats: SeatKind[]; bet?: number }): BjTableDto {
     this.purgeIdle();
-    if (this.seatedAt(who.userId)) throw new ServerError('WRONG_STATE', 'Vous êtes déjà assis à une table : quittez-la d’abord');
+    if (this.seatedAt(who.userId)) throw new ServerError('WRONG_STATE', 'Vous êtes déjà assis à une table. Quittez-la d’abord');
     if (this.bj.hasActiveRound(who.userId)) throw new ServerError('WRONG_STATE', 'Terminez d’abord votre manche solo en cours');
     const t = resolveTable(input.table, input.rules);
     if (!t) throw new ServerError('BAD_REQUEST', 'Table ou règles invalides');
@@ -202,7 +202,7 @@ export class BlackjackTables {
     if (info.level < room.minLevel) throw rule(`Cette table demande le niveau ${room.minLevel}`);
     const seat = room.seats.find((s) => s.kind === 'human' && !s.userId) ;
     if (!seat) throw new ServerError('WRONG_STATE', 'Aucune place humaine libre à cette table');
-    if (room.status !== 'LOBBY' && room.status !== 'BETTING' && room.status !== 'DONE') throw new ServerError('WRONG_STATE', 'Une manche est en cours : rejoignez à la prochaine');
+    if (room.status !== 'LOBBY' && room.status !== 'BETTING' && room.status !== 'DONE') throw new ServerError('WRONG_STATE', 'Une manche est en cours. Rejoignez à la prochaine');
     Object.assign(seat, { userId: who.userId, nickname: who.nickname, avatar: who.avatar, ready: false, left: false, out: false, bet: clamp(room.limits.minBet, room.limits.minBet, room.limits.maxBet) });
     this.save(room);
     return this.dto(code, who.userId);
@@ -260,7 +260,7 @@ export class BlackjackTables {
     this.advance(room);
     const seat = this.mustSeat(room, userId);
     if (room.status !== 'BETTING') throw new ServerError('WRONG_STATE', 'Les mises ne sont pas ouvertes');
-    if (!Number.isInteger(bet) || bet < room.limits.minBet || bet > room.limits.maxBet) throw rule(`Mise : de ${room.limits.minBet} à ${room.limits.maxBet} jetons`);
+    if (!Number.isInteger(bet) || bet < room.limits.minBet || bet > room.limits.maxBet) throw rule(`Mise de ${room.limits.minBet} à ${room.limits.maxBet} jetons`);
     const chips = this.bj.playerInfo(userId).chips;
     if (bet > chips) throw rule('Jetons insuffisants pour cette mise');
     const s = room.seats[seat]!;

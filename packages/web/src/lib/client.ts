@@ -205,7 +205,7 @@ export class GameClient {
   private emit(event: string, payload?: unknown): Promise<void> {
     return new Promise((resolve, reject) => {
       const s = this.socket;
-      if (!s || !s.connected) return reject(new ApiError('OFFLINE', 'Connexion perdue : action non envoyée.'));
+      if (!s || !s.connected) return reject(new ApiError('OFFLINE', 'Connexion perdue. Action non envoyée.'));
       s.timeout(8000).emit(event, payload, (err: Error | null, ack: Ack) => {
         if (err) return reject(new ApiError('TIMEOUT', 'Le serveur n\u2019a pas répondu.'));
         if (ack?.ok) resolve();

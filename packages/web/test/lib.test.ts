@@ -95,16 +95,16 @@ describe('annonces', () => {
   const view = roomView({}, game());
   const ev = (type: string, data: Record<string, unknown>, visibility: 'PUBLIC' | 'PLAYER' = 'PUBLIC'): RoundEvent => ({ type, visibility, data });
   it('variante choisie, tirée au hasard ou non', () => {
-    expect(describeEvent(ev('VARIANT_CHOSEN', { variant: 'V6_3', chooser: 'p2' }), view)?.text).toBe('Variante choisie : 6-3 par Alice');
+    expect(describeEvent(ev('VARIANT_CHOSEN', { variant: 'V6_3', chooser: 'p2' }), view)?.text).toBe('6-3 choisie par Alice');
     expect(describeEvent(ev('VARIANT_CHOSEN', { variant: 'AVIATION', chooser: 'p2', auto: true }), view)?.text).toContain('tirée au hasard');
   });
   it('ligne du 6-3 : gagnant seul, partagé, personne', () => {
-    expect(describeEvent(ev('LINE_RESOLVED', { line: 1, winners: ['p2'], unitsEach: 60 }), view)?.text).toBe('Ligne 1 : Alice l’emporte (1 point de ligne)');
-    expect(describeEvent(ev('LINE_RESOLVED', { line: 2, winners: ['p2', 'p3'], unitsEach: 30 }), view)?.text).toBe('Ligne 2 : Alice et Bob se partagent (½ point de ligne chacun)');
+    expect(describeEvent(ev('LINE_RESOLVED', { line: 1, winners: ['p2'], unitsEach: 60 }), view)?.text).toBe('Ligne 1. Alice l’emporte (1 point de ligne)');
+    expect(describeEvent(ev('LINE_RESOLVED', { line: 2, winners: ['p2', 'p3'], unitsEach: 30 }), view)?.text).toBe('Ligne 2. Alice et Bob se partagent (½ point de ligne chacun)');
     expect(describeEvent(ev('LINE_RESOLVED', { line: 3, winners: [], unitsEach: 0 }), view)?.tone).toBe('warning');
   });
   it('6-1 : nouvel ordre avec sa raison', () => {
-    expect(describeEvent(ev('REVEAL_ORDER_RECOMPUTED', { next: 'p3', reason: 'TIE_POSITION' }), view)?.text).toBe('Nouvel ordre : Bob doit révéler (égalité : ordre des positions)');
+    expect(describeEvent(ev('REVEAL_ORDER_RECOMPUTED', { next: 'p3', reason: 'TIE_POSITION' }), view)?.text).toBe('Nouvel ordre, Bob doit révéler (égalité, ordre des positions)');
   });
   it('événements sans annonce : rien', () => {
     expect(describeEvent(ev('CHANGE_APPLIED', { received: ['As'] }, 'PLAYER'), view)).toBeNull();
@@ -279,9 +279,26 @@ describe('combinaison gagnante d’une manche', () => {
       { line: 2, designations: { p1: null }, winners: ['p2'], unitsEach: 1 },
       { line: 3, designations: { p1: { pair: ['Ks', 'Kd'], rank: 0, category: 6 } }, winners: ['p1'], unitsEach: 1 },
     ];
-    expect(winningCombination(rec({ variant: 'V6_3', summary: { lines } } as never))).toBe('Ligne 1 : Brelan · Ligne 3 : Full');
+    expect(winningCombination(rec({ variant: 'V6_3', summary: { lines } } as never))).toBe('Ligne 1, brelan. Ligne 3, full');
     expect(winningCombination(rec({ award: { kind: 'INSTANT_VICTORY', winner: 'p1', line: 2 } } as never))).toBe('Quinte flush à la ligne 2');
     expect(winningCombination(rec({ award: { kind: 'NO_POINT', reason: 'ALL_FOLDED' } } as never))).toBeNull();
     expect(winningCombination(rec({}))).toBeNull();        // manche enregistrée avant le résumé
+  });
+});
+
+describe('describeRank : combinaison en clair', () => {
+  const R = (cat: number, ...k: number[]) => cat * 15 ** 5 + [0, 0, 0, 0, 0].map((_, i) => k[i] ?? 0).reduce((v, d) => v * 15 + d, 0);
+  it('nomme la combinaison et ses hauteurs', async () => {
+    const { describeRank } = await import('../src/lib/labels');
+    expect(describeRank(R(3, 3, 13, 6))).toBe('Brelan de 3');
+    expect(describeRank(R(1, 14, 12, 9, 4))).toBe('Paire d’as');
+    expect(describeRank(R(2, 14, 6, 9))).toBe('Double paire d’as et de 6');
+    expect(describeRank(R(2, 13, 12, 3))).toBe('Double paire de rois et de dames');
+    expect(describeRank(R(6, 13, 3))).toBe('Full aux rois par les 3');
+    expect(describeRank(R(7, 7, 2))).toBe('Carré de 7');
+    expect(describeRank(R(4, 9))).toBe('Quinte, hauteur 9');
+    expect(describeRank(R(8, 14))).toBe('Quinte flush royale');
+    expect(describeRank(R(0, 14, 12, 9, 5, 3))).toBe('Carte haute, as');
+    expect(describeRank(-1)).toBeNull();
   });
 });

@@ -79,14 +79,14 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
           </Field>
           <Field
             label="Mise par joueur (jetons)"
-            hint={`Chaque joueur reçoit ${formatChips(STARTING_CHIPS)} au début de la partie ; la mise est prise sur cette cave.${stakeChips > 0 ? ` Cagnotte : ${formatChips(stakeChips * maxPlayers)} à ${maxPlayers} joueurs.` : ' Sans mise, la partie se joue pour les points seulement.'}`}
+            hint={`Chaque joueur reçoit ${formatChips(STARTING_CHIPS)} au début de la partie ; la mise est prise sur cette cave.${stakeChips > 0 ? ` Cagnotte de ${formatChips(stakeChips * maxPlayers)} à ${maxPlayers} joueurs.` : ' Sans mise, la partie se joue pour les points seulement.'}`}
           >
             <Segmented label="Mise par joueur" value={stakeChips} options={[0, 50, 100, 200, 500, 1000]} onChange={setStake} format={(v) => (v === 0 ? 'Sans' : v.toLocaleString('fr-FR'))} />
           </Field>
-          <Field label="Niveau de la partie" hint={assistance ? 'Chaque joueur devra approuver l’assistance dans la salle d’attente ; sans l’accord de tous, la partie se jouera sans assistance.' : 'Aucune indication : chacun juge seul la force de sa main.'}>
+          <Field label="Niveau de la partie" hint={assistance ? 'Chaque joueur devra approuver l’assistance dans la salle d’attente ; sans l’accord de tous, la partie se jouera sans assistance.' : 'Aucune indication. Chacun juge seul la force de sa main.'}>
             <Segmented label="Niveau de la partie" value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? 'Avec assistance' : 'Sans assistance')} />
           </Field>
-          <Field label="Visibilité" hint={privateRoom ? 'Salle privée : absente des « Parties ouvertes ». Seules les personnes à qui vous donnez le code ou le lien d’invitation peuvent entrer.' : 'Salle publique : visible de tous dans « Parties ouvertes ».'}>
+          <Field label="Visibilité" hint={privateRoom ? 'Salle privée. Absente des « Parties ouvertes ». Seules les personnes à qui vous donnez le code ou le lien d’invitation peuvent entrer.' : 'Salle publique. Visible de tous dans « Parties ouvertes ».'}>
             <Segmented label="Visibilité" value={privateRoom ? 'privee' : 'publique'} options={['publique', 'privee'] as const} onChange={(v) => setPrivate(v === 'privee')} format={(v) => (v === 'privee' ? 'Privée' : 'Publique')} />
           </Field>
           {me ? (
@@ -155,7 +155,7 @@ export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?
       </Button>
       <Panel className="p-6 sm:p-8">
         <Eyebrow>Entraînement</Eyebrow>
-        <Title className="mb-2 mt-1 text-3xl">{info ? `Solo : ${info.name}` : 'S’entraîner contre le CPU'}</Title>
+        <Title className="mb-2 mt-1 text-3xl">{info ? `Solo, ${info.name}` : 'S’entraîner contre le CPU'}</Title>
         <p className="mb-6 text-sm text-ivory-200/85">
           {info
             ? `${info.tagline}. Chaque manche se joue dans cette variante, sans mise, contre des adversaires gérés par l’ordinateur. Ils jouent avec les mêmes règles que vous et ne voient jamais vos cartes.`
@@ -179,7 +179,7 @@ export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?
           <Field label="Objectif en points" hint="Le premier à atteindre l’objectif gagne la partie.">
             <Segmented label="Objectif en points" value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
           </Field>
-          <Field label="Niveau de la partie" hint={assistance ? 'Le nom de votre combinaison s’affiche pendant que vous choisissez vos cartes.' : 'Aucune indication : vous jugez seul la force de votre main.'}>
+          <Field label="Niveau de la partie" hint={assistance ? 'Le nom de votre combinaison s’affiche pendant que vous choisissez vos cartes.' : 'Aucune indication. Vous jugez seul la force de votre main.'}>
             <Segmented label="Niveau de la partie" value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? 'Avec assistance' : 'Sans assistance')} />
           </Field>
           <Field label="Votre pseudo" htmlFor="nick" error={nickname === '' || nickOk ? '' : 'Pseudo de 1 à 20 caractères (lettres, chiffres, espace, _ . \' -).'}>

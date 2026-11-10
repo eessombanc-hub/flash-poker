@@ -23,7 +23,7 @@ const password = z
   .string()
   .min(8, 'Mot de passe de 8 caractères au moins')
   .max(128)
-  .refine((p) => !COMMON_PASSWORDS.has(p.toLowerCase()) && new Set(p).size > 2, 'Ce mot de passe est trop courant : choisissez-en un autre');
+  .refine((p) => !COMMON_PASSWORDS.has(p.toLowerCase()) && new Set(p).size > 2, 'Ce mot de passe est trop courant. Choisissez-en un autre');
 const avatar = z.string().regex(/^[a-z0-9_-]{1,32}$/).nullable().optional();
 
 export const registerSchema = z.object({ nickname, email, password, avatar, invite: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/).optional() });
@@ -242,10 +242,10 @@ export class AccountService {
     this.db.prepare('INSERT INTO resets (token_hash, user_id, expires_at) VALUES (?, ?, ?)').run(tokenHash(token), row.id as string, this.now() + RESET_MS);
     const url = `${this.opts.appUrl ?? ''}/?reinitialiser=${encodeURIComponent(token)}`;
     await this.safeSend(
-      mail(row.email as string, 'Flash Poker : nouveau mot de passe', [
+      mail(row.email as string, 'Nouveau mot de passe Flash Poker', [
         `Bonjour ${row.nickname as string},`,
         'Vous avez demandé à changer le mot de passe de votre compte Flash Poker. Ce lien est valable une heure et ne sert qu’une fois.',
-        'Si vous n’êtes pas à l’origine de cette demande, ignorez simplement cet e-mail : votre mot de passe reste inchangé.',
+        'Si vous n’êtes pas à l’origine de cette demande, ignorez simplement cet e-mail. Votre mot de passe reste inchangé.',
       ], { label: 'Choisir un nouveau mot de passe', url }),
     );
   }
@@ -253,7 +253,7 @@ export class AccountService {
   async reset(input: unknown): Promise<{ token: string; account: AccountPrivate }> {
     const data = parse(resetSchema, input);
     const row = this.db.prepare('SELECT user_id, expires_at FROM resets WHERE token_hash = ?').get(tokenHash(data.token)) as Row | undefined;
-    if (!row || (row.expires_at as number) < this.now()) throw new ServerError('UNAUTHORIZED', 'Lien expiré ou déjà utilisé : refaites une demande');
+    if (!row || (row.expires_at as number) < this.now()) throw new ServerError('UNAUTHORIZED', 'Lien expiré ou déjà utilisé. Refaites une demande');
     const userId = row.user_id as string;
     this.db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?').run(await hashPassword(data.password), userId);
     this.db.prepare('DELETE FROM resets WHERE user_id = ?').run(userId);
@@ -435,12 +435,12 @@ export class AccountService {
 
   /** Invitation par e-mail : un lien d'inscription au nom du joueur, sans texte libre (aucun détournement possible). */
   async inviteByEmail(userId: string, input: unknown): Promise<InviteOverview> {
-    if (!this.mailer.enabled) throw new ServerError('UNAVAILABLE', 'L’envoi d’e-mails n’est pas encore configuré : partagez plutôt votre lien d’invitation');
+    if (!this.mailer.enabled) throw new ServerError('UNAVAILABLE', 'L’envoi d’e-mails n’est pas encore configuré. Partagez plutôt votre lien d’invitation');
     const { email: address } = parse(inviteEmailSchema, input);
     const me = this.account(userId)!;
     if (address === me.email) throw new ServerError('BAD_REQUEST', 'C’est votre propre adresse');
-    if (this.findBy('email', address)) throw new ServerError('EMAIL_TAKEN', 'Cette personne a déjà un compte : ajoutez-la à vos joueurs favoris');
-    if (this.invitesToday(userId) >= INVITES_PER_DAY) throw new ServerError('RATE_LIMITED', `Limite de ${INVITES_PER_DAY} invitations par jour atteinte : réessayez demain`);
+    if (this.findBy('email', address)) throw new ServerError('EMAIL_TAKEN', 'Cette personne a déjà un compte. Ajoutez-la à vos joueurs favoris');
+    if (this.invitesToday(userId) >= INVITES_PER_DAY) throw new ServerError('RATE_LIMITED', `Limite de ${INVITES_PER_DAY} invitations par jour atteinte. Réessayez demain`);
     const recent = this.db.prepare('SELECT 1 FROM invites WHERE inviter_id = ? AND email = ? AND created_at > ?').get(userId, address, this.now() - REINVITE_MS);
     if (recent) throw new ServerError('BAD_REQUEST', 'Vous avez déjà invité cette adresse il y a moins de 7 jours');
     const code = randomBytes(12).toString('base64url');
@@ -450,7 +450,7 @@ export class AccountService {
         'Bonjour,',
         `${me.nickname} vous invite à le rejoindre sur Flash Poker : le poker entre amis en temps réel, huit variantes, de 2 à 6 joueurs, sur ordinateur comme sur téléphone.`,
         'Créez votre compte gratuit en un instant : vous retrouverez ensuite vos parties, vos statistiques et vos joueurs favoris.',
-        'Jetons sans valeur monétaire, rien à gagner en argent. Si vous ne connaissez pas cette personne, ignorez simplement cet e-mail : vous n’en recevrez pas d’autre.',
+        'Jetons sans valeur monétaire, rien à gagner en argent. Si vous ne connaissez pas cette personne, ignorez simplement cet e-mail. Vous n’en recevrez pas d’autre.',
       ], { label: 'Créer mon compte', url: `${this.opts.appUrl ?? ''}/?invitation=${encodeURIComponent(code)}` }),
     );
     return this.invites(userId);
@@ -560,7 +560,7 @@ export class AccountService {
         mail(f.email as string, `${me.nickname} est en ligne sur Flash Poker`, [
           `Bonjour ${f.nickname as string},`,
           `${me.nickname}, l’un de vos joueurs favoris, vient de se connecter à Flash Poker.`,
-          'Vous recevez au plus un message par jour et par favori. Pour ne plus en recevoir : Mon espace, onglet Profil, « Alertes par e-mail ».',
+          'Vous recevez au plus un message par jour et par favori. Pour ne plus en recevoir, rendez-vous dans Mon espace, onglet Profil, « Alertes par e-mail ».',
         ], this.opts.appUrl ? { label: 'Ouvrir Flash Poker', url: this.opts.appUrl } : undefined),
       );
     }

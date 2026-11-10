@@ -136,9 +136,9 @@ export function BetsPanel() {
 
   return (
     <PanelShell
-      eyebrow="6-3 · Paris extérieurs"
+      eyebrow="6-3, paris extérieurs"
       title="Pariez avant la distribution"
-      hint="Choisissez une ligne et un montant. Un pari n’est actif que si au moins un autre joueur mise le même montant sur la même ligne : le meilleur de ceux-là, sans tenir compte des tétines, remporte la cagnotte à la fin de la ligne. Sans partenaire, la mise est rendue."
+      hint="Choisissez une ligne et un montant. Un pari n’est actif que si au moins un autre joueur mise le même montant sur la même ligne. Le meilleur de ceux-là, sans tenir compte des tétines, remporte la cagnotte à la fin de la ligne. Sans partenaire, la mise est rendue."
     >
       {canAct ? (
         <>
@@ -175,7 +175,7 @@ export function BetsPanel() {
           </ul>
           <div className="mt-4 flex flex-col items-center gap-2">
             <p className={`text-sm ${over ? 'text-red-300' : 'text-ivory-200/80'}`} aria-live="polite">
-              {over ? `Total ${total} : supérieur à vos jetons disponibles` : bets.length === 0 ? 'Aucun pari' : `Total misé : ${total} jetons`}
+              {over ? `Total ${total}, supérieur à vos jetons disponibles` : bets.length === 0 ? 'Aucun pari' : `Vous misez ${total} jetons`}
             </p>
             <Button disabled={validated || over} onClick={() => void client.command({ type: 'VALIDATE' })} className="w-full sm:w-auto sm:min-w-[16rem]">
               {validated ? 'Paris verrouillés' : bets.length === 0 ? 'Ne pas parier' : 'Valider mes paris'}
@@ -201,7 +201,7 @@ export function PoolsRecap({ pools, results, view }: { pools: SideBetPool[]; res
           return (
             <li key={`${p.line}-${p.amount}`}>
               Ligne {p.line} · {p.amount} jetons × {p.members.length} ({p.members.map((m) => nick(view, m)).join(', ')})
-              {r ? (r.refunded ? ' · mises rendues' : ` · remporté par ${r.winners.map((w) => nick(view, w)).join(' + ')}`) : ' · en jeu'}
+              {r ? (r.refunded ? ', mises rendues' : `, remporté par ${r.winners.map((w) => nick(view, w)).join(' + ')}`) : ', en jeu'}
             </li>
           );
         })}

@@ -23,7 +23,7 @@ export function VariantPicker() {
       hint={
         isChooser
           ? pending
-            ? 'Une proposition d’assurance est en attente de réponse : vous pourrez choisir ensuite.'
+            ? 'Une proposition d’assurance est en attente de réponse. Vous pourrez choisir ensuite.'
             : 'Sans choix en 60 secondes, une variante disponible est tirée au hasard.'
           : 'Le choix tourne dans l’ordre des positions.'
       }
@@ -58,7 +58,7 @@ export function VariantPicker() {
         <div role="group" aria-label="Options du 6-3" className="mt-4 rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
           <p className="font-display text-lg text-ivory-50">Options du 6-3</p>
           <fieldset className="mt-2">
-            <legend className="text-sm text-ivory-200/85">Tétines : cartes supplémentaires qui glissent de ligne en ligne</legend>
+            <legend className="text-sm text-ivory-200/85">Tétines (cartes supplémentaires qui glissent de ligne en ligne)</legend>
             <div className="mt-1.5 flex gap-2">
               {[0, 1, 2].map((n) => (
                 <label key={n} className={`cursor-pointer rounded-lg border px-4 py-2 text-sm ${teats === n ? 'border-gold-400 bg-gold-500/15 text-gold-200' : 'border-ivory-100/20 text-ivory-200/85'}`}>
@@ -70,7 +70,7 @@ export function VariantPicker() {
           </fieldset>
           <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-ivory-200/90">
             <input type="checkbox" checked={sideBets} onChange={(e) => setSideBets(e.target.checked)} className="mt-1" />
-            <span>Paris extérieurs : chacun peut miser sur une ligne avant la distribution des cartes</span>
+            <span>Paris extérieurs (chacun peut miser sur une ligne avant la distribution des cartes)</span>
           </label>
           <div className="mt-4 flex gap-2">
             <Button onClick={() => void client.command({ type: 'CHOOSE_VARIANT', variant: 'V6_3', teats, sideBets })}>Lancer le 6-3</Button>

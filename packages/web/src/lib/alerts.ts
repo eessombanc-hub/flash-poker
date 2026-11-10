@@ -4,7 +4,7 @@ import { Sound, vibrate } from './sound';
 import { useTable } from './table';
 
 const ORIGINAL_TITLE = typeof document === 'undefined' ? '' : document.title;
-const TURN_TITLE = 'À vous de jouer : Flash Poker';
+const TURN_TITLE = 'À vous de jouer. Flash Poker';
 
 /** Suis-je attendu maintenant ? Une clé stable qui change à chaque NOUVEAU tour (pour ne sonner qu'une fois). */
 function myTurnKey(t: ReturnType<typeof useTable>): string | null {

@@ -74,7 +74,7 @@ export class RoundMorpion extends RoundBase {
         if (this.s.validated.includes(cmd.player)) throw new RuleError('ALREADY_VALIDATED', `${cmd.player} a déjà validé`);
         const cards = this.parseSelection(cmd.player, cmd.cards, 2);
         if (cmd.line !== undefined && cmd.line !== null && (!Number.isInteger(cmd.line) || cmd.line < 0 || cmd.line > 7)) {
-          throw new RuleError('BAD_COMMAND', 'Alignement invalide : un index de 0 à 7 est attendu');
+          throw new RuleError('BAD_COMMAND', 'Alignement invalide. Un index de 0 à 7 est attendu');
         }
         const draft = this.s.drafts[cmd.player]!;
         draft.cards = cards.map((c) => c.code);
@@ -112,7 +112,7 @@ export class RoundMorpion extends RoundBase {
     const played = entries.filter((e): e is { player: PlayerId; hand: Card[]; rank: number } => e.rank !== null);
     events.push(
       publicEvent('SHOWDOWN', {
-        hands: Object.fromEntries(played.map((e) => [e.player, { cards: e.hand.map((c) => c.code), category: categoryOf(e.rank) }])),
+        hands: Object.fromEntries(played.map((e) => [e.player, { cards: e.hand.map((c) => c.code), category: categoryOf(e.rank), rank: e.rank }])),
       }),
     );
     if (played.length === 0) {

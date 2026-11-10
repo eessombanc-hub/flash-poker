@@ -187,10 +187,10 @@ describe('6-1 : révélations', () => {
   it('mes cartes non encore retournées : dos de carte, jamais leur valeur — même pour moi', () => {
     renderWith(<Reveal61Panel />, view('p1'));
     const hand = within(screen.getByRole('group', { name: 'Votre main' }));
-    const backs = hand.getAllByRole('img', { name: 'Carte face cachée : pas encore retournée' });
+    const backs = hand.getAllByRole('img', { name: 'Carte face cachée, pas encore retournée' });
     expect(backs).toHaveLength(5); // 5 des 6 cartes : jamais révélées, y compris à leur propriétaire
     for (const rank of ['9', '5', 'Roi', '2', '7']) expect(hand.queryByRole('img', { name: new RegExp(rank) })).toBeNull();
-    expect(hand.getByRole('img', { name: '3 de cœur : visible de tous' })).toBeInTheDocument(); // la seule déjà visible
+    expect(hand.getByRole('img', { name: '3 de cœur, visible de tous' })).toBeInTheDocument(); // la seule déjà visible
   });
 
   it('classement du plus faible au plus fort, avec la carte qui vient d’être retournée', () => {
@@ -575,8 +575,8 @@ describe('Assistance : cartes de la combinaison en surbrillance', () => {
   it('poker fermé : seules les cartes de la paire sont signalées', () => {
     const v = roomView({}, game({ assistance: true, round: round('CLOSED_1', ['As', 'Ad', '9c', '5h', '2s'], { change: 1, totalChanges: 1, validated: [], yourDraft: [], assistCategory: 1, assistCards: ['As', 'Ad'] }, { phase: 'CHANGE_1' }) }));
     renderWith(<ClosedPanel />, v);
-    expect(screen.getByRole('button', { name: /As de pique : dans votre combinaison/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /As de carreau : dans votre combinaison/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /As de pique, dans votre combinaison/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /As de carreau, dans votre combinaison/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '9 de trèfle' })).toBeInTheDocument();
     expect(screen.getAllByText(/dans votre combinaison/)).toHaveLength(2);
   });

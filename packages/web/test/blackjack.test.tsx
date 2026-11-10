@@ -42,7 +42,7 @@ describe('Blackjack : totaux affichés', () => {
   it('texte : total souple, dépassement, carte cachée ignorée', () => {
     expect(totalText(['As', '6d'])).toBe('7 / 17');
     expect(totalText(['As', 'Kd'])).toBe('21');
-    expect(totalText(['Kd', 'Qd', '5c'])).toBe('25 · dépasse');
+    expect(totalText(['Kd', 'Qd', '5c'])).toBe('25, dépasse');
     expect(totalText(['9d', null])).toBe('9');
   });
 });
@@ -131,7 +131,7 @@ describe('Blackjack : table', () => {
   it('niveau « coach » : conseil et probabilités ; « indices » : probabilités seules', () => {
     const help = { advice: { action: 'HIT' as const, reason: 'Le croupier montre un 10.' }, odds: { bustOnHit: 0.62, stand: { win: 0.2, push: 0.1, lose: 0.7 }, dealerFinal: { 17: 0, 18: 0, 19: 0, 20: 0, 21: 0, bust: 0 } } };
     const { rerender } = render(<BjTable {...props} active={active()} pedagogy="coach" help={help} />);
-    expect(screen.getByTestId('help-box').textContent).toMatch(/Conseil : Tirer.*Le croupier montre un 10/);
+    expect(screen.getByTestId('help-box').textContent).toMatch(/Conseil\. Tirer.*Le croupier montre un 10/);
     expect(screen.getByTestId('help-box').textContent).toMatch(/62 %/);
     rerender(<BjTable {...props} active={active()} pedagogy="indices" help={help} />);
     expect(screen.getByTestId('help-box').textContent).not.toMatch(/Conseil/);

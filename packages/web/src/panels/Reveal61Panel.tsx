@@ -34,7 +34,7 @@ export function Reveal61Panel() {
     <PanelShell
       eyebrow={`6-1, révélation ${Math.min(info.reveals + 1, 5 * n)} / ${5 * n}`}
       title={info.next ? (myTurn ? 'À toi de révéler' : `${nick(view, info.next)} doit révéler`) : 'Showdown'}
-      hint={info.next && info.reason ? `Joueur le plus faible désigné : ${NEXT_REASON_TEXT[info.reason]}. Sans retournement en 60 secondes, la carte est retournée automatiquement.` : undefined}
+      hint={info.next && info.reason ? `Joueur le plus faible désigné (${NEXT_REASON_TEXT[info.reason]}). Sans retournement en 60 secondes, la carte est retournée automatiquement.` : undefined}
       timerLabel="Retournement"
     >
       {myTurn && (
@@ -54,7 +54,7 @@ export function Reveal61Panel() {
             {last.nextRevealer && (
               <>
                 {' '}
-                Nouvel ordre : <strong>{nick(view, last.nextRevealer)}</strong> révèle.
+                Nouvel ordre, <strong>{nick(view, last.nextRevealer)}</strong> révèle.
               </>
             )}
           </span>
@@ -79,7 +79,7 @@ export function Reveal61Panel() {
       {mine.length > 0 && (
         <div className="mt-5">
           <p className="mb-1.5 text-center text-xs uppercase tracking-widest text-ivory-300/70 sm:mb-2 sm:text-xs">
-            Votre main<span className="hidden sm:inline"> : cartes retournées dans l’ordre de distribution</span>
+            Votre main<span className="hidden sm:inline">, cartes retournées dans l’ordre de distribution</span>
           </p>
           <StaticHand label="Votre main" size="md" cards={mine.map((c, i) => ({ code: c.code, visible: c.visible, next: i === firstHidden }))} />
         </div>

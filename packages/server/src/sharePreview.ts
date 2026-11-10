@@ -30,11 +30,11 @@ export function renderIndex(template: string, ctx: PreviewContext): string {
     const who = ctx.inviterOf?.(invite);
     if (who) {
       html = setMeta(html, 'og:title', `${who} vous invite sur Flash Poker`);
-      html = setMeta(html, 'og:description', 'Créez votre compte gratuit en quelques secondes et rejoignez sa table : huit variantes de poker entre amis, en temps réel.');
+      html = setMeta(html, 'og:description', 'Créez votre compte gratuit en quelques secondes et rejoignez sa table. Huit variantes de poker entre amis, en temps réel.');
     }
   } else if (code && /^POKER-[2-9A-Z]{4}$/.test(code)) {
     html = setMeta(html, 'og:title', 'Une table de Flash Poker vous attend');
-    html = setMeta(html, 'og:description', `Partie ${code} : touchez le lien pour vous asseoir à la table, sans rien installer.`);
+    html = setMeta(html, 'og:description', `Partie ${code}. Touchez le lien pour vous asseoir à la table, sans rien installer.`);
   }
   return html;
 }

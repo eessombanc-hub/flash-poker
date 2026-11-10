@@ -183,9 +183,9 @@ describe('Fermé : à la fin des changes, tous montrent leurs cartes ; meilleure
     const showdown = ev2.find((e) => e.type === 'SHOWDOWN')!;
     expect(showdown.visibility).toBe('PUBLIC');
     expect(showdown.data.hands).toEqual({
-      P0: { cards: FLUSH, category: 5 }, // couleur
-      P1: { cards: STRAIGHT, category: 4 }, // quinte
-      P2: { cards: TRIPS, category: 3 }, // brelan
+      P0: { cards: FLUSH, category: 5, rank: expect.any(Number) }, // couleur
+      P1: { cards: STRAIGHT, category: 4, rank: expect.any(Number) }, // quinte
+      P2: { cards: TRIPS, category: 3, rank: expect.any(Number) }, // brelan
     });
     for (const viewer of ['P0', 'P1', 'P2']) {
       for (const p of ['P0', 'P1', 'P2']) {

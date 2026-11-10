@@ -193,7 +193,7 @@ export function applyToHands(r: BjRound, action: BjAction): void {
 /** Applique une action sur la main active et renvoie la nouvelle manche (l'originale n'est pas modifiée). */
 export function applyAction(prev: BjRound, action: BjAction, chips = Number.POSITIVE_INFINITY): BjRound {
   if (prev.phase !== 'PLAYER') throw new BjError('ROUND_OVER', 'La manche est terminée');
-  if (!legalActions(prev, chips).includes(action)) throw new BjError('ILLEGAL_ACTION', `Action impossible : ${action}`);
+  if (!legalActions(prev, chips).includes(action)) throw new BjError('ILLEGAL_ACTION', `Action impossible. ${action}`);
   const r = structuredClone(prev);
   applyToHands(r, action);
   advance(r);

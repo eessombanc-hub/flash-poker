@@ -19,7 +19,7 @@ const FREE_ID = 'libre';
 const FREE_LIMITS = { minBet: 1, maxBet: 1000 };
 
 const rulesLine = (r: TableRules): string =>
-  `${r.decks} jeu${r.decks > 1 ? 'x' : ''} · croupier ${r.dealerHitsSoft17 ? 'tire' : 'reste'} sur 17 soft · Blackjack ${r.blackjackPays === '3:2' ? '3 contre 2' : '6 contre 5'} · doublement ${DOUBLE_LABEL[r.doubleOn].toLowerCase()} · ${r.surrender ? 'abandon' : 'sans abandon'}`;
+  `${r.decks} jeu${r.decks > 1 ? 'x' : ''}, croupier ${r.dealerHitsSoft17 ? 'tire' : 'reste'} sur 17 soft, Blackjack ${r.blackjackPays === '3:2' ? '3 contre 2' : '6 contre 5'}, doublement ${DOUBLE_LABEL[r.doubleOn].toLowerCase()}, ${r.surrender ? 'abandon' : 'sans abandon'}`;
 
 /** Point d'entrée : ouvert à tous. Invité ou connecté, jetons, niveau et manche en cours sont enregistrés côté serveur. */
 export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
@@ -51,7 +51,7 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
           <>
             {!me && (
               <p className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gold-500/30 bg-gold-500/10 text-xs text-ivory-100 ${playing ? 'mb-2 px-3 py-1' : 'mb-4 px-4 py-2.5'}`} data-testid="bj-guest-note">
-                <span>{playing ? 'Invité : jetons et progression restent sur cet appareil.' : 'Vous jouez en invité : jetons et progression restent sur cet appareil. Avec un compte, ils vous suivent partout et vous apparaissez au classement.'}</span>
+                <span>{playing ? 'Invité. Jetons et progression restent sur cet appareil.' : 'Vous jouez en invité. Jetons et progression restent sur cet appareil. Avec un compte, ils vous suivent partout et vous apparaissez au classement.'}</span>
                 <button type="button" onClick={onLogin} className="font-semibold text-gold-300 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
                   Se connecter
                 </button>
@@ -236,7 +236,7 @@ function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void;
       )}
       {profile?.refillAt && (
         <p className="rounded-xl border border-amber-400/30 bg-amber-950/40 px-4 py-2 text-xs text-amber-100">
-          Solde bas : recharge gratuite à {new Date(profile.refillAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.
+          Solde bas, recharge gratuite à {new Date(profile.refillAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.
         </p>
       )}
 
@@ -294,7 +294,7 @@ function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void;
         {tab === 'historique' && <HistoryPanel items={overview?.history ?? []} />}
       </div>
 
-      <p className="text-center text-xs text-ivory-300/60">Jetons virtuels sans valeur monétaire : aucun achat, aucun gain en argent. Pas d’assurance au croupier dans cette version.</p>
+      <p className="text-center text-xs text-ivory-300/60">Jetons virtuels sans valeur monétaire. Aucun achat, aucun gain en argent. Pas d’assurance au croupier dans cette version.</p>
     </div>
   );
 }
@@ -303,7 +303,7 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
   const level = overview?.profile.level ?? 1;
   const chips = overview?.profile.chips ?? 0;
   const tables: (TablePreset | { id: 'libre'; name: string; description: string; rules: TableRules; limits: { minBet: number; maxBet: number }; minLevel: number })[] = useMemo(
-    () => [...(overview?.tables.filter((t) => t.id !== FREE_ID) ?? []), { id: FREE_ID, name: 'Table libre', description: 'Vous fixez vous-même les règles : nombre de jeux, croupier, Blackjack, doublement, abandon.', rules: prefs.rules, limits: FREE_LIMITS, minLevel: 1 }],
+    () => [...(overview?.tables.filter((t) => t.id !== FREE_ID) ?? []), { id: FREE_ID, name: 'Table libre', description: 'Vous fixez vous-même les règles. Nombre de jeux, croupier, Blackjack, doublement, abandon.', rules: prefs.rules, limits: FREE_LIMITS, minLevel: 1 }],
     [overview, prefs.rules],
   );
   const table = tables.find((t) => t.id === prefs.table) ?? tables[0]!;
@@ -327,7 +327,7 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
         <Panel className="flex flex-wrap items-center justify-between gap-3 border-gold-500/50 p-4">
           <div>
             <p className="font-display text-lg text-ivory-50">Manche en cours</p>
-            <p className="text-xs text-ivory-300/80">Elle a été interrompue : reprenez-la exactement où vous l’aviez laissée.</p>
+            <p className="text-xs text-ivory-300/80">Elle a été interrompue. Reprenez-la exactement où vous l’aviez laissée.</p>
           </div>
           <Button onClick={onResume}>Reprendre la manche</Button>
         </Panel>

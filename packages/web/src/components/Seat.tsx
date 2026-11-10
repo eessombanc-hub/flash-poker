@@ -86,7 +86,7 @@ function CompactSeat({ player, isMe, target, shown, active, validated, folded, i
         <Avatar nickname={player.nickname} avatar={player.avatar} size={22} dim={!player.connected || out} />
         <div className="min-w-0 flex-1 text-left leading-tight">
           <p className={`truncate text-xs font-semibold ${isMe ? 'text-gold-300' : 'text-ivory-50'}`}>{player.nickname}</p>
-          <p className="whitespace-nowrap text-[10px] tracking-wide text-gold-400">{player.position ?? ''}{player.bot ? (player.position ? ' · CPU' : 'CPU') : ''}</p>
+          <p className="whitespace-nowrap text-[10px] tracking-wide text-gold-400">{player.position ?? ''}{player.bot ? (player.position ? ', CPU' : 'CPU') : ''}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-0.5">
           <ScorePips score={score} target={target} small />

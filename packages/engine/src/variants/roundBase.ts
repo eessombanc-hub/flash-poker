@@ -121,7 +121,7 @@ export abstract class RoundBase implements Round {
   }
 
   protected assertPlayer(player: PlayerId): void {
-    if (!this.players.includes(player)) throw new RuleError('UNKNOWN_PLAYER', `Joueur inconnu : ${player}`);
+    if (!this.players.includes(player)) throw new RuleError('UNKNOWN_PLAYER', `Joueur inconnu. ${player}`);
   }
 
   /** Cartes de la main du joueur (usage serveur). */
@@ -140,7 +140,7 @@ export abstract class RoundBase implements Round {
       try {
         card = parseCard(code);
       } catch {
-        throw new RuleError('BAD_CARD', `Carte invalide : ${code}`);
+        throw new RuleError('BAD_CARD', `Carte invalide. ${code}`);
       }
       if (seen.has(card.id)) throw new RuleError('DUPLICATE_CARD', `${code} désignée deux fois`);
       seen.add(card.id);

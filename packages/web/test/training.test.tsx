@@ -150,7 +150,7 @@ describe('Menu solo', () => {
   });
   it('variante imposée : 5 CPU interdits quand elle ne se joue pas à 6, options du 6-3', () => {
     const { rerender } = render(<ClientProvider client={makeClient()}><TrainingRoom onBack={() => undefined} variant="LE10" /></ClientProvider>);
-    expect(screen.getByRole('heading', { name: /Solo : Le 10/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Solo, Le 10/ })).toBeInTheDocument();
     expect(within(screen.getByRole('radiogroup', { name: 'Adversaires CPU' })).queryByRole('radio', { name: '5' })).toBeNull();
     rerender(<ClientProvider client={makeClient()}><TrainingRoom onBack={() => undefined} variant="V6_3" /></ClientProvider>);
     expect(screen.getByRole('radiogroup', { name: 'Tétines' })).toBeInTheDocument();

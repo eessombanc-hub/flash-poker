@@ -88,7 +88,7 @@ describe('Tableau : accès depuis les menus', () => {
         <Home onCreate={noop} onJoin={noop} onTrain={noop} onBlackjack={noop} onTableau={onTableau} />
       </ClientProvider>,
     );
-    await user.click(screen.getByRole('button', { name: 'Le Tableau' }));
+    await user.click(screen.getByRole('button', { name: 'Tableau' }));
     expect(onTableau).toHaveBeenLastCalledWith('classic');
     await user.click(screen.getByRole('button', { name: 'Le tableau 5 cartes' }));
     expect(onTableau).toHaveBeenLastCalledWith('hand5');
@@ -120,7 +120,7 @@ describe('Tableau : de bout en bout', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Règles du Tableau' });
     expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThanOrEqual(10);
     expect(within(dialog).getByText('Quinte flush royale')).toBeInTheDocument();
-    expect(within(dialog).getByText(/la première quinte flush complétée par l’un des joueurs/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/la première quinte flush complétée par l’un des joueurs/i)).toBeInTheDocument();
   });
 
   it('entraînement : plateau à cinq colonnes, placement, conseil, puis tour de l’IA', async () => {

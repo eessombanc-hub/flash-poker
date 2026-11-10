@@ -73,7 +73,7 @@ describe('libellés des combinaisons', () => {
     expect(cardName(en, 'Kh')).toBe('King ♥');
     expect(cardName(lab('de'), 'Qs')).toBe('Dame ♠');
     expect(adviceText(en, { col: 1, card: 'Kh', kind: 'improve', after: null, afterCodes: ['Kd', 'Kh'] }, true)).toBe('Place the King ♥ from your hand in column 2: it becomes “Pair of kings”.');
-    expect(adviceText(lab('fr'), { col: 0, card: '7c', kind: 'empty', after: null }, false)).toBe('Placez la carte 7 ♣ en colonne 1 : c’est une colonne encore vide.');
+    expect(adviceText(lab('fr'), { col: 0, card: '7c', kind: 'empty', after: null }, false)).toBe('Placez la carte 7 ♣ en colonne 1. C’est une colonne encore vide.');
   });
   it('erreurs de l’API traduites', () => {
     expect(errorText(lab('en'), new ApiError('CONFLICT', 'Une partie amicale est déjà en cours (TB-ABCD).', 'TB_FRIENDLY_ACTIVE'))).toBe('A friendly game is already in progress (TB-ABCD).');

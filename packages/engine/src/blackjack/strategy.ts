@@ -77,17 +77,17 @@ export function recommend(r: BjRound, chips = Number.POSITIVE_INFINITY): Advice 
   const pair = h.cards.length === 2 && cardValue(h.cards[0]!) === cardValue(h.cards[1]!) ? cardValue(h.cards[0]!) : null;
 
   if (pair !== null && legal.includes('SPLIT') && shouldSplit(pair, up, r.rules)) {
-    return { action: 'SPLIT', reason: pair === 11 || pair === 8 ? 'Cette paire se sépare toujours : As et 8 valent mieux en deux mains.' : `Le croupier montre ${upText} : séparer la paire est plus rentable que de la jouer ensemble.` };
+    return { action: 'SPLIT', reason: pair === 11 || pair === 8 ? 'Cette paire se sépare toujours. As et 8 valent mieux en deux mains.' : `Le croupier montre ${upText}. Séparer la paire est plus rentable que de la jouer ensemble.` };
   }
   if (legal.includes('SURRENDER') && shouldSurrender(v.total, v.soft, up, r.rules)) {
-    return { action: 'SURRENDER', reason: `${v.total} contre ${upText} perd le plus souvent : abandonner récupère la moitié de la mise.` };
+    return { action: 'SURRENDER', reason: `${v.total} contre ${upText} perd le plus souvent. Abandonner récupère la moitié de la mise.` };
   }
   const plan = v.soft ? softPlan(v.total, up, r.rules) : hardPlan(v.total, up, r.rules);
   let action: BjAction;
   let reason: string;
   if (plan.want === 'D' && legal.includes('DOUBLE')) {
     action = 'DOUBLE';
-    reason = `Le croupier montre ${upText} : votre ${v.soft ? 'main souple' : 'total'} de ${v.total} est bien placé pour doubler.`;
+    reason = `Le croupier montre ${upText}. Votre ${v.soft ? 'main souple' : 'total'} de ${v.total} est bien placé pour doubler.`;
   } else {
     const key = plan.want === 'D' ? plan.fallback : plan.want;
     action = key === 'S' ? 'STAND' : 'HIT';

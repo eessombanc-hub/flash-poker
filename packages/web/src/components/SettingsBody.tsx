@@ -12,7 +12,7 @@ export function SettingsBody() {
         <input type="checkbox" className="mt-1 h-5 w-5 accent-yellow-600" checked={fourColor} onChange={(e) => setFourColor(e.target.checked)} />
         <span>
           <span className="block font-medium text-ivory-50">Cartes en quatre couleurs</span>
-          <span className="text-sm text-ivory-200/80">Trèfle vert, carreau bleu : lecture plus rapide des couleurs.</span>
+          <span className="text-sm text-ivory-200/80">Trèfle vert, carreau bleu. Lecture plus rapide des couleurs.</span>
         </span>
       </label>
       <label className="flex cursor-pointer items-start gap-3">

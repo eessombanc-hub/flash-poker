@@ -113,7 +113,7 @@ export class ClosedRound extends RoundBase {
     events.push(
       publicEvent('SHOWDOWN', {
         hands: Object.fromEntries(
-          entries.map((e) => [e.player, { cards: e.hand.map((c) => c.code), category: categoryOf(e.rank) }]),
+          entries.map((e) => [e.player, { cards: e.hand.map((c) => c.code), category: categoryOf(e.rank), rank: e.rank }]),
         ),
       }),
     );

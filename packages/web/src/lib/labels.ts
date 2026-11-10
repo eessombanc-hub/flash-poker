@@ -14,7 +14,7 @@ export const VARIANTS: readonly VariantInfo[] = [
     name: '6-3',
     tagline: 'Omaha en trois lignes',
     description:
-      '6 cartes privées, flop et turn ouverts, puis trois rivers dévoilées ligne après ligne. À chaque ligne, désignez 2 cartes : aucune aide, 60 secondes. En option : 1 ou 2 tétines qui glissent de ligne en ligne, et des paris extérieurs.',
+      '6 cartes privées, flop et turn ouverts, puis trois rivers dévoilées ligne après ligne. À chaque ligne, désignez 2 cartes. Aucune aide, 60 secondes. En option, 1 ou 2 tétines qui glissent de ligne en ligne, et des paris extérieurs.',
   },
   {
     id: 'V6_1',
@@ -54,7 +54,7 @@ export const VARIANTS: readonly VariantInfo[] = [
     name: 'Morpion',
     tagline: 'Hold\u2019em en grille 3×3',
     description:
-      '4 cartes privées. 9 cartes communes en grille, toutes visibles. Désignez 2 de vos cartes et un alignement (ligne, colonne ou diagonale) : aucune aide, 60 secondes.',
+      '4 cartes privées. 9 cartes communes en grille, toutes visibles. Désignez 2 de vos cartes et un alignement (ligne, colonne ou diagonale). Aucune aide, 60 secondes.',
   },
   {
     id: 'LE10',
@@ -78,21 +78,53 @@ export const CATEGORY_LABELS = [
   'Carré',
   'Quinte flush',
 ] as const;
+const RANK_PLURAL = (r: number): string => (r === 14 ? 'as' : r === 13 ? 'rois' : r === 12 ? 'dames' : r === 11 ? 'valets' : String(r));
+const RANK_SINGULAR = (r: number): string => (r === 14 ? 'as' : r === 13 ? 'roi' : r === 12 ? 'dame' : r === 11 ? 'valet' : String(r));
+const OF = (r: number): string => (r === 14 ? 'd’' : 'de ') + RANK_PLURAL(r);
+
+/**
+ * Combinaison en clair à partir du rang complet d'une main (catégorie × 15⁵ + hauteurs en base 15, voir le moteur) :
+ * « Brelan de 3 », « Double paire d’as et de 6 », « Full aux rois par les 3 »… null si le rang n'est pas un rang valide.
+ */
+export function describeRank(rank: number): string | null {
+  if (!Number.isInteger(rank) || rank < 0) return null;
+  const category = Math.floor(rank / 15 ** 5);
+  const k: number[] = [];
+  let rest = rank % 15 ** 5;
+  for (let i = 0; i < 5; i++) {
+    k.unshift(rest % 15);
+    rest = Math.floor(rest / 15);
+  }
+  const [a = 0, b = 0] = k;
+  switch (category) {
+    case 0: return a ? `Carte haute, ${RANK_SINGULAR(a)}` : null;
+    case 1: return `Paire ${OF(a)}`;
+    case 2: return `Double paire ${OF(a)} et ${b === 14 ? 'd’' : 'de '}${RANK_PLURAL(b)}`;
+    case 3: return `Brelan ${OF(a)}`;
+    case 4: return `Quinte, hauteur ${RANK_SINGULAR(a)}`;
+    case 5: return `Couleur, hauteur ${RANK_SINGULAR(a)}`;
+    case 6: return `Full aux ${RANK_PLURAL(a)} par les ${RANK_PLURAL(b)}`;
+    case 7: return `Carré ${OF(a)}`;
+    case 8: return a === 14 ? 'Quinte flush royale' : `Quinte flush, hauteur ${RANK_SINGULAR(a)}`;
+    default: return null;
+  }
+}
+
 export const categoryLabel = (category: number): string => CATEGORY_LABELS[category] ?? '—';
 
 export const NEXT_REASON_TEXT: Record<NextReason, string> = {
   LOWEST_SIXTH_CARD: 'sixième carte la plus faible',
   WEAKEST: 'main visible la plus faible',
-  TIE_LAST_REVEALER: 'égalité : le dernier à révéler rejoue',
-  TIE_POSITION: 'égalité : ordre des positions',
+  TIE_LAST_REVEALER: 'égalité, le dernier à révéler rejoue',
+  TIE_POSITION: 'égalité, ordre des positions',
 };
 
 /** Le 10 : mêmes raisons que le 6-1, sans plateau commun (comparaison sur les seules cartes visibles). */
 export const NEXT_REASON_TEXT_10: Record<NextReason10, string> = {
   LOWEST_FIRST_CARD: 'première carte visible la plus faible',
   WEAKEST: 'main visible la plus faible',
-  TIE_LAST_REVEALER: 'égalité : le dernier à révéler rejoue',
-  TIE_POSITION: 'égalité : ordre des positions',
+  TIE_LAST_REVEALER: 'égalité, le dernier à révéler rejoue',
+  TIE_POSITION: 'égalité, ordre des positions',
 };
 
 export const INSURANCE_LABELS: Record<InsuranceType, { name: string; short: string }> = {
@@ -102,7 +134,7 @@ export const INSURANCE_LABELS: Record<InsuranceType, { name: string; short: stri
 
 export const VICTORY_LABELS = {
   SCORE: 'Objectif atteint',
-  STRAIGHT_FLUSH_63: 'Quinte flush au 6-3 : victoire immédiate',
+  STRAIGHT_FLUSH_63: 'Quinte flush au 6-3, victoire immédiate',
 } as const;
 
 /**
@@ -119,14 +151,14 @@ export function winningCombination(record: RoundRecord): string | null {
   if (s.tiebreak) return `${categoryLabel(s.tiebreak.category)} au Hold’em de départage`;
   if (s.byFold) return 'Tous les autres joueurs se sont couchés';
   const hand = s.hands?.[a.winner];
-  if (hand) return categoryLabel(hand.category);
+  if (hand) return (hand.rank !== undefined ? describeRank(hand.rank) : null) ?? categoryLabel(hand.category);
   if (s.lines) {
     const won = s.lines.filter((l) => l.winners.includes(a.winner));
     if (won.length === 0) return null;
     return won.map((l) => {
       const d = l.designations[a.winner];
-      return `Ligne ${l.line} : ${d ? categoryLabel(d.category) : '—'}`;
-    }).join(' · ');
+      return `Ligne ${l.line}, ${d ? categoryLabel(d.category).toLowerCase() : 'sans désignation'}`;
+    }).join('. ');
   }
   return null;
 }
@@ -136,5 +168,6 @@ export function winningCards(record: RoundRecord): string[] {
   const a = record.award;
   if (a.kind !== 'POINTS' || !record.summary) return [];
   if (record.summary.tiebreak) return record.summary.tiebreak.cards;
-  return record.summary.hands?.[a.winner]?.cards ?? [];
+  const h = record.summary.hands?.[a.winner];
+  return h?.best ?? h?.cards ?? [];
 }

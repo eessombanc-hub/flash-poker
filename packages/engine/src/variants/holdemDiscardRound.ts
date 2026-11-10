@@ -131,14 +131,15 @@ export class HoldemDiscardRound extends RoundBase {
     const board = this.boardCards();
     const entries = active.map((player) => {
       const hand = this.cards.revealAllHand(player);
-      return { player, hand, rank: evaluateHoldem(hand, board).rank };
+      const best = evaluateHoldem(hand, board);
+      return { player, hand, rank: best.rank, best: best.cards.map((c) => c.code) };
     });
     events.push(
       publicEvent('SHOWDOWN', {
         // Plateau final tel que le moteur l'a évalué : le récapitulatif l'affiche tel quel.
         board: board.map((c) => c.code),
         hands: Object.fromEntries(
-          entries.map((e) => [e.player, { cards: e.hand.map((c) => c.code), category: categoryOf(e.rank) }]),
+          entries.map((e) => [e.player, { cards: e.hand.map((c) => c.code), category: categoryOf(e.rank), rank: e.rank, best: e.best }]),
         ),
       }),
     );

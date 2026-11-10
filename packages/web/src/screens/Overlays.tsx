@@ -9,7 +9,7 @@ import { CoinRain, RevealCard, Shine, SpinTrophy } from '../components/Scene3D';
 import { Avatar, Badge, Button, Eyebrow, Modal, ScorePips } from '../components/ui';
 import type { FeedItem } from '../lib/client';
 import { deNom, formatChips, formatSignedChips, pointsLabel, STARTING_CHIPS } from '../lib/format';
-import { categoryLabel, INSURANCE_LABELS, variantName, VICTORY_LABELS, winningCards, winningCombination } from '../lib/labels';
+import { categoryLabel, describeRank, INSURANCE_LABELS, variantName, VICTORY_LABELS, winningCards, winningCombination } from '../lib/labels';
 import { nick } from '../lib/selectors';
 import { useSettings } from '../lib/settings';
 import type { LineResult, RoomView, RoundEvent, RoundRecord, TiebreakOutcome } from '../lib/types';
@@ -44,11 +44,11 @@ export function awardText(record: RoundRecord, view: RoomView): string {
 export function awardTextBy(record: RoundRecord, nameOf: (id: string) => string): string {
   const a = record.award;
   if (a.kind === 'POINTS') {
-    const capot = record.variant === 'V6_3' && a.points === 2 ? ' : capot, les 3 lignes gagnées' : '';
+    const capot = record.variant === 'V6_3' && a.points === 2 ? '. Capot, les 3 lignes gagnées' : '';
     return `${nameOf(a.winner)} remporte la manche (+${pointsLabel(a.points)})${capot}${a.tiebreak ? ' après un Hold’em de départage' : ''}`;
   }
-  if (a.kind === 'INSTANT_VICTORY') return `${nameOf(a.winner)} désigne une quinte flush à la ligne ${a.line} : victoire immédiate`;
-  return `Aucun point : ${NO_POINT_REASON[a.reason] ?? a.reason}`;
+  if (a.kind === 'INSTANT_VICTORY') return `${nameOf(a.winner)} désigne une quinte flush à la ligne ${a.line}. Victoire immédiate`;
+  return `Aucun point. ${NO_POINT_REASON[a.reason] ?? a.reason}`;
 }
 
 // ---------- Hold'em de départage ----------
@@ -91,7 +91,7 @@ export function TiebreakSequence({ tiebreak, view }: { tiebreak: TiebreakOutcome
           </li>
         ))}
       </ul>
-      {done && <p className="mt-3 text-center text-sm font-semibold text-gold-300">Vainqueur du départage : {nick(view, tiebreak.winner)}</p>}
+      {done && <p className="mt-3 text-center text-sm font-semibold text-gold-300">Vainqueur du départage, {nick(view, tiebreak.winner)}</p>}
     </section>
   );
 }
@@ -114,7 +114,7 @@ export function finalBoard(known: readonly (string | null)[], events: readonly R
 
 export function RoundResultModal({ record, events, board, view, onClose, final }: { record: RoundRecord; events: RoundEvent[]; board: readonly (string | null)[]; view: RoomView; onClose: () => void; final: boolean }) {
   const { fourColor } = useSettings();
-  const showdown = [...events].reverse().find((e) => e.type === 'SHOWDOWN')?.data.hands as Record<string, { cards: string[]; category: number }> | undefined;
+  const showdown = [...events].reverse().find((e) => e.type === 'SHOWDOWN')?.data.hands as Record<string, { cards: string[]; category: number; rank?: number }> | undefined;
   const shownBoard = record.variant === 'AVIATION' || record.variant === 'AVIA_6' || record.variant === 'V6_1' ? finalBoard(board, events) : [];
   const lines = events.filter((e) => e.type === 'LINE_RESOLVED').map((e) => e.data as unknown as LineResult);
   const winner = record.award.kind === 'POINTS' || record.award.kind === 'INSTANT_VICTORY' ? record.award.winner : null;
@@ -170,7 +170,7 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
                   <RevealCard key={c} code={c} size="xs" index={i} />
                 ))}
               </span>
-              <span className="text-sm text-ivory-200/85">{categoryLabel(h.category)}</span>
+              <span className="text-sm text-ivory-200/85">{(h.rank !== undefined ? describeRank(h.rank) : null) ?? categoryLabel(h.category)}</span>
               {pid === winner && <Badge tone="gold">Gagnant</Badge>}
             </li>
           ))}
@@ -251,13 +251,13 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
       </ol>
       {o.insurance && insured && (
         <p className="mt-2 text-xs text-ivory-300/80">
-          Assurance appliquée : {nick(view, insured[0])} et {nick(view, insured[1])} ({INSURANCE_LABELS[o.insurance.type].name}).
+          Assurance appliquée entre {nick(view, insured[0])} et {nick(view, insured[1])} ({INSURANCE_LABELS[o.insurance.type].name}).
         </p>
       )}
 
       <h3 className="mb-2 mt-6 text-xs font-semibold uppercase tracking-widest text-gold-400">Répartition de la cagnotte, en jetons</h3>
       <table className="w-full text-sm">
-        <caption className="sr-only">Mise, gain, bilan et jetons en fin de partie de chaque joueur (cave de départ : {formatChips(STARTING_CHIPS)})</caption>
+        <caption className="sr-only">Mise, gain, bilan et jetons en fin de partie de chaque joueur (cave de départ de {formatChips(STARTING_CHIPS)})</caption>
         <thead>
           <tr className="text-left text-xs uppercase tracking-wider text-ivory-300/70">
             <th className="py-1 font-medium">Joueur</th>
@@ -311,7 +311,7 @@ function Sparkline({ values, max }: { values: number[]; max: number }) {
   const h = 26;
   const pts = [0, ...values].map((v, i, a) => `${(i / Math.max(1, a.length - 1)) * w},${h - 2 - (v / Math.max(1, max)) * (h - 4)}`).join(' ');
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Évolution : ${values.join(', ')}`}>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Évolution, ${values.join(', ')}`}>
       <polyline points={pts} fill="none" stroke="#c9a25a" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
@@ -321,7 +321,7 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
   const game = view.game!;
   return (
     <Modal title="Scores et historique" onClose={onClose} wide>
-      <Eyebrow>Objectif : {pointsLabel(game.targetPoints)}</Eyebrow>
+      <Eyebrow>Objectif {pointsLabel(game.targetPoints)}</Eyebrow>
       <h2 className="mt-1 font-display text-2xl text-ivory-50">Scores et historique</h2>
       <table className="mt-4 w-full text-sm">
         <caption className="sr-only">Scores des joueurs</caption>
@@ -361,7 +361,7 @@ export function ScoreModal({ view, onClose }: { view: RoomView; onClose: () => v
                 <span className="mr-2 text-ivory-300/60">#{r.roundNo}</span>
                 {variantName(r.variant)} <span className="text-xs text-ivory-300/60">(choisie par {nick(view, r.chooser)})</span>
               </span>
-              <span className="text-ivory-200/85">{r.award.kind === 'POINTS' ? `${nick(view, r.award.winner)} +${r.award.points}${r.award.tiebreak ? ' (départage)' : ''}` : r.award.kind === 'INSTANT_VICTORY' ? 'Quinte flush : victoire' : 'Aucun point'}</span>
+              <span className="text-ivory-200/85">{r.award.kind === 'POINTS' ? `${nick(view, r.award.winner)} +${r.award.points}${r.award.tiebreak ? ' (départage)' : ''}` : r.award.kind === 'INSTANT_VICTORY' ? 'Quinte flush, victoire' : 'Aucun point'}</span>
             </li>
           ))}
         </ol>

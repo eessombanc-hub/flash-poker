@@ -12,8 +12,8 @@ export function describeInsurance(type: InsuranceType, potChips: number, stakeCh
     return `Si l’un de vous deux gagne, il reçoit ${formatChips(potChips - stakeChips)} (la cagnotte moins la mise de son partenaire) ; son partenaire récupère sa mise de ${formatChips(stakeChips)}.`;
   }
   const half = Math.floor(potChips / 2);
-  return `Si l’un de vous deux gagne, vous vous partagez la cagnotte à parts égales : ${formatChips(half)} chacun${potChips % 2 === 1 ? ' (le jeton impair revient au vainqueur)' : ''}.`;
+  return `Si l’un de vous deux gagne, vous vous partagez la cagnotte à parts égales. ${formatChips(half)} chacun${potChips % 2 === 1 ? ' (le jeton impair revient au vainqueur)' : ''}.`;
 }
 
 export const INSURANCE_GENERAL_NOTE =
-  'Si quelqu’un d’autre gagne, il empoche toute la cagnotte : l’assurance ne change jamais le vainqueur. Une seule assurance par partie, entre deux joueurs exactement.';
+  'Si quelqu’un d’autre gagne, il empoche toute la cagnotte. L’assurance ne change jamais le vainqueur. Une seule assurance par partie, entre deux joueurs exactement.';

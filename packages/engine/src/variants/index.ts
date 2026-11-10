@@ -24,7 +24,7 @@ export function createRound(variant: VariantId, ctx: RoundContext): Round {
     case 'LE10':
       return new RoundLe10(ctx);
     default:
-      throw new RuleError('BAD_COMMAND', `Variante inconnue : ${String(variant)}`);
+      throw new RuleError('BAD_COMMAND', `Variante inconnue. ${String(variant)}`);
   }
 }
 

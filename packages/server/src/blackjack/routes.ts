@@ -75,7 +75,7 @@ export function registerBlackjackRoutes(app: FastifyInstance, bj: BlackjackServi
     const code = (req: FastifyRequest): string => String((req.params as { code: string }).code).slice(0, 12);
     app.post('/blackjack/tables', async (req, reply) => {
       const p = createSchema.safeParse(req.body);
-      if (!p.success) throw new ServerError('BAD_REQUEST', 'Table invalide : de 1 à 6 places, humaines ou CPU');
+      if (!p.success) throw new ServerError('BAD_REQUEST', 'Table invalide. De 1 à 6 places, humaines ou CPU');
       if (p.data.table !== FREE_TABLE_ID && p.data.rules) throw new ServerError('BAD_REQUEST', 'Les règles ne se modifient que sur la table libre');
       return reply.status(201).send(tables.create(who(req, p.data.nickname), { table: p.data.table, rules: p.data.rules, seats: p.data.seats, bet: p.data.bet }));
     });

@@ -132,7 +132,7 @@ describe('Tableau — colonnes incomplètes (pédagogie)', () => {
     expect(describePartial(col('Kh Kd'))).toBe('Paire de rois');
     expect(describePartial(col('7h 7d 7s'))).toBe('Brelan de 7');
     expect(describePartial(col('2h 9h Kh'))).toContain('couleur');
-    expect(describePartial(col('5h 6d 7s'))).toContain('quinte');
-    expect(describePartial(col('Ah 9d'))).toBe('Carte haute : as');
+    expect(describePartial(col('5h 6d 7s')).toLowerCase()).toContain('quinte');
+    expect(describePartial(col('Ah 9d'))).toBe('Carte haute, as');
   });
 });

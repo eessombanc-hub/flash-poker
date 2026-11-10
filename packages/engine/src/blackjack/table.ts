@@ -120,7 +120,7 @@ export function tableLegal(t: TableRound, seat: number, chips = Number.POSITIVE_
 export function tableApply(prev: TableRound, seat: number, action: BjAction, chips = Number.POSITIVE_INFINITY): TableRound {
   if (prev.phase !== 'PLAYER') throw new BjError('ROUND_OVER', 'La manche est terminée');
   if (prev.turn !== seat) throw new BjError('NOT_YOUR_TURN', 'Ce n’est pas le tour de cette place');
-  if (!tableLegal(prev, seat, chips).includes(action)) throw new BjError('ILLEGAL_ACTION', `Action impossible : ${action}`);
+  if (!tableLegal(prev, seat, chips).includes(action)) throw new BjError('ILLEGAL_ACTION', `Action impossible. ${action}`);
   const t = structuredClone(prev);
   const r = asRound(t, seat);
   applyToHands(r, action);

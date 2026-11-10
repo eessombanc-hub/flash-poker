@@ -184,7 +184,7 @@ function TableCenter() {
       ) : (
         <>
           {phoneNews}
-          <p className={`font-display text-base text-ivory-50 sm:block sm:text-2xl ${news ? 'hidden' : ''}`}>{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo} : choix de la variante`}</p>
+          <p className={`font-display text-base text-ivory-50 sm:block sm:text-2xl ${news ? 'hidden' : ''}`}>{game.phase === 'GAME_OVER' ? 'Partie terminée' : `Manche ${game.roundNo}, choix de la variante`}</p>
         </>
       )}
       <p className="hidden text-xs text-ivory-100/85 sm:block sm:text-sm">

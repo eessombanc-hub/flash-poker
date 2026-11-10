@@ -29,7 +29,7 @@ export function FairnessProof({ seed, commitment }: { seed: string; commitment: 
         <span className="text-ivory-300/70">Graine (révélée après la manche) :</span> {seed}
       </p>
       <p className="font-sans text-xs" role="status">
-        {ok === 'pending' ? 'Vérification…' : ok === null ? 'Vérification indisponible sur ce navigateur (connexion non sécurisée).' : ok ? '✓ SHA-256 de la graine = engagement : le sabot était fixé avant votre première décision.' : '✗ La graine ne correspond pas à l’engagement.'}
+        {ok === 'pending' ? 'Vérification…' : ok === null ? 'Vérification indisponible sur ce navigateur (connexion non sécurisée).' : ok ? '✓ SHA-256 de la graine = engagement. Le sabot était fixé avant votre première décision.' : '✗ La graine ne correspond pas à l’engagement.'}
       </p>
       <p className="font-sans text-[11px] text-ivory-300/70">Le sabot se reconstruit à partir de la graine et du nombre de jeux (mélange de Fisher-Yates sur SHA-256). Un nouveau sabot est tiré à chaque manche.</p>
     </div>
@@ -52,7 +52,7 @@ export function LevelBar({ profile }: { profile: BjProfile }) {
       <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-ink-900" role="progressbar" aria-label="Expérience du niveau" aria-valuemin={0} aria-valuemax={profile.xpForNext} aria-valuenow={profile.xpIntoLevel}>
         <div className="h-full rounded-full bg-gradient-to-r from-gold-500 to-gold-300 transition-[width] duration-500" style={{ width: `${ratio * 100}%` }} />
       </div>
-      <p className="mt-1 text-xs text-ivory-300/70">L’expérience est commune au poker et au Blackjack : chaque partie compte.</p>
+      <p className="mt-1 text-xs text-ivory-300/70">L’expérience est commune au poker et au Blackjack. Chaque partie compte.</p>
     </div>
   );
 }

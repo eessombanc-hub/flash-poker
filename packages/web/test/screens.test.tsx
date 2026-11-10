@@ -82,16 +82,16 @@ describe('salle d’attente', () => {
       expect(within(box).getByText('En attente d’accord')).toBeInTheDocument(); // p2 n'a pas encore répondu
       expect(within(box).getByText(/sans jamais suggérer un coup/)).toBeInTheDocument();
       const list = screen.getByRole('list', { name: 'Joueurs' });
-      expect(within(list).getAllByText('Assistance : oui')).toHaveLength(2);
-      expect(within(list).getAllByText('Assistance : en attente')).toHaveLength(1);
+      expect(within(list).getAllByText('Assistance approuvée')).toHaveLength(2);
+      expect(within(list).getAllByText('Assistance en attente')).toHaveLength(1);
     });
 
     it('trois états distincts à l’écran : accord, refus explicite, pas encore répondu', () => {
       renderWith(<Lobby />, withAssist(3, { p1: true, p2: false, p3: null }));
       const list = screen.getByRole('list', { name: 'Joueurs' });
-      expect(within(list).getAllByText('Assistance : oui')).toHaveLength(1);
-      expect(within(list).getAllByText('Assistance : non')).toHaveLength(1); // p2 a explicitement refusé
-      expect(within(list).getAllByText('Assistance : en attente')).toHaveLength(1); // p3 n'a rien dit
+      expect(within(list).getAllByText('Assistance approuvée')).toHaveLength(1);
+      expect(within(list).getAllByText('Assistance refusée')).toHaveLength(1); // p2 a explicitement refusé
+      expect(within(list).getAllByText('Assistance en attente')).toHaveLength(1); // p3 n'a rien dit
     });
 
     it('je n’ai pas encore répondu : aucun de mes deux boutons n’est présenté comme déjà choisi', () => {
@@ -155,7 +155,7 @@ describe('formulaires', () => {
     await user.click(within(screen.getByRole('radiogroup', { name: 'Objectif en points' })).getByRole('radio', { name: '5' }));
     expect(screen.getByText(/Chaque joueur reçoit 1\s000 jetons au début de la partie/u)).toBeInTheDocument();
     await user.click(within(screen.getByRole('radiogroup', { name: 'Mise par joueur' })).getByRole('radio', { name: /^500$/ }));
-    expect(screen.getByText(/Cagnotte : 2\s000 jetons à 4 joueurs/u)).toBeInTheDocument();
+    expect(screen.getByText(/Cagnotte de 2\s000 jetons à 4 joueurs/u)).toBeInTheDocument();
     expect(submit).toBeEnabled();
     await user.click(submit);
     expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeChips: 500, assistance: false, private: false, nickname: 'Emeric', avatar: 'or' });
@@ -238,12 +238,12 @@ describe('fin de partie', () => {
     expect(row('Alice')).toContain('2 000 jetons');
     expect(row('Bob')).toContain('−2 000 jetons');
     expect(flat(screen.getByRole('row', { name: /Cagnotte/ }).textContent)).toContain('6 000 jetons');
-    expect(screen.getByText(/Assurance appliquée : Emeric et Alice \(Le perdant ne paye pas\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Assurance appliquée entre Emeric et Alice \(Le perdant ne paye pas\)/)).toBeInTheDocument();
   });
   it('quinte flush au 6-3 : victoire immédiate, sans assurance', () => {
     const o = outcome({ victoryType: 'STRAIGHT_FLUSH_63', insurance: null, settlement: { potChips: 6000, payouts: { p1: 6000, p2: 0, p3: 0 }, applied: null } });
     renderWith(<GameOverModal view={over(o)} onClose={() => undefined} onLeave={() => undefined} />, over(o));
-    expect(screen.getByText('Quinte flush au 6-3 : victoire immédiate')).toBeInTheDocument();
+    expect(screen.getByText('Quinte flush au 6-3, victoire immédiate')).toBeInTheDocument();
     expect(screen.queryByText(/Assurance appliquée/)).toBeNull();
     expect(flat(screen.getByRole('row', { name: /Emeric/ }).textContent)).toContain('+4 000 jetons');
   });
@@ -279,13 +279,13 @@ describe('Hold’em de départage', () => {
     expect(screen.queryByText(/Vainqueur du départage/)).toBeNull();
     act(() => void vi.advanceTimersByTime(1100));
     expect(board()).toHaveLength(5);
-    expect(screen.getByText('Vainqueur du départage : Alice')).toBeInTheDocument();
+    expect(screen.getByText('Vainqueur du départage, Alice')).toBeInTheDocument();
   });
   it('« Passer » affiche directement le résultat', async () => {
     const user = userEvent.setup();
     renderWith(<TiebreakSequence tiebreak={tb} view={roomView()} />, roomView());
     await user.click(screen.getByRole('button', { name: 'Passer' }));
-    expect(screen.getByText('Vainqueur du départage : Alice')).toBeInTheDocument();
+    expect(screen.getByText('Vainqueur du départage, Alice')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Passer' })).toBeNull();
   });
   it('égalité répétée : chaque tour est rejoué', () => {

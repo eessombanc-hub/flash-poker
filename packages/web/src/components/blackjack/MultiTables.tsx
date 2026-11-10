@@ -157,7 +157,7 @@ function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; f
         )}
         <div className="mt-5">
           <Button disabled={busy || chips < 1} onClick={() => void run(() => account.bjTableCreate({ table, seats, nickname: guestNick, ...(table === 'libre' ? { rules: freeRules } : {}) }))}>
-            Créer la table{humans > 1 ? ` · ${humans - 1} humain${humans > 2 ? 's' : ''} attendu${humans > 2 ? 's' : ''}` : ''}
+            Créer la table{humans > 1 ? `, ${humans - 1} humain${humans > 2 ? 's' : ''} attendu${humans > 2 ? 's' : ''}` : ''}
           </Button>
         </div>
       </Panel>
@@ -387,10 +387,10 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
               <Button disabled={busy || bet > mine.chips || bet < t.limits.minBet} onClick={() => void call(() => account.bjTableBet(code, bet))}>
                 Miser {formatChips(bet)}
               </Button>
-              {bet > mine.chips && <p className="text-xs text-amber-200">Solde insuffisant : {formatChips(mine.chips)} disponibles.</p>}
+              {bet > mine.chips && <p className="text-xs text-amber-200">Solde insuffisant, {formatChips(mine.chips)} disponibles.</p>}
             </div>
           )}
-          {mine?.ready && <p className="text-sm text-ivory-300/80">Mise enregistrée : {formatChips(mine.bet)}. En attente des autres joueurs…</p>}
+          {mine?.ready && <p className="text-sm text-ivory-300/80">Mise enregistrée, {formatChips(mine.bet)}. En attente des autres joueurs…</p>}
         </Panel>
       )}
 
@@ -435,7 +435,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
           {compact && <span className="sr-only">Table de plus de trois joueurs</span>}
         </div>
       )}
-      {t.seats.some((s) => s.sittingOut && s.you) && t.status === 'PLAYING' && <p className="text-sm text-ivory-300/80">Vous ne participez pas à cette manche : rejoignez la suivante.</p>}
+      {t.seats.some((s) => s.sittingOut && s.you) && t.status === 'PLAYING' && <p className="text-sm text-ivory-300/80">Vous ne participez pas à cette manche. Rejoignez la suivante.</p>}
 
       {/* Mes actions */}
       {t.status === 'PLAYING' && t.me !== null && (
@@ -453,11 +453,11 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
                 <div className="mt-3 rounded-2xl border border-gold-500/30 bg-gold-500/10 p-3 text-sm text-ivory-100">
                   {pedagogy === 'coach' && help.advice && (
                     <p className="mb-1.5">
-                      <strong className="text-gold-300">Conseil : {ACTION_LABEL[help.advice.action]}.</strong> {help.advice.reason}
+                      <strong className="text-gold-300">Conseil. {ACTION_LABEL[help.advice.action]}.</strong> {help.advice.reason}
                     </p>
                   )}
                   <p className="text-ivory-200/90">
-                    Risque de dépasser en tirant : <strong>{pct(help.odds.bustOnHit)}</strong>. Si vous restez : gagner <strong>{pct(help.odds.stand.win)}</strong>, égalité {pct(help.odds.stand.push)}, perdre {pct(help.odds.stand.lose)}.
+                    Risque de dépasser en tirant : <strong>{pct(help.odds.bustOnHit)}</strong>. Si vous restez, gagner <strong>{pct(help.odds.stand.win)}</strong>, égalité {pct(help.odds.stand.push)}, perdre {pct(help.odds.stand.lose)}.
                   </p>
                   <p className="mt-1 text-xs text-ivory-300/70">Probabilités calculées sans compter les cartes des autres places.</p>
                 </div>
@@ -477,11 +477,11 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
               {t.result ? (
                 <>
                   <p className="font-display text-2xl text-ivory-50" data-testid="round-net">
-                    {t.result.net > 0 ? `Vous gagnez ${formatChips(t.result.net)}` : t.result.net < 0 ? `Vous perdez ${formatChips(-t.result.net)}` : 'Égalité : mise rendue'}
+                    {t.result.net > 0 ? `Vous gagnez ${formatChips(t.result.net)}` : t.result.net < 0 ? `Vous perdez ${formatChips(-t.result.net)}` : 'Égalité, mise rendue'}
                   </p>
                   <p className="text-sm text-ivory-200/85">
-                    Solde : {formatChips(mine?.chips ?? 0)}
-                    {t.result.xpGained > 0 ? ` · +${t.result.xpGained} XP` : ''}
+                    Solde {formatChips(mine?.chips ?? 0)}
+                    {t.result.xpGained > 0 ? `, +${t.result.xpGained} XP` : ''}
                   </p>
                 </>
               ) : (
@@ -497,12 +497,12 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
           {t.result?.level && <p className="mt-3 rounded-xl bg-gold-500/15 px-3 py-2 text-sm text-gold-200">Niveau {t.result.level.to} atteint ! Récompense : {formatChips(t.result.level.reward)}.</p>}
           {t.result?.challengesDone.map((c) => (
             <p key={c.id} className="mt-2 text-sm text-emerald-200">
-              Défi accompli : {c.label}
+              Défi accompli. {c.label}
             </p>
           ))}
           {t.result?.achievements.map((a) => (
             <p key={a.id} className="mt-2 text-sm text-gold-200">
-              Objectif débloqué : {a.label}
+              Objectif débloqué. {a.label}
             </p>
           ))}
           {t.round?.seed && (
@@ -514,7 +514,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
         </section>
       )}
 
-      {!authed && t.me !== null && <p className="text-center text-xs text-ivory-300/60">Vous jouez en invité : un compte conserve votre progression sur tous vos appareils.</p>}
+      {!authed && t.me !== null && <p className="text-center text-xs text-ivory-300/60">Vous jouez en invité. Un compte conserve votre progression sur tous vos appareils.</p>}
     </div>
   );
 }
@@ -529,7 +529,7 @@ function SeatCard({ s }: { s: BjSeatDto }) {
           {s.kind === 'cpu' && <span className="ml-1.5"><Badge>CPU</Badge></span>}
           {s.you && <span className="ml-1.5"><Badge tone="gold">Vous</Badge></span>}
         </span>
-        {!s.open && <span className="text-xs text-ivory-300/75">{formatChips(s.chips)}{s.ready ? ` · mise ${formatChips(s.bet)}` : ''}</span>}
+        {!s.open && <span className="text-xs text-ivory-300/75">{formatChips(s.chips)}{s.ready ? `, mise ${formatChips(s.bet)}` : ''}</span>}
       </span>
       {!s.open && s.ready && <Badge tone="green">Prêt</Badge>}
     </li>

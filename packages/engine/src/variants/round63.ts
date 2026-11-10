@@ -123,7 +123,7 @@ export class Round63 extends RoundBase {
     } else {
       const teats = ctx.teats ?? 0;
       if (!Number.isInteger(teats) || teats < 0 || teats > MAX_TEATS) {
-        throw new RuleError('BAD_CONFIG', `Nombre de tétines invalide : ${String(ctx.teats)} (0 à ${MAX_TEATS})`);
+        throw new RuleError('BAD_CONFIG', `Nombre de tétines invalide. ${String(ctx.teats)} (0 à ${MAX_TEATS})`);
       }
       const sideBets = ctx.sideBets === true;
       const budgets: Record<PlayerId, number> = {};
@@ -200,7 +200,7 @@ export class Round63 extends RoundBase {
         this.closeLine(events);
         return;
       case 'BET':
-        throw new RuleError('WRONG_PHASE', 'Les paris extérieurs sont clos : les cartes sont distribuées');
+        throw new RuleError('WRONG_PHASE', 'Les paris extérieurs sont clos. Les cartes sont distribuées');
       default:
         throw new RuleError('BAD_COMMAND', `Commande ${cmd.type} inconnue au 6-3`);
     }
@@ -217,14 +217,14 @@ export class Round63 extends RoundBase {
         const lines = new Set<number>();
         let total = 0;
         for (const b of cmd.bets) {
-          if (![1, 2, 3].includes(b.line)) throw new RuleError('BAD_BET', `Ligne invalide : ${String(b.line)}`);
+          if (![1, 2, 3].includes(b.line)) throw new RuleError('BAD_BET', `Ligne invalide. ${String(b.line)}`);
           if (lines.has(b.line)) throw new RuleError('BAD_BET', `Un seul pari par ligne (ligne ${b.line})`);
           lines.add(b.line);
           if (!Number.isInteger(b.amount) || b.amount < 1) throw new RuleError('BAD_BET', 'Le montant doit être un nombre entier de jetons, au moins 1');
           total += b.amount;
         }
         if (total > this.s.budgets[cmd.player]!) {
-          throw new RuleError('INSUFFICIENT_CHIPS', `Jetons insuffisants : ${total} demandés, ${this.s.budgets[cmd.player]} disponibles`);
+          throw new RuleError('INSUFFICIENT_CHIPS', `Jetons insuffisants. ${total} demandés, ${this.s.budgets[cmd.player]} disponibles`);
         }
         this.s.betDrafts[cmd.player] = cmd.bets.map((b) => ({ line: b.line, amount: b.amount })).sort((a, b) => a.line - b.line);
         return;
@@ -240,7 +240,7 @@ export class Round63 extends RoundBase {
         this.closeBets(events);
         return;
       default:
-        throw new RuleError('WRONG_PHASE', 'Les paris extérieurs sont en cours : placez vos paris ou validez');
+        throw new RuleError('WRONG_PHASE', 'Les paris extérieurs sont en cours. Placez vos paris ou validez');
     }
   }
 

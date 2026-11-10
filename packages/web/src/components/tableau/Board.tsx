@@ -33,7 +33,7 @@ export function ColumnStack({
   const reduce = useReducedMotion();
   const full = cards.length === 5;
   const slots = Array.from({ length: 5 }, (_, i) => cards[i] ?? null);
-  const name = `${owner}, ${t('tb.board.col')} ${ROMAN[index]} : ${tp('tb.board.cardsOf5', cards.length)}. ${label}`;
+  const name = `${owner}, ${t('tb.board.col')} ${ROMAN[index]}. ${tp('tb.board.cardsOf5', cards.length)}. ${label}`;
   const body = (
     <span
       className={`relative flex flex-col items-center rounded-xl px-[2px] pb-1 pt-1 transition ${full ? 'bg-gold-500/10 ring-1 ring-gold-500/40' : 'bg-ink-950/25'} ${selectable ? 'ring-2 ring-gold-300/80' : ''} ${pending ? 'ring-[3px] ring-gold-200 bg-gold-500/20' : ''}`}

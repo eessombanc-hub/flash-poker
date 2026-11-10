@@ -52,7 +52,7 @@ export function DiscardPanel() {
       ) : (
         <WaitingNote>Vous suivez la partie en spectateur.</WaitingNote>
       )}
-      {game.players.length > 0 && active < game.players.length && <p className="mt-3 text-center text-xs text-ivory-300/70">{game.players.length - active} main(s) couchée(s) : hors manche, sans showdown.</p>}
+      {game.players.length > 0 && active < game.players.length && <p className="mt-3 text-center text-xs text-ivory-300/70">{game.players.length - active} main(s) couchée(s), hors manche, sans showdown.</p>}
     </PanelShell>
   );
 }

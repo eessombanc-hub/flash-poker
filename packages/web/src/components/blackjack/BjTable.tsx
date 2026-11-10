@@ -234,11 +234,11 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
             <div className="mt-3 rounded-2xl border border-gold-500/30 bg-gold-500/10 p-3 text-sm text-ivory-100" data-testid="help-box">
               {pedagogy === 'coach' && help.advice && (
                 <p className="mb-1.5">
-                  <strong className="text-gold-300">Conseil : {ACTION_LABEL[help.advice.action]}.</strong> {help.advice.reason}
+                  <strong className="text-gold-300">Conseil. {ACTION_LABEL[help.advice.action]}.</strong> {help.advice.reason}
                 </p>
               )}
               <p className="text-ivory-200/90">
-                Risque de dépasser en tirant : <strong>{pct(help.odds.bustOnHit)}</strong>. Si vous restez : gagner <strong>{pct(help.odds.stand.win)}</strong>, égalité {pct(help.odds.stand.push)}, perdre {pct(help.odds.stand.lose)}.
+                Risque de dépasser en tirant : <strong>{pct(help.odds.bustOnHit)}</strong>. Si vous restez, gagner <strong>{pct(help.odds.stand.win)}</strong>, égalité {pct(help.odds.stand.push)}, perdre {pct(help.odds.stand.lose)}.
               </p>
             </div>
           )}
@@ -258,12 +258,12 @@ function RoundSummary({ active, result, chips, canReplay, onReplay, onLeave }: {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-display text-2xl text-ivory-50" data-testid="round-net">
-            {net > 0 ? 'Vous gagnez ' : net < 0 ? 'Vous perdez ' : 'Égalité : '}
+            {net > 0 ? 'Vous gagnez ' : net < 0 ? 'Vous perdez ' : 'Égalité, '}
             {net === 0 ? 'mise rendue' : formatChips(Math.abs(net))}
           </p>
           <p className="text-sm text-ivory-200/85">
-            Solde : {formatChips(chips)}
-            {result && result.xpGained > 0 ? ` · +${result.xpGained} XP` : ''}
+            Solde {formatChips(chips)}
+            {result && result.xpGained > 0 ? `, +${result.xpGained} XP` : ''}
           </p>
         </div>
         <div className="flex gap-2">
@@ -275,20 +275,20 @@ function RoundSummary({ active, result, chips, canReplay, onReplay, onLeave }: {
           </Button>
         </div>
       </div>
-      {!canReplay && chips < active.bet && <p className="mt-2 text-xs text-amber-200">Solde insuffisant pour cette mise : choisissez-en une plus petite ou attendez la recharge.</p>}
+      {!canReplay && chips < active.bet && <p className="mt-2 text-xs text-amber-200">Solde insuffisant pour cette mise. Choisissez-en une plus petite ou attendez la recharge.</p>}
       {result?.level && (
         <p className="mt-3 rounded-xl bg-gold-500/15 px-3 py-2 text-sm text-gold-200">
-          Niveau {result.level.to} atteint ! Récompense : {formatChips(result.level.reward)}.
+          Niveau {result.level.to} atteint ! Récompense de {formatChips(result.level.reward)}.
         </p>
       )}
       {result?.challengesDone.map((c) => (
         <p key={c.id} className="mt-2 text-sm text-emerald-200">
-          Défi accompli : {c.label} (+{formatChips(c.rewardChips)}, +{c.rewardXp} XP)
+          Défi accompli. {c.label} (+{formatChips(c.rewardChips)}, +{c.rewardXp} XP)
         </p>
       ))}
       {result?.achievements.map((a) => (
         <p key={a.id} className="mt-2 text-sm text-gold-200">
-          Objectif débloqué : {a.label} (+{formatChips(a.rewardChips)})
+          Objectif débloqué. {a.label} (+{formatChips(a.rewardChips)})
         </p>
       ))}
       {result && (
