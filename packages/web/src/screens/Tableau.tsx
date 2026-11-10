@@ -196,9 +196,7 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
         </Panel>
 
         <Panel className="p-5" data-testid="tb-ranked">
-          <h2 className="flex flex-wrap items-center gap-2 font-display text-xl text-ivory-50">
-            {t('tb.ranked')} <Badge tone="neutral">{t(`tb.variant.${variant}` as Key)}</Badge>
-          </h2>
+          <h2 className="font-display text-xl text-ivory-50">{t('tb.ranked')}</h2>
           <p className="mt-1 text-sm text-ivory-200/85">{t('tb.ranked.text')}</p>
           {guest ? (
             <p className="mt-3 text-sm text-gold-200">{t('tb.ranked.guest')}</p>

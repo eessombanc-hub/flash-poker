@@ -46,10 +46,7 @@ export function ProgressPanel({ client, variant, refreshKey }: { client: Account
       <Panel className="p-5" data-testid="tb-progress">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-display text-xl text-ivory-50">{t('tb.profile.title')}</h2>
-          <span className="flex items-center gap-2">
-            <Badge tone="neutral">{t(`tb.variant.${variant}` as Key)}</Badge>
-            <LeagueBadge id={s.league.id} />
-          </span>
+          <LeagueBadge id={s.league.id} />
         </div>
         <p className="mt-1 text-sm text-ivory-200">
           <span className="tabular-nums text-lg text-gold-300">{t('tb.profile.points', { r: profile.rating })}</span>

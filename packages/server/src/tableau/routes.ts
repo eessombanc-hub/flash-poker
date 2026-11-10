@@ -8,7 +8,7 @@ import type { TableauService } from './service';
 
 const nick = z.string().transform((v) => v.replace(/[^\p{L}\p{N} _.'-]/gu, '').trim().slice(0, 20));
 const createSchema = z.object({
-  mode: z.enum(['training', 'friendly']),
+  mode: z.enum(['training', 'friendly', 'ranked']),
   level: z.enum(['beginner', 'intermediate', 'expert']).optional(),
   variant: z.enum(['classic', 'hand5']).optional(),
   nickname: nick.optional(),
@@ -40,6 +40,16 @@ export function registerTableauRoutes(app: FastifyInstance, tb: TableauService, 
     const p = createSchema.safeParse(req.body);
     if (!p.success) throw new ServerError('BAD_REQUEST', 'Partie invalide');
     return reply.status(201).send(tb.create(me(req, p.data.nickname), { mode: p.data.mode, level: p.data.level, variant: p.data.variant }));
+  });
+  const variantOf = (req: FastifyRequest) => {
+    const v = z.enum(['classic', 'hand5']).safeParse((req.query as { variant?: string }).variant ?? 'classic');
+    if (!v.success) throw new ServerError('BAD_REQUEST', 'Variante inconnue');
+    return v.data;
+  };
+  app.get('/me/tableau/profile', async (req) => ({ profile: tb.profile(me(req).userId, variantOf(req)) }));
+  app.get('/tableau/leaderboard', async (req) => {
+    const m = identity(req);
+    return { leaderboard: tb.leaderboard(m.account ? m.userId : null, variantOf(req)) };
   });
   app.get('/me/tableau/active', async (req) => ({ active: tb.activeCode(me(req).userId) }));
   app.get('/me/tableau/history', async (req) => ({ history: tb.history(me(req).userId) }));

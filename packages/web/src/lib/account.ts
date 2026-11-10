@@ -2,7 +2,7 @@ import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
 import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
-import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbMode, TbStatus } from './types';
+import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbStatus } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
@@ -196,13 +196,15 @@ export class AccountClient {
     return this.request<T>(method, path, body, { 'x-bj-guest': this.guestId() });
   }
   // ----- Le Tableau -----
-  tbCreate = (input: { mode: 'training' | 'friendly'; level?: AiLevel; variant?: TableauVariant; nickname?: string }) => this.bj<TbGameDto>('POST', '/tableau/games', input);
+  tbCreate = (input: { mode: 'training' | 'friendly' | 'ranked'; level?: AiLevel; variant?: TableauVariant; nickname?: string }) => this.bj<TbGameDto>('POST', '/tableau/games', input);
   tbGet = (code: string) => this.bj<TbGameDto>('GET', `/tableau/games/${encodeURIComponent(code)}`);
   tbJoin = (code: string, nickname?: string) => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/join`, { nickname });
   tbPlace = (code: string, col: number, card?: string) => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/place`, { col, card });
   tbAdvice = (code: string) => this.bj<{ col: number; card: string; kind: 'improve' | 'empty' | 'dump'; after: ColumnHand | null; text: string }>('GET', `/tableau/games/${encodeURIComponent(code)}/advice`);
   tbLeave = (code: string) => this.bj<{ left: true; forfeit: boolean }>('POST', `/tableau/games/${encodeURIComponent(code)}/leave`, {});
   tbActive = () => this.bj<{ active: { code: string; mode: TbMode; status: TbStatus } | null }>('GET', '/me/tableau/active').then((r) => r.active);
+  tbProfile = (variant: TableauVariant) => this.bj<{ profile: TbProfileDto }>('GET', `/me/tableau/profile?variant=${variant}`).then((r) => r.profile);
+  tbLeaderboard = (variant: TableauVariant) => this.bj<{ leaderboard: TbLeaderboardRow[] }>('GET', `/tableau/leaderboard?variant=${variant}`).then((r) => r.leaderboard);
   tbHistory = () => this.bj<{ history: TbHistoryEntry[] }>('GET', '/me/tableau/history').then((r) => r.history);
   blackjack = () => this.bj<BjOverview>('GET', '/me/blackjack');
   // ----- Tables à plusieurs -----

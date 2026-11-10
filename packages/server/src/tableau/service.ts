@@ -5,6 +5,7 @@ import {
 } from '@poker/engine';
 import type { AccountDb } from '../accounts/db';
 import { ServerError } from '../errors';
+import { TableauStats, type TbLeaderboardRow, type TbProfileDto, type TbRatingChange } from './stats';
 import type { BlackjackService } from '../blackjack/service';
 
 /**
@@ -19,7 +20,7 @@ const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const WAITING_TTL_MS = 3_600_000;
 const STALE_MS = 24 * 3_600_000;
 
-export type TbMode = 'training' | 'friendly';
+export type TbMode = 'training' | 'friendly' | 'ranked';
 export type TbStatus = 'waiting' | 'playing' | 'finished';
 
 interface Player {
@@ -50,6 +51,10 @@ interface Room {
   version: number;
   updatedAt: number;
   xpDone: boolean;
+  /** Statistiques déjà enregistrées (une seule fois par partie). */
+  statsDone?: boolean;
+  /** Variation de classement d'une partie classée terminée. */
+  rating?: TbRatingChange | null;
 }
 
 export interface TbPlayerDto {
@@ -84,6 +89,8 @@ export interface TbGameDto {
   result: TableauResult | null;
   forfeit: Seat | null;
   winner: Seat | null;
+  /** Partie classée terminée : classement avant, après et variation (pour le siège de l'appelant). */
+  rating: TbRatingChange | null;
   reveal: { seed: string; commitment: string; order: string[] } | null;
 }
 export interface TbHistoryEntry {
@@ -107,6 +114,7 @@ const rule = (m: string, ruleCode?: string): ServerError => new ServerError('RUL
 export class TableauService {
   private readonly cache = new Map<string, { room: Room; game: TableauGame }>();
   private readonly rng: Rng;
+  private readonly stats: TableauStats;
 
   constructor(
     private readonly store: AccountDb,
@@ -114,6 +122,7 @@ export class TableauService {
     private readonly opts: { now?: () => number; seed?: () => string; rng?: Rng; aiSims?: number; aiBudgetMs?: number; /** Délai de réflexion imposé à l'IA (tests) ; sinon propre à chaque niveau. */ cpuDelayMs?: number } = {},
   ) {
     this.rng = opts.rng ?? new CryptoRng();
+    this.stats = new TableauStats(store, () => this.now(), bj ? (u, n) => bj.awardXp(u, n) : null);
   }
 
   private get db() {
@@ -165,6 +174,17 @@ export class TableauService {
     const rows = this.db.prepare('SELECT code, data, updated_at FROM tb_game WHERE updated_at < ?').all(t - WAITING_TTL_MS) as { code: string; data: string; updated_at: number }[];
     for (const r of rows) {
       const room = JSON.parse(r.data) as Room;
+      if (room.mode === 'ranked' && room.status === 'playing') {
+        // Une partie classée abandonnée ne disparaît pas sans trace : l'horloge la conclut par un forfait enregistré.
+        try {
+          const e = this.load(r.code);
+          this.advance(e.room, e.game);
+          this.save(e.room);
+          if (e.room.status === 'finished' && t - r.updated_at <= STALE_MS) continue;
+        } catch {
+          /* partie illisible : supprimée */
+        }
+      }
       if (room.status === 'waiting' || t - r.updated_at > STALE_MS) this.drop(r.code);
     }
   }
@@ -194,6 +214,7 @@ export class TableauService {
     room.status = 'finished';
     room.finishedAt = at;
     this.award(room, game);
+    this.record(room, game);
     for (const p of room.seats) if (p?.userId) this.index(p.userId, room.code);
   }
 
@@ -209,8 +230,33 @@ export class TableauService {
     const winner = this.winnerOf(room, game);
     room.seats.forEach((p, i) => {
       if (!p || p.kind !== 'human' || !p.userId || p.userId.startsWith('guest:')) return;
-      const base = room.mode === 'training' ? 15 : 30;
+      const base = room.mode === 'training' ? 15 : 30; // amical et classé : 30
       this.bj!.awardXp(p.userId, base + (winner === i ? 20 : 0));
+    });
+  }
+
+  /** Statistiques, classement et défis des joueurs inscrits (une seule fois). Le classement ne bouge qu'en mode Classé. */
+  private record(room: Room, game: TableauGame): void {
+    if (room.statsDone) return;
+    room.statsDone = true;
+    const result = game.result();
+    const winner = this.winnerOf(room, game);
+    room.seats.forEach((p, i) => {
+      if (!p || p.kind !== 'human' || !p.userId || !TableauStats.eligible(p.userId)) return;
+      const seat = i as Seat;
+      const opp = room.seats[(1 - seat) as Seat];
+      const forfeited = room.forfeit === seat;
+      const columns = game.columnsOf(seat);
+      const facts = {
+        mode: room.mode, variant: room.variant ?? 'classic', outcome: winner === null ? 'draw' : winner === seat ? 'win' : 'loss',
+        columnsWon: result && room.forfeit === null ? result.score[seat] : 0,
+        columnsPlayed: result && room.forfeit === null ? result.columns.length : 0,
+        straightFlushWin: room.forfeit === null && result?.straightFlush?.seat === seat,
+        straightFlushMade: columns.some((c) => c.length === 5 && evaluateColumn(c).category >= 8),
+        opponentLevel: opp?.kind === 'cpu' ? opp.level : null, forfeit: forfeited,
+      } as const;
+      const change = this.stats.record(p.userId, { ...facts, outcome: facts.outcome });
+      if (change && room.mode === 'ranked') room.rating = change;
     });
   }
 
@@ -232,7 +278,7 @@ export class TableauService {
         if (now < limit) break;
         p.idle++;
         if (p.idle >= MAX_IDLE_TURNS) {
-          if (room.mode === 'friendly') {
+          if (room.mode !== 'training') {
             room.forfeit = s;
             this.finish(room, game, limit);
           } else {
@@ -272,21 +318,23 @@ export class TableauService {
     const existing = this.activeOf(who.userId);
     if (existing) {
       const r = existing.room;
+      if (r.mode === 'ranked' && r.status === 'playing') throw rule(`Une partie classée est déjà en cours (${r.code})`, 'TB_RANKED_ACTIVE');
       if (r.mode === 'friendly' && r.status === 'playing') throw rule(`Une partie amicale est déjà en cours (${r.code})`, 'TB_FRIENDLY_ACTIVE');
       this.drop(r.code); // entraînement ou salle d'attente non démarrée : remplacée
     }
+    if (req.mode === 'ranked' && !TableauStats.eligible(who.userId)) throw rule('Le mode Classé est réservé aux comptes connectés', 'TB_RANKED_ACCOUNT');
     const level = req.level ?? 'intermediate';
     const variant = req.variant ?? 'classic';
     if (!TABLEAU_VARIANTS.includes(variant)) throw new ServerError('BAD_REQUEST', 'Variante inconnue');
-    if (req.mode === 'training' && !AI_LEVELS.includes(level)) throw new ServerError('BAD_REQUEST', 'Niveau inconnu');
+    if (req.mode !== 'friendly' && !AI_LEVELS.includes(level)) throw new ServerError('BAD_REQUEST', 'Niveau inconnu');
     const seed = this.opts.seed ? this.opts.seed() : randomBytes(32).toString('hex');
     const now = this.now();
     const human: Player = { kind: 'human', userId: who.userId, nickname: who.nickname, avatar: who.avatar, level: null, idle: 0 };
     const cpu: Player = { kind: 'cpu', userId: null, nickname: CPU_NAMES[level], avatar: null, level, idle: 0 };
     const room: Room = {
       code: this.newCode(), mode: req.mode, variant, seed, commitment: tableauCommitment(seed),
-      seats: [human, req.mode === 'training' ? cpu : null],
-      status: req.mode === 'training' ? 'playing' : 'waiting', log: [], turnSince: now, cpuDelay: 0, paused: false, forfeit: null,
+      seats: [human, req.mode !== 'friendly' ? cpu : null],
+      status: req.mode !== 'friendly' ? 'playing' : 'waiting', log: [], turnSince: now, cpuDelay: 0, paused: false, forfeit: null,
       createdAt: now, finishedAt: null, version: 0, updatedAt: now, xpDone: false,
     };
     const game = new TableauGame(seed, variant);
@@ -410,6 +458,18 @@ export class TableauService {
     return out;
   }
 
+  // ---------- Profil, classement, défis ----------
+
+  profile(userId: string, variant: TableauVariant = 'classic'): TbProfileDto {
+    if (!TableauStats.eligible(userId)) throw rule('Les statistiques sont réservées aux comptes connectés', 'TB_ACCOUNT_ONLY');
+    if (!TABLEAU_VARIANTS.includes(variant)) throw new ServerError('BAD_REQUEST', 'Variante inconnue');
+    return this.stats.profile(userId, variant);
+  }
+  leaderboard(userId: string | null, variant: TableauVariant = 'classic'): TbLeaderboardRow[] {
+    if (!TABLEAU_VARIANTS.includes(variant)) throw new ServerError('BAD_REQUEST', 'Variante inconnue');
+    return this.stats.leaderboard(variant, userId);
+  }
+
   // ---------- Vue publique ----------
 
   private dto(room: Room, game: TableauGame, you: Seat): TbGameDto {
@@ -439,6 +499,7 @@ export class TableauService {
       result: complete ? game.result() : null,
       forfeit: room.forfeit,
       winner: finished ? this.winnerOf(room, game) : null,
+      rating: finished && room.mode === 'ranked' ? (room.rating ?? null) : null,
       reveal: finished ? { seed: room.seed, commitment: room.commitment, order: [...game.deal.initial[0], ...game.deal.initial[1], ...game.deal.deck[0], ...game.deal.deck[1]] } : null,
     };
   }

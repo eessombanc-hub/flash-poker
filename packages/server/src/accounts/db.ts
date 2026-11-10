@@ -84,6 +84,33 @@ const BJ_SCHEMA = `
         code TEXT NOT NULL,
         PRIMARY KEY (user_id, code)
       );
+      CREATE TABLE IF NOT EXISTS tb_profile (
+        user_id TEXT NOT NULL,
+        variant TEXT NOT NULL,
+        rating INTEGER NOT NULL,
+        peak INTEGER NOT NULL,
+        games INTEGER NOT NULL DEFAULT 0,
+        wins INTEGER NOT NULL DEFAULT 0,
+        losses INTEGER NOT NULL DEFAULT 0,
+        draws INTEGER NOT NULL DEFAULT 0,
+        streak INTEGER NOT NULL DEFAULT 0,
+        best_streak INTEGER NOT NULL DEFAULT 0,
+        sf_wins INTEGER NOT NULL DEFAULT 0,
+        cols_won INTEGER NOT NULL DEFAULT 0,
+        cols_played INTEGER NOT NULL DEFAULT 0,
+        ranked_games INTEGER NOT NULL DEFAULT 0,
+        ranked_wins INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, variant)
+      );
+      CREATE INDEX IF NOT EXISTS tb_profile_rating ON tb_profile (variant, rating);
+      CREATE TABLE IF NOT EXISTS tb_daily (
+        user_id TEXT NOT NULL,
+        day TEXT NOT NULL,
+        challenge_id TEXT NOT NULL,
+        progress INTEGER NOT NULL DEFAULT 0,
+        done INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day, challenge_id)
+      );
 `;
 const BJ_TABLES = ['bj_profile', 'bj_active', 'bj_history', 'bj_challenges', 'bj_achievements'] as const;
 

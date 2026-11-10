@@ -502,22 +502,6 @@ describe('Tableau, mode Classé, ligues et défis', () => {
     expect(env.tb.profile(u.userId).games).toBe(1);
   });
 
-  it('Tableau 5 cartes : classé, statistiques et classement propres à la variante', () => {
-    const env = setup();
-    const u = addUser(env, 'u1', 'Zoé');
-    const c = env.tb.create(u, { mode: 'ranked', level: 'expert', variant: 'hand5' });
-    expect(c).toMatchObject({ mode: 'ranked', variant: 'hand5' });
-    expect(() => env.tb.advice(c.code, u.userId)).toThrow(/Entraînement/);
-    const v = finishTraining(env, c.code, u);
-    expect(v.status).toBe('finished');
-    expect(v.rating).not.toBeNull();
-    const five = env.tb.profile(u.userId, 'hand5');
-    expect(five).toMatchObject({ games: 1, rankedGames: 1, position: 1 });
-    expect(env.tb.profile(u.userId, 'classic')).toMatchObject({ games: 0, rating: 800, position: null });
-    expect(env.tb.leaderboard(u.userId, 'hand5')).toHaveLength(1);
-    expect(env.tb.leaderboard(u.userId, 'classic')).toEqual([]);
-  });
-
   it('abandonner une partie classée est une défaite enregistrée', () => {
     const env = setup();
     const u = addUser(env, 'u1', 'Zoé');

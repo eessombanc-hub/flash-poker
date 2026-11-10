@@ -124,14 +124,6 @@ describe('Tableau : classé, ligues et défis', () => {
     expect(await within(screen.getByTestId('tb-leaderboard')).findByText('Personne n’est encore classé dans cette variante.')).toBeInTheDocument();
     expect(screen.getByTestId('tb-ranked')).toHaveTextContent('Pas de conseils en classé');
 
-    // Le sélecteur de variante commande tout le menu : classé, progression et classement suivent la variante choisie.
-    expect(within(progress).getByText('Tableau')).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: /5 cartes/ }));
-    await waitFor(() => expect(within(screen.getByTestId('tb-progress')).getByText(/5 cartes/)).toBeInTheDocument());
-    expect(within(screen.getByTestId('tb-ranked')).getByText(/5 cartes/)).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: 'Tableau' }));
-    await waitFor(() => expect(within(screen.getByTestId('tb-progress')).getByText('Tableau')).toBeInTheDocument());
-
     await user.click(within(screen.getByTestId('tb-ranked')).getByRole('button', { name: 'Lancer une partie classée' }));
     await screen.findByTestId('tb-board-mine');
     expect(screen.queryByRole('button', { name: /conseil/i })).toBeNull();
