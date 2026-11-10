@@ -1,7 +1,7 @@
 import { parseCard, type Card } from '../core/card';
 import type { PlayerId } from '../core/cardEngine';
-import { bestOf, categoryOf, combinationCodes, HandCategory } from '../evaluation/handEvaluator';
-import { evaluateOmahaWithPair } from '../evaluation/omahaEvaluator';
+import { categoryOf, combinationCodes, HandCategory } from '../evaluation/handEvaluator';
+import { evaluateOmahaWithPair, evaluateOmahaWithPairPool } from '../evaluation/omahaEvaluator';
 import { freshSel, publicEvent, RoundBase, type PhaseSel } from './roundBase';
 import {
   RuleError,
@@ -87,8 +87,8 @@ const BOARD_LINES_SIZE = 15;
  *
  * Tétines (0 à 2, au choix du joueur qui choisit le 6-3) : cartes communes supplémentaires, visibles dès le départ,
  * posées sur la ligne en cours ; elles coulissent à la ligne suivante dès que la ligne est résolue. Avec des
- * tétines, la combinaison d'une ligne est la meilleure main de 5 cartes parmi les 2 cartes désignées, les 5 cartes
- * de la ligne et les tétines (sans contrainte « 2 + 3 »).
+ * tétines, la règle reste celle du Omaha : la combinaison d'une ligne est formée des 2 cartes désignées et de
+ * EXACTEMENT 3 cartes communes, choisies parmi les 5 cartes de la ligne et les tétines.
  *
  * Paris extérieurs (option du même joueur) : avant la distribution, chacun peut parier une ou plusieurs lignes, avec
  * un montant. Quand au moins 2 joueurs s'accordent sur la même ligne et le même montant, le pari est engagé : à la
@@ -325,7 +325,7 @@ export class Round63 extends RoundBase {
       .map((s) => s.card);
   }
 
-  /** Combinaison d'une paire désignée sur une ligne : avec tétines, meilleure main de 5 parmi la paire, le plateau
+  /** Combinaison d'une paire désignée sur une ligne : avec tétines, 2 cartes de la paire + 3 cartes parmi le plateau
    * de la ligne et les tétines ; sans tétine, règle classique du 6-3 (2 cartes de la main + 3 du plateau). */
   private evaluatePair(pair: [Card, Card], hand: Card[], board: Card[]): { rank: number; baseRank: number } {
     const { rank, baseRank } = this.evaluatePairCards(pair, hand, board);
@@ -336,7 +336,8 @@ export class Round63 extends RoundBase {
   private evaluatePairCards(pair: [Card, Card], hand: Card[], board: Card[]): { rank: number; baseRank: number; cards: readonly Card[] } {
     const base = evaluateOmahaWithPair(pair, hand, board);
     if (this.s.teats === 0) return { rank: base.rank, baseRank: base.rank, cards: base.cards };
-    const withTeats = bestOf([...pair, ...board, ...this.teatCards()]);
+    // Tétines : toujours 2 cartes désignées + 3 cartes communes, choisies parmi les 5 de la ligne et les tétines.
+    const withTeats = evaluateOmahaWithPairPool(pair, hand, [...board, ...this.teatCards()]);
     return withTeats.rank > base.rank ? { rank: withTeats.rank, baseRank: base.rank, cards: withTeats.cards } : { rank: base.rank, baseRank: base.rank, cards: base.cards };
   }
 

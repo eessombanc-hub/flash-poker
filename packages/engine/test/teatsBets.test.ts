@@ -21,8 +21,8 @@ const AA: [string, string] = ['As', 'Ad'];
 const KK: [string, string] = ['Ks', 'Kd'];
 const TT: [string, string] = ['Ts', 'Td'];
 
-function make(n: number, opts: { teats?: number; sideBets?: boolean; budgets?: number } = {}): Round {
-  const stack = dealStack(HANDS.slice(0, n), [...BOARD15, ...TEATS]);
+function make(n: number, opts: { teats?: number; sideBets?: boolean; budgets?: number; hands?: string[][] } = {}): Round {
+  const stack = dealStack((opts.hands ?? HANDS).slice(0, n), [...BOARD15, ...TEATS]);
   const budgets: Record<string, number> = {};
   for (const p of names(n)) budgets[p] = opts.budgets ?? 1000;
   return createRound('V6_3', { players: names(n), rng: new SeededRng(1), stackedDeck: stack, teats: opts.teats, sideBets: opts.sideBets, budgets });
@@ -67,16 +67,29 @@ describe('6-3 : tétines', () => {
     expect(r.view('P0').cards.board.slice(15)).toEqual(['Kh']);
   });
 
-  it('avec tétines : meilleure main de 5 parmi les 2 cartes désignées, les 5 de la ligne et les tétines (sans contrainte 2 + 3)', () => {
+  it('avec tétines : toujours 2 cartes désignées + exactement 3 cartes communes (règle Omaha), tétines comprises', () => {
+    // P0 détient deux cœurs : avec la tétine Kh, sa couleur monte (A Q K J 9 de cœur). P1 forme un brelan de rois
+    // avec la tétine Kh. P2 n'a aucun cœur : les cinq cœurs communs ne lui donnent PAS de couleur (il faudrait
+    // jouer 0 carte privée).
+    const hands = [['Ah', 'Qh', '6s', '7s', '8s', '9s'], HANDS[1]!, HANDS[2]!];
+    const r = make(3, { teats: 2, hands }) as Round63;
+    designate(r, { P0: ['Ah', 'Qh'], P1: KK, P2: TT }, 3);
+    const l = lastLine(r);
+    expect(l.designations.P0!.category).toBe(HandCategory.Flush);
+    expect(l.designations.P1!.category).toBe(HandCategory.ThreeOfAKind);
+    expect(l.designations.P2!.category).toBe(HandCategory.Pair);
+    // Sans tétine, la couleur de P0 est plus faible (Q J 9 5 2 au lieu de A Q K J 9) : la tétine l'améliore.
+    expect(l.designations.P0!.baseRank).toBeLessThan(l.designations.P0!.rank);
+    expect(l.winners).toEqual(['P0']);
+  });
+
+  it('une tétine ne remplace jamais une carte désignée : sans cœur en main, pas de couleur commune', () => {
     const r = make(3, { teats: 2 }) as Round63;
     designate(r, { P0: AA, P1: KK, P2: TT }, 3);
     const l = lastLine(r);
-    // Les cinq cœurs communs (Kh Jh 9h 7h 5h) forment une couleur pour tous, sans utiliser les cartes désignées.
-    for (const p of names(3)) expect(l.designations[p]!.category).toBe(HandCategory.Flush);
-    // Sans tétine, la règle classique ne donnerait que la paire désignée.
-    expect(l.designations.P0!.baseRank).toBeLessThan(l.designations.P0!.rank);
-    expect(l.designations.P0!.baseRank).toBeGreaterThan(l.designations.P1!.baseRank);
-    expect(l.winners).toEqual(['P0', 'P1', 'P2']); // couleurs identiques : égalité sur la ligne
+    for (const p of names(3)) expect(l.designations[p]!.category).not.toBe(HandCategory.Flush);
+    expect(l.designations.P1!.category).toBe(HandCategory.ThreeOfAKind); // Ks Kd + la tétine Kh
+    expect(l.winners).toEqual(['P1']);
   });
 
   it('les tétines coulissent à la ligne suivante une fois la ligne résolue', () => {
@@ -93,9 +106,12 @@ describe('6-3 : tétines', () => {
   });
 
   it('tétines et assistance : la catégorie annoncée tient compte des tétines', () => {
-    const r = createRound('V6_3', { players: names(3), rng: new SeededRng(1), stackedDeck: dealStack(HANDS, [...BOARD15, ...TEATS]), teats: 2, assistance: true });
-    r.apply(sel('P0', AA));
+    const hands = [['Ah', 'Qh', '6s', '7s', '8s', '9s'], HANDS[1]!, HANDS[2]!];
+    const r = createRound('V6_3', { players: names(3), rng: new SeededRng(1), stackedDeck: dealStack(hands, [...BOARD15, ...TEATS]), teats: 2, assistance: true });
+    r.apply(sel('P0', ['Ah', 'Qh']));
     expect(info(r).assistCategory).toBe(HandCategory.Flush);
+    r.apply(sel('P1', KK));
+    expect(info(r, 'P1').assistCategory).toBe(HandCategory.ThreeOfAKind);
   });
 });
 
@@ -173,14 +189,14 @@ describe('6-3 : paris extérieurs', () => {
     expect(r.phase()).toBe('LINE_2'); // versé avant la fin de la manche
   });
 
-  it('les paris se jouent SANS les tétines : égalité sur la ligne, mais pari gagné par la meilleure main classique', () => {
+  it('les paris se jouent SANS les tétines : la ligne revient à P1 (brelan de rois avec la tétine), le pari à la meilleure main classique', () => {
     const r = make(3, { sideBets: true, teats: 2 }) as Round63;
     r.apply(bet('P0', [{ line: 1, amount: 50 }]));
     r.apply(bet('P1', [{ line: 1, amount: 50 }]));
     r.apply(bet('P2', [{ line: 1, amount: 50 }]));
     for (const p of names(3)) r.apply(val(p));
     designate(r, { P0: AA, P1: KK, P2: TT }, 3);
-    expect(lastLine(r).winners).toHaveLength(3); // la couleur commune égalise la ligne
+    expect(lastLine(r).winners).toEqual(['P1']); // brelan de rois grâce à la tétine Kh
     const res = r.sideBetResults()[0]!;
     expect(res.winners).toEqual(['P0']);
     expect(res.net).toEqual({ P0: 100, P1: -50, P2: -50 });

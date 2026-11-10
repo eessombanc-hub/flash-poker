@@ -1,9 +1,9 @@
 import { ALL_CARDS, parseCard, type Card } from '../core/card';
 import type { PlayerId } from '../core/cardEngine';
 import type { Rng } from '../core/rng';
-import { bestOf, categoryOf, evaluate5, forEachCombination, HandCategory, type HandRank } from '../evaluation/handEvaluator';
+import { categoryOf, evaluate5, forEachCombination, HandCategory, type HandRank } from '../evaluation/handEvaluator';
 import { evaluateHoldem } from '../evaluation/holdemEvaluator';
-import { evaluateOmahaWithPair } from '../evaluation/omahaEvaluator';
+import { evaluateOmahaWithPair, evaluateOmahaWithPairPool } from '../evaluation/omahaEvaluator';
 import type { GameCommand, GameView } from '../game/gameManager';
 import { MORPION_LINES } from '../variants/roundMorpion';
 import type { RoundCommand, RoundView, VariantId } from '../variants/types';
@@ -184,7 +184,7 @@ function plan63(round: RoundView, me: PlayerId): GameCommand[] {
   const slice = round.cards.board.slice((line - 1) * 5, line * 5);
   if (slice.length !== 5 || slice.some((c) => c === null)) return [];
   const board = (slice as string[]).map(parseCard);
-  // Tétines (cases 15 et suivantes) : avec elles, meilleure main de 5 parmi la paire, la ligne et les tétines.
+  // Tétines (cases 15 et suivantes) : avec elles, 2 cartes de la paire + 3 cartes parmi la ligne et les tétines.
   const teats = round.cards.board
     .slice(15)
     .filter((c): c is string => c !== null)
@@ -193,7 +193,7 @@ function plan63(round: RoundView, me: PlayerId): GameCommand[] {
   let best: { pair: [Card, Card]; rank: HandRank } | null = null;
   for (const pair of combinations(hand, 2) as [Card, Card][]) {
     let { rank } = evaluateOmahaWithPair(pair, hand, board);
-    if (teats.length > 0) rank = Math.max(rank, bestOf([...pair, ...board, ...teats]).rank);
+    if (teats.length > 0) rank = Math.max(rank, evaluateOmahaWithPairPool(pair, hand, [...board, ...teats]).rank);
     if (best === null || rank > best.rank) best = { pair, rank };
   }
   return best ? [select(me, best.pair.map((c) => c.code)), validate(me)] : [];

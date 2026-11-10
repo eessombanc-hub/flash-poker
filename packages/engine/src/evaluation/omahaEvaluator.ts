@@ -51,3 +51,23 @@ function bestWithPair(a: Card, b: Card, board: readonly Card[], floor: number): 
   });
   return best;
 }
+
+/**
+ * 6-3 avec tétines : la paire désignée (EXACTEMENT 2 cartes privées) se combine avec EXACTEMENT 3 cartes prises
+ * parmi les cartes communes de la ligne (5) augmentées des tétines (jusqu'à 2), soit 5 à 7 cartes communes.
+ * La contrainte « 2 + 3 » du Omaha reste donc entière : les tétines élargissent seulement le choix des 3 cartes.
+ */
+export function evaluateOmahaWithPairPool(
+  pair: readonly [Card, Card],
+  hand: readonly Card[],
+  pool: readonly Card[],
+): EvalResult {
+  if (pool.length < 5 || pool.length > 7) throw new RangeError(`Les cartes communes d’une ligne comptent de 5 à 7 cartes (reçu ${pool.length})`);
+  assertDistinct([...hand, ...pool]);
+  if (pair[0].id === pair[1].id) throw new RangeError('La paire désignée contient deux fois la même carte');
+  const inHand = new Set(hand.map((c) => c.id));
+  if (!inHand.has(pair[0].id) || !inHand.has(pair[1].id)) {
+    throw new RangeError('La paire désignée doit être composée de cartes de la main du joueur');
+  }
+  return bestWithPair(pair[0], pair[1], pool, -1)!;
+}
