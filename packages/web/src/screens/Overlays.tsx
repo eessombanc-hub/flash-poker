@@ -99,6 +99,10 @@ export function TiebreakSequence({ tiebreak, view }: { tiebreak: TiebreakOutcome
 // ---------- Résultat de manche ----------
 /** Plateau final : dernier plateau connu, complété par les cartes révélées à la clôture (BOARD_REVEALED). */
 export function finalBoard(known: readonly (string | null)[], events: readonly RoundEvent[]): (string | null)[] {
+  // Le showdown transporte le plateau exact évalué par le moteur : source de référence.
+  const sd = [...events].reverse().find((e) => e.type === 'SHOWDOWN');
+  const exact = sd?.data.board;
+  if (Array.isArray(exact) && exact.length > 0 && exact.every((c) => typeof c === 'string')) return [...(exact as string[])];
   const b = [...known];
   for (const e of events) {
     if (e.type !== 'BOARD_REVEALED') continue;
@@ -110,7 +114,7 @@ export function finalBoard(known: readonly (string | null)[], events: readonly R
 
 export function RoundResultModal({ record, events, board, view, onClose, final }: { record: RoundRecord; events: RoundEvent[]; board: readonly (string | null)[]; view: RoomView; onClose: () => void; final: boolean }) {
   const { fourColor } = useSettings();
-  const showdown = events.find((e) => e.type === 'SHOWDOWN')?.data.hands as Record<string, { cards: string[]; category: number }> | undefined;
+  const showdown = [...events].reverse().find((e) => e.type === 'SHOWDOWN')?.data.hands as Record<string, { cards: string[]; category: number }> | undefined;
   const shownBoard = record.variant === 'AVIATION' || record.variant === 'AVIA_6' || record.variant === 'V6_1' ? finalBoard(board, events) : [];
   const lines = events.filter((e) => e.type === 'LINE_RESOLVED').map((e) => e.data as unknown as LineResult);
   const winner = record.award.kind === 'POINTS' || record.award.kind === 'INSTANT_VICTORY' ? record.award.winner : null;

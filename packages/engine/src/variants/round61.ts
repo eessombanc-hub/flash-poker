@@ -144,6 +144,8 @@ export class Round61 extends RoundBase {
     });
     events.push(
       publicEvent('SHOWDOWN', {
+        // Plateau final tel que le moteur l'a évalué : le récapitulatif l'affiche tel quel.
+        board: board.map((c) => c.code),
         hands: Object.fromEntries(
           entries.map((e) => [e.player, { cards: e.hand.map((c) => c.code), category: categoryOf(e.rank) }]),
         ),

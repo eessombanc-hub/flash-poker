@@ -236,6 +236,9 @@ describe('récapitulatif de manche', () => {
     const ev = (slot: number, card: string): RoundEvent => ({ type: 'BOARD_REVEALED', visibility: 'PUBLIC', data: { slot, card } });
     expect(finalBoard(['2h', '3h', '4h', 'Ac', null], [ev(4, 'Kd')])).toEqual(['2h', '3h', '4h', 'Ac', 'Kd']);
     expect(finalBoard(['2h'], [])).toEqual(['2h']);
+    // le plateau du showdown fait foi, même si le dernier plateau connu est périmé
+    const sd = { type: 'SHOWDOWN', data: { hands: {}, board: ['4h', '3c', 'Qs', 'Kh', '6c'] } } as never;
+    expect(finalBoard(['4h', '6c', 'Qs', 'Kh', '6c'], [sd])).toEqual(['4h', '3c', 'Qs', 'Kh', '6c']);
   });
 });
 
