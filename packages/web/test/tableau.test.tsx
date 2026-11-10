@@ -104,8 +104,54 @@ describe('Tableau : accès depuis les menus', () => {
   });
 });
 
+describe('Tableau : classé, ligues et défis', () => {
+  it('compte connecté : progression, défis du jour, classement, puis partie classée abandonnée et comptée', async () => {
+    const { make } = await serverAndClients();
+    const account = make();
+    await account.register({ nickname: 'Zoé', email: 'zoe@x.fr', password: 'tapis-vert-42' });
+    const user = userEvent.setup();
+    render(
+      <AccountProvider account={account}>
+        <Tableau onBack={noop} onLogin={noop} />
+      </AccountProvider>,
+    );
+    const progress = await screen.findByTestId('tb-progress');
+    expect(within(progress).getByText('800 points')).toBeInTheDocument();
+    expect(within(progress).getByText('Débutant')).toBeInTheDocument();
+    expect(within(progress).getByText('Encore 100 points pour la ligue Apprenti.')).toBeInTheDocument();
+    expect(within(progress).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '89');
+    expect(within(await screen.findByTestId('tb-challenges')).getAllByRole('listitem')).toHaveLength(3);
+    expect(await within(screen.getByTestId('tb-leaderboard')).findByText('Personne n’est encore classé dans cette variante.')).toBeInTheDocument();
+    expect(screen.getByTestId('tb-ranked')).toHaveTextContent('Pas de conseils en classé');
+
+    // Le sélecteur de variante commande tout le menu : classé, progression et classement suivent la variante choisie.
+    expect(within(progress).getByText('Tableau')).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: /5 cartes/ }));
+    await waitFor(() => expect(within(screen.getByTestId('tb-progress')).getByText(/5 cartes/)).toBeInTheDocument());
+    expect(within(screen.getByTestId('tb-ranked')).getByText(/5 cartes/)).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Tableau' }));
+    await waitFor(() => expect(within(screen.getByTestId('tb-progress')).getByText('Tableau')).toBeInTheDocument());
+
+    await user.click(within(screen.getByTestId('tb-ranked')).getByRole('button', { name: 'Lancer une partie classée' }));
+    await screen.findByTestId('tb-board-mine');
+    expect(screen.queryByRole('button', { name: /conseil/i })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Quitter la partie' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Quitter une partie classée compte comme une défaite.')).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Quitter' }));
+
+    // La défaite est enregistrée et le joueur entre au classement.
+    const stats = await account.tbProfile('classic');
+    expect(stats).toMatchObject({ games: 1, losses: 1, rankedGames: 1, position: 1 });
+    expect(stats.rating).toBeLessThan(800);
+    const lb = await account.tbLeaderboard('classic');
+    expect(lb[0]).toMatchObject({ nickname: 'Zoé', you: true });
+    await expect(account.tbCreate({ mode: 'ranked', level: 'beginner' })).resolves.toMatchObject({ mode: 'ranked' });
+  });
+});
+
 describe('Tableau : de bout en bout', () => {
-  it('menu : règles et dix combinaisons, modes à venir signalés', async () => {
+  it('menu : règles et dix combinaisons, tournois à venir, classé réservé aux comptes', async () => {
     const { make } = await serverAndClients();
     const account = make();
     const user = userEvent.setup();
@@ -115,7 +161,9 @@ describe('Tableau : de bout en bout', () => {
       </AccountProvider>,
     );
     expect(await screen.findByRole('heading', { name: 'Le Tableau' })).toBeInTheDocument();
-    expect(screen.getAllByText('à venir')).toHaveLength(2);
+    expect(screen.getAllByText('à venir')).toHaveLength(1); // seuls les tournois restent à venir
+    expect(screen.getByTestId('tb-ranked')).toHaveTextContent('Connectez-vous pour jouer en classé');
+    expect(screen.queryByTestId('tb-progress')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Règles et combinaisons' }));
     const dialog = await screen.findByRole('dialog', { name: 'Règles du Tableau' });
     expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThanOrEqual(10);

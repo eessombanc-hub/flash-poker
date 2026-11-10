@@ -433,7 +433,8 @@ describe('Tableau — HTTP', () => {
       const ga = 'aa'.repeat(16);
       const gb = 'bb'.repeat(16);
       expect((await inj('POST', '/tableau/games', undefined, { mode: 'training' })).statusCode).toBe(400);
-      expect((await inj('POST', '/tableau/games', ga, { mode: 'ranked' })).statusCode).toBe(400);
+      expect((await inj('POST', '/tableau/games', ga, { mode: 'ranked' })).statusCode).toBe(422); // Classé : comptes uniquement
+      expect((await inj('POST', '/tableau/games', ga, { mode: 'duel' })).statusCode).toBe(400);
       const created = await inj('POST', '/tableau/games', ga, { mode: 'friendly', nickname: 'Ana' });
       expect(created.statusCode).toBe(201);
       const g = created.json() as TbGameDto;
@@ -453,6 +454,143 @@ describe('Tableau — HTTP', () => {
       expect((await inj('POST', `/tableau/games/${g.code}/leave`, ga)).json()).toMatchObject({ forfeit: true });
       const hist = (await inj('GET', '/me/tableau/history', gb)).json() as { history: { outcome: string }[] };
       expect(hist.history[0]!.outcome).toBe('win');
+    } finally {
+      await server.close();
+    }
+  });
+});
+
+function addUser(env: Env, id: string, nickname: string) {
+  env.store.db.prepare('INSERT INTO users (id, nickname, email, pass_hash, created_at) VALUES (?, ?, ?, ?, ?)').run(id, nickname, `${id}@test.fr`, 'x', 0);
+  return { userId: id, nickname, avatar: null };
+}
+
+describe('Tableau, mode Classé, ligues et défis', () => {
+  it('réservé aux comptes, sans conseil, une seule partie classée à la fois', () => {
+    const env = setup();
+    expect(() => env.tb.create(A, { mode: 'ranked', level: 'beginner' })).toThrow(/réservé aux comptes/);
+    const u = addUser(env, 'u1', 'Zoé');
+    const g = env.tb.create(u, { mode: 'ranked', level: 'beginner' });
+    expect(g).toMatchObject({ mode: 'ranked', status: 'playing', rating: null });
+    expect(() => env.tb.advice(g.code, u.userId)).toThrow(/Entraînement/);
+    expect(() => env.tb.create(u, { mode: 'training' })).toThrow(/classée est déjà en cours/);
+    expect(() => env.tb.profile(A.userId)).toThrow(/comptes/);
+  });
+
+  it('une partie classée terminée fait évoluer le classement, les statistiques et le tableau', () => {
+    const env = setup();
+    const u = addUser(env, 'u1', 'Zoé');
+    expect(env.tb.profile(u.userId)).toMatchObject({ rating: 800, games: 0, rankedGames: 0, position: null });
+    const c = env.tb.create(u, { mode: 'ranked', level: 'expert' });
+    const v = finishTraining(env, c.code, u);
+    expect(v.status).toBe('finished');
+    expect(v.rating).not.toBeNull();
+    expect(v.rating!.before).toBe(800);
+    expect(v.rating!.after).toBe(800 + v.rating!.delta);
+    const p = env.tb.profile(u.userId);
+    expect(p.rating).toBe(v.rating!.after);
+    expect(p).toMatchObject({ games: 1, rankedGames: 1, position: 1 });
+    expect(p.wins + p.losses + p.draws).toBe(1);
+    expect(p.colsPlayed).toBeGreaterThan(0);
+    expect(env.tb.profile(u.userId, 'hand5')).toMatchObject({ rating: 800, games: 0 });
+    const lb = env.tb.leaderboard(u.userId);
+    expect(lb).toHaveLength(1);
+    expect(lb[0]).toMatchObject({ position: 1, nickname: 'Zoé', you: true, rankedGames: 1 });
+    expect(env.tb.leaderboard(null)[0]!.you).toBe(false);
+    // L'archive n'est comptée qu'une fois, même si l'on relit la partie.
+    env.tb.get(c.code, u.userId);
+    expect(env.tb.profile(u.userId).games).toBe(1);
+  });
+
+  it('Tableau 5 cartes : classé, statistiques et classement propres à la variante', () => {
+    const env = setup();
+    const u = addUser(env, 'u1', 'Zoé');
+    const c = env.tb.create(u, { mode: 'ranked', level: 'expert', variant: 'hand5' });
+    expect(c).toMatchObject({ mode: 'ranked', variant: 'hand5' });
+    expect(() => env.tb.advice(c.code, u.userId)).toThrow(/Entraînement/);
+    const v = finishTraining(env, c.code, u);
+    expect(v.status).toBe('finished');
+    expect(v.rating).not.toBeNull();
+    const five = env.tb.profile(u.userId, 'hand5');
+    expect(five).toMatchObject({ games: 1, rankedGames: 1, position: 1 });
+    expect(env.tb.profile(u.userId, 'classic')).toMatchObject({ games: 0, rating: 800, position: null });
+    expect(env.tb.leaderboard(u.userId, 'hand5')).toHaveLength(1);
+    expect(env.tb.leaderboard(u.userId, 'classic')).toEqual([]);
+  });
+
+  it('abandonner une partie classée est une défaite enregistrée', () => {
+    const env = setup();
+    const u = addUser(env, 'u1', 'Zoé');
+    const c = env.tb.create(u, { mode: 'ranked', level: 'beginner' });
+    expect(env.tb.leave(c.code, u.userId)).toMatchObject({ forfeit: true });
+    const p = env.tb.profile(u.userId);
+    expect(p).toMatchObject({ games: 1, losses: 1, rankedGames: 1, rankedWins: 0, streak: 0 });
+    expect(p.rating).toBeLessThan(800);
+    expect(env.tb.get(c.code, u.userId).rating).toMatchObject({ before: 800 });
+  });
+
+  it('3 tours sans jouer : forfait, enregistré sans que le joueur revienne (nettoyage)', () => {
+    const env = setup();
+    const u = addUser(env, 'u1', 'Zoé');
+    const c = env.tb.create(u, { mode: 'ranked', level: 'beginner' });
+    for (let i = 0; i < 400 && env.tb.get(c.code, u.userId).status === 'playing'; i++) env.tick(40_000);
+    const g = env.tb.get(c.code, u.userId);
+    expect(g.status).toBe('finished');
+    expect(g.forfeit).toBe(g.you);
+    expect(env.tb.profile(u.userId).losses).toBe(1);
+  });
+
+  it('entraînement et amical comptent dans les statistiques mais pas dans le classement', () => {
+    const env = setup();
+    const u = addUser(env, 'u1', 'Zoé');
+    finishTraining(env, env.tb.create(u, { mode: 'training', level: 'beginner' }).code, u);
+    const p = env.tb.profile(u.userId);
+    expect(p).toMatchObject({ games: 1, rankedGames: 0, rating: 800, position: null });
+    expect(env.tb.leaderboard(u.userId)).toEqual([]);
+  });
+
+  it('défis du jour : trois défis, progression, expérience offerte une fois', async () => {
+    const env = setup();
+    const u = addUser(env, 'u1', 'Zoé');
+    const before = env.tb.profile(u.userId);
+    expect(before.challenges).toHaveLength(3);
+    expect(before.challenges.every((c) => !c.done && c.progress === 0)).toBe(true);
+    // Des parties « idéales » (victoires classées sur 4 colonnes avec quinte flush) terminent n'importe quel défi du jour.
+    const { TableauStats } = await import('../src/tableau/stats');
+    const xp: number[] = [];
+    const stats = new TableauStats(env.store, env.now, (_u, n) => void xp.push(n));
+    const ideal = { mode: 'ranked', variant: 'classic', outcome: 'win', columnsWon: 4, columnsPlayed: 5, straightFlushWin: false, straightFlushMade: true, opponentLevel: 'expert', forfeit: false } as const;
+    for (let i = 0; i < 8; i++) stats.record(u.userId, ideal);
+    const after = env.tb.profile(u.userId);
+    expect(after.day).toBe(before.day);
+    for (const c of after.challenges) expect(c.progress).toBeLessThanOrEqual(c.goal);
+    const done = after.challenges.filter((c) => c.done).length;
+    expect(xp).toHaveLength(done); // une fois par défi accompli, jamais deux
+    expect(xp.every((n) => n === 40)).toBe(true);
+    expect(after).toMatchObject({ games: 8, wins: 8, streak: 8, bestStreak: 8, rankedGames: 8, rankedWins: 8 });
+    expect(after.rating).toBeGreaterThan(800);
+  });
+});
+
+describe('Tableau, routes du profil et du classement', () => {
+  it('profil refusé aux invités, classement public, variante contrôlée', async () => {
+    const { LogMailer } = await import('../src/accounts/mailer');
+    const { RoomManager } = await import('../src/roomManager');
+    const { ManualScheduler } = await import('../src/scheduler');
+    const store = new AccountDb(':memory:');
+    const accounts = new AccountService(store, new LogMailer(false, () => undefined), { appUrl: 'https://jeu.test', log: () => undefined });
+    const blackjack = new BlackjackService(store);
+    const tableau = new TableauService(store, blackjack, { aiSims: 8, rng: new SeededRng(5) });
+    const manager = new RoomManager({ rng: new SeededRng(7), scheduler: new ManualScheduler(), accounts: { isReservedNickname: () => false, onGameFinished: () => undefined } });
+    const server = await buildServer({ manager, accounts, blackjack, tableau, onError: () => undefined });
+    try {
+      const inj = (url: string, guest?: string) => server.app.inject({ method: 'GET', url, headers: guest ? { 'x-bj-guest': guest } : {} });
+      const ga = 'aa'.repeat(16);
+      expect((await inj('/me/tableau/profile', ga)).statusCode).toBe(422);
+      expect((await inj('/me/tableau/profile?variant=zz', ga)).statusCode).toBe(400);
+      const lb = await inj('/tableau/leaderboard', ga);
+      expect(lb.statusCode).toBe(200);
+      expect(lb.json()).toEqual({ leaderboard: [] });
     } finally {
       await server.close();
     }

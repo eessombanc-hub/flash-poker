@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PlayingCard } from '../components/Card';
 import { CoinRain, SpinTrophy } from '../components/Scene3D';
+import { LeagueBadge, ProgressPanel } from '../components/tableau/Progress';
 import { ColumnStack, MiniHand, ResultsTable, VerdictRow } from '../components/tableau/Board';
 import { Avatar, Badge, Button, CountdownRing, Eyebrow, Modal, Panel, Segmented, inputClass } from '../components/ui';
 import type { AccountClient } from '../lib/account';
@@ -135,7 +136,7 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
       {active && (
         <Panel className="flex flex-wrap items-center justify-between gap-3 border-gold-400/60 p-4">
           <p className="text-sm text-ivory-100">
-            {active.mode === 'training' ? t('tb.resume.training', { code: active.code }) : t('tb.resume.friendly', { code: active.code })}
+            {t(`tb.resume.${active.mode === 'ranked' ? 'ranked' : active.mode === 'training' ? 'training' : 'friendly'}` as Key, { code: active.code })}
           </p>
           <Button disabled={busy} onClick={() => void run(() => client.tbGet(active.code))}>
             {t('tb.resume.btn')}
@@ -194,11 +195,24 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
           </form>
         </Panel>
 
-        <Panel className="border-dashed p-5 opacity-80">
-          <h2 className="font-display text-xl text-ivory-50">
-            {t('tb.ranked')} <Badge tone="amber">{t('tb.soon')}</Badge>
+        <Panel className="p-5" data-testid="tb-ranked">
+          <h2 className="flex flex-wrap items-center gap-2 font-display text-xl text-ivory-50">
+            {t('tb.ranked')} <Badge tone="neutral">{t(`tb.variant.${variant}` as Key)}</Badge>
           </h2>
           <p className="mt-1 text-sm text-ivory-200/85">{t('tb.ranked.text')}</p>
+          {guest ? (
+            <p className="mt-3 text-sm text-gold-200">{t('tb.ranked.guest')}</p>
+          ) : (
+            <>
+              <div className="mt-3">
+                <Segmented value={level} options={LEVELS.map((l) => l.id)} format={(id) => t(`tb.level.${id}` as Key)} onChange={setLevel} label={t('tb.level.aria')} />
+              </div>
+              <p className="mt-2 text-xs text-ivory-300/80">{t('tb.ranked.rules')}</p>
+              <Button className="mt-3 w-full" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'ranked', level, variant }))}>
+                {t('tb.ranked.start')}
+              </Button>
+            </>
+          )}
         </Panel>
         <Panel className="border-dashed p-5 opacity-80">
           <h2 className="font-display text-xl text-ivory-50">
@@ -207,6 +221,8 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
           <p className="mt-1 text-sm text-ivory-200/85">{t('tb.tournaments.text')}</p>
         </Panel>
       </div>
+
+      {!guest && <ProgressPanel client={client} variant={variant} refreshKey={history.length} />}
 
       {history.length > 0 && (
         <Panel className="p-5">
@@ -220,7 +236,7 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
             {history.slice(0, 8).map((h) => (
               <li key={h.code} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="min-w-0 truncate text-ivory-100">
-                  {h.mode === 'training' ? t('tb.mode.training') : t('tb.mode.friendly')}{h.variant === 'hand5' ? t('tb.hist.hand5') : ''}{h.straightFlush ? t('tb.hist.sf') : ''} · {h.opponentLevel ? cpuName(t, h.opponentLevel) : h.opponent}
+                  {t(`tb.mode.${h.mode}` as Key)}{h.variant === 'hand5' ? t('tb.hist.hand5') : ''}{h.straightFlush ? t('tb.hist.sf') : ''} · {h.opponentLevel ? cpuName(t, h.opponentLevel) : h.opponent}
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="tabular-nums text-ivory-300">
@@ -563,7 +579,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       {leaving && (
         <Modal title={t('tb.quit')} onClose={() => setLeaving(false)}>
           <h2 className="font-display text-xl text-ivory-50">{t('tb.quit.title')}</h2>
-          <p className="mt-2 text-sm text-ivory-200">{dto.mode === 'friendly' ? t('tb.quit.friendly') : t('tb.quit.training')}</p>
+          <p className="mt-2 text-sm text-ivory-200">{t(`tb.quit.${dto.mode}` as Key)}</p>
           <div className="mt-4 flex gap-2">
             <Button variant="secondary" className="flex-1" onClick={() => setLeaving(false)}>
               {t('tb.quit.continue')}
@@ -683,6 +699,7 @@ function Finished({ dto, outcome, oppName, onExit, onAgain }: { dto: TbGameDto; 
           </p>
         )}
         {dto.forfeit !== null && <p className="mt-1 text-sm text-ivory-200">{dto.forfeit === you ? t('tb.fin.youForfeit') : t('tb.fin.oppForfeit')}</p>}
+        {dto.rating && <RatingNote change={dto.rating} />}
       </div>
       <ResultsTable dto={dto} opponentName={oppName} />
       <details className="rounded-xl bg-ink-900/60 p-3 text-xs text-ivory-200">
@@ -709,5 +726,23 @@ function Finished({ dto, outcome, oppName, onExit, onAgain }: { dto: TbGameDto; 
         </Button>
       </div>
     </section>
+  );
+}
+
+/** Variation du score d'une partie classée, et changement de ligue le cas échéant. */
+function RatingNote({ change }: { change: { before: number; after: number; delta: number; leagueBefore: number; leagueAfter: number } }) {
+  const { t } = useI18n();
+  const from = change.leagueBefore;
+  const to = change.leagueAfter;
+  const text = change.delta > 0 ? t('tb.rating.up', { d: change.delta, r: change.after }) : change.delta < 0 ? t('tb.rating.down', { d: -change.delta, r: change.after }) : t('tb.rating.same', { r: change.after });
+  return (
+    <div className="mt-2 space-y-1" data-testid="tb-rating">
+      <p className={`text-sm ${change.delta > 0 ? 'text-emerald-300' : change.delta < 0 ? 'text-ruby-200' : 'text-ivory-200'}`}>{text}</p>
+      {to > from && (
+        <p className="text-sm text-gold-200">
+          {t('tb.rating.league', { league: t(`tb.league.${to}` as Key) })} <LeagueBadge id={to} />
+        </p>
+      )}
+    </div>
   );
 }
