@@ -2,11 +2,15 @@ import { maskEmail } from '../netSecurity';
 /**
  * Envoi d'e-mails (mot de passe oublié, joueur favori connecté).
  *
- * Configuration par variables d'environnement, sans rien d'écrit dans le code :
- *   SMTP_HOST, SMTP_PORT (587 par défaut), SMTP_USER, SMTP_PASS, MAIL_FROM (« Flash Poker <no-reply@…> »)
- *   APP_URL : adresse publique du jeu, pour les liens des e-mails (ex. https://flash-poker.onrender.com)
- * Tout service SMTP convient (Brevo, Mailjet, OVH, Gmail…). Sans configuration, les e-mails ne partent pas :
- * ils sont écrits dans le journal du serveur, et la récupération de mot de passe est signalée indisponible.
+ * Configuration par variables d'environnement, sans rien d'écrit dans le code. Trois modes, essayés dans cet ordre :
+ *   1. API HTTPS de Brevo : BREVO_API_KEY. Fonctionne partout, y compris sur l'offre gratuite de Render qui
+ *      bloque les ports SMTP (25, 465, 587) ;
+ *   2. API HTTPS de Resend : RESEND_API_KEY (même avantage) ;
+ *   3. SMTP : SMTP_HOST, SMTP_PORT (587 par défaut), SMTP_USER, SMTP_PASS (hébergement sans blocage des ports).
+ * MAIL_FROM : expéditeur (« Flash Poker <no-reply@flash-poker.fr> »), obligatoire avec les modes 1 et 2.
+ * APP_URL : adresse publique du jeu, pour les liens des e-mails (ex. https://flash-poker.fr).
+ * Sans configuration, les e-mails ne partent pas : ils sont écrits dans le journal du serveur, et la récupération
+ * de mot de passe est signalée indisponible.
  */
 export interface MailMessage {
   to: string;
@@ -16,13 +20,16 @@ export interface MailMessage {
 }
 
 export interface Mailer {
-  /** Vrai si les e-mails partent réellement (SMTP configuré). */
+  /** Vrai si les e-mails partent réellement (service d'envoi configuré). */
   readonly enabled: boolean;
+  /** Nom du service utilisé, pour le journal de démarrage. */
+  readonly kind?: string;
   send(message: MailMessage): Promise<void>;
 }
 
 /** Sans SMTP : rien ne part, le message est seulement conservé (tests) et signalé dans le journal. */
 export class LogMailer implements Mailer {
+  readonly kind = 'aucun';
   readonly sent: MailMessage[] = [];
   constructor(readonly enabled = false, private readonly log: (s: string) => void = (s) => console.log(s)) {}
   async send(message: MailMessage): Promise<void> {
@@ -33,6 +40,7 @@ export class LogMailer implements Mailer {
 
 export class SmtpMailer implements Mailer {
   readonly enabled = true;
+  readonly kind = 'SMTP';
   private transport: { sendMail(m: Record<string, unknown>): Promise<unknown> } | null = null;
   constructor(private readonly env: Record<string, string | undefined>) {}
 
@@ -51,7 +59,44 @@ export class SmtpMailer implements Mailer {
   }
 }
 
-export function resolveMailer(env: Record<string, string | undefined>): Mailer {
+/** Sépare « Nom <adresse> » en nom et adresse (une adresse seule est acceptée). */
+export function parseSender(from: string): { name: string | undefined; email: string } {
+  const m = /^\s*"?([^"<]*?)"?\s*<([^<>\s]+@[^<>\s]+)>\s*$/.exec(from);
+  if (m) return { name: m[1]!.trim() || undefined, email: m[2]! };
+  return { name: undefined, email: from.trim() };
+}
+
+/** Envoi par API HTTPS (Brevo ou Resend) : aucun port SMTP, donc compatible avec les hébergements qui les bloquent. */
+export class HttpMailer implements Mailer {
+  readonly enabled = true;
+  constructor(
+    readonly kind: 'Brevo' | 'Resend',
+    private readonly key: string,
+    private readonly from: string,
+    private readonly fetchFn: typeof fetch = fetch,
+  ) {}
+
+  async send(message: MailMessage): Promise<void> {
+    const sender = parseSender(this.from);
+    const brevo = this.kind === 'Brevo';
+    const res = await this.fetchFn(brevo ? 'https://api.brevo.com/v3/smtp/email' : 'https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json', ...(brevo ? { 'api-key': this.key } : { authorization: `Bearer ${this.key}` }) },
+      body: JSON.stringify(
+        brevo
+          ? { sender: { email: sender.email, ...(sender.name ? { name: sender.name } : {}) }, to: [{ email: message.to }], subject: message.subject, htmlContent: message.html, textContent: message.text }
+          : { from: this.from, to: [message.to], subject: message.subject, html: message.html, text: message.text },
+      ),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`${this.kind} a refusé l'envoi (HTTP ${res.status}) ${(await res.text().catch(() => '')).slice(0, 200)}`);
+  }
+}
+
+export function resolveMailer(env: Record<string, string | undefined>, fetchFn?: typeof fetch): Mailer {
+  const from = env.MAIL_FROM?.trim();
+  if (env.BREVO_API_KEY && from) return new HttpMailer('Brevo', env.BREVO_API_KEY, from, fetchFn);
+  if (env.RESEND_API_KEY && from) return new HttpMailer('Resend', env.RESEND_API_KEY, from, fetchFn);
   return env.SMTP_HOST ? new SmtpMailer(env) : new LogMailer(false);
 }
 

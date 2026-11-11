@@ -34,6 +34,11 @@ services:
       # Valeur 1 par défaut sur Render. Vérification : DEBUG_IP=1 puis /_ip (voir README, section Sécurité).
       - key: TRUST_PROXY
         value: "1"
+      # Plan gratuit : Render bloque les ports SMTP, utilisez l'API HTTPS de Brevo (BREVO_API_KEY + MAIL_FROM).
+      - key: BREVO_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

@@ -45,21 +45,27 @@ la dernière version, avec les corrections de la phase 8. Vérifiez sur la page 
 
 ## Activer les e-mails des comptes joueurs
 
-Sans réglage, les comptes fonctionnent, mais aucun e-mail ne part : le lien « Mot de passe oublié ? » est remplacé par un message d’indisponibilité, et les favoris ne sont signalés que dans l’application.
+La récupération du mot de passe fonctionne ainsi : le joueur saisit son adresse, reçoit un lien valable une heure et à usage unique, puis choisit un nouveau mot de passe. Toutes ses sessions ouvertes sont alors fermées. Sans service d’envoi, le lien « Mot de passe oublié ? » est remplacé par un message d’indisponibilité, et les favoris ne sont signalés que dans l’application.
 
-Pour activer les e-mails, il faut un service d’envoi (Brevo, Mailjet ou l’offre e-mail OVH, par exemple). Il vous donne cinq informations, à saisir dans Render, service **flash-poker**, onglet **Environment**, bouton **Add Environment Variable** :
+**Sur le plan gratuit de Render, l’envoi classique (SMTP) est bloqué** : Render interdit les ports 25, 465 et 587 aux services gratuits. Le jeu envoie donc ses e-mails par l’API HTTPS de **Brevo** (gratuit jusqu’à 300 e-mails par jour), qui n’est pas concernée.
 
-| Variable | Exemple | Rôle |
+1. Créez un compte sur brevo.com.
+2. Dans Brevo, ouvrez **Domaines et expéditeurs**, puis **Domaines**, et ajoutez `flash-poker.fr`. Brevo affiche les enregistrements DNS à créer (code d’authentification, clés DKIM, DMARC).
+3. Dans OVH, **Web Cloud**, **Noms de domaine**, `flash-poker.fr`, onglet **Zone DNS**, créez chacun de ces enregistrements avec le type, le nom et la valeur indiqués par Brevo. Ne touchez pas aux entrées de messagerie existantes. Dans Brevo, cliquez sur **Authentifier** : le domaine passe à « vérifié » après quelques minutes.
+4. Dans Brevo, **SMTP et API**, onglet **Clés API**, créez une clé (il s’agit bien d’une clé d’API, pas d’une clé SMTP) et copiez-la.
+5. Dans Render, service **flash-poker**, onglet **Environment**, ajoutez ces trois variables, puis enregistrez (le service redémarre) :
+
+| Variable | Valeur | Rôle |
 |---|---|---|
-| `SMTP_HOST` | `smtp-relay.brevo.com` | Serveur d’envoi |
-| `SMTP_PORT` | `587` | Port (587 en général, 465 pour certains services) |
-| `SMTP_USER` | identifiant fourni par le service | Connexion |
-| `SMTP_PASS` | clé fournie par le service | Connexion, ne la communiquez à personne |
-| `MAIL_FROM` | `Flash Poker <no-reply@votre-domaine.fr>` | Expéditeur affiché |
+| `BREVO_API_KEY` | la clé copiée à l’étape 4 | Envoi, à ne communiquer à personne |
+| `MAIL_FROM` | `Flash Poker <no-reply@flash-poker.fr>` | Expéditeur, sur le domaine vérifié à l’étape 3 |
+| `APP_URL` | `https://flash-poker.fr` | Adresse placée dans les liens des e-mails |
 
-Enregistrez : Render redémarre le service. Les liens des e-mails pointent automatiquement vers l’adresse Render du jeu (variable `APP_URL` pour en imposer une autre, par exemple votre futur nom de domaine).
+6. Au démarrage, le journal Render affiche « E-mails activés (Brevo) ». Sur le site, le lien « Mot de passe oublié ? » apparaît sur l’écran de connexion. Faites un essai avec votre propre adresse, et regardez les courriers indésirables.
 
-**Rappel** : sur le plan gratuit, le disque est effacé à chaque mise à jour. Les comptes, l’historique et les favoris disparaissent donc à chaque redéploiement, jusqu’au passage sur le VPS OVH.
+Les services Resend (`RESEND_API_KEY`) et SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) restent pris en charge, mais le SMTP ne fonctionne que sur un hébergement qui ne bloque pas ses ports (plan payant de Render, VPS).
+
+**Rappel important** : sur le plan gratuit, le disque est effacé à chaque mise à jour. Les comptes, l’historique et les favoris disparaissent donc à chaque redéploiement, jusqu’à l’ajout d’un stockage durable. Un joueur qui a perdu son compte ne peut pas le récupérer par e-mail, puisqu’il n’existe plus.
 
 ## Mises à jour
 

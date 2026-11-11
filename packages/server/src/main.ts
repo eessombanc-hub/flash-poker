@@ -38,12 +38,12 @@ const phaseSeconds = Number(process.env.PHASE_SECONDS ?? 60);
 const testTimers = Number.isInteger(phaseSeconds) && phaseSeconds >= 15 && phaseSeconds <= 600 && phaseSeconds !== 60;
 if (testTimers) console.warn(`⚠ Minuteurs allongés à ${phaseSeconds} s (mode essai) : la règle est de 60 s.`);
 // Comptes joueurs : fichier SQLite à côté de celui des parties (ACCOUNTS_DB_PATH pour le déplacer) ; en mémoire si STORE=memory.
-// E-mails (mot de passe oublié, favori connecté) : variables SMTP_* (voir accounts/mailer.ts) ; sans elles, rien ne part.
+// E-mails (mot de passe oublié, favori connecté) : BREVO_API_KEY, RESEND_API_KEY ou SMTP_* (voir accounts/mailer.ts) ; sans eux, rien ne part.
 const accountsPath = process.env.STORE === 'memory' ? ':memory:' : (process.env.ACCOUNTS_DB_PATH ?? join(dirname(process.env.DB_PATH ?? './data/flashpoker.db'), 'comptes.db'));
 const mailer = resolveMailer(process.env);
 const accountsDb = new AccountDb(accountsPath);
 const accounts = new AccountService(accountsDb, mailer, { appUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL });
-console.log(mailer.enabled ? 'E-mails activés (SMTP)' : 'E-mails désactivés : SMTP non configuré (mot de passe oublié indisponible)');
+console.log(mailer.enabled ? `E-mails activés (${mailer.kind ?? 'SMTP'})` : 'E-mails désactivés : aucun service d’envoi configuré (mot de passe oublié indisponible)');
 const blackjack = new BlackjackService(accountsDb);
 const blackjackTables = new BlackjackTables(accountsDb, blackjack);
 const tableau = new TableauService(accountsDb, blackjack);
