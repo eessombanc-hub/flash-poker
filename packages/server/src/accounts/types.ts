@@ -36,7 +36,29 @@ export interface GameSummary {
   opponents: string[];
   winnerNickname: string;
 }
-export interface VariantStats {
+export type MasteryLevel = 'beginner' | 'initiate' | 'confirmed' | 'expert' | 'master';
+/** Seuils d'un niveau : manches jouées et rendement minimal (victoires obtenues / victoires attendues). */
+export interface MasteryStep {
+  level: MasteryLevel;
+  rounds: number;
+  skill: number;
+}
+export interface VariantProgress {
+  level: MasteryLevel;
+  /** Victoires attendues si le hasard seul décidait (somme de 1/joueurs par manche). */
+  expectedWins: number;
+  /** Victoires obtenues / attendues ; null tant qu'aucune manche n'est jouée. 1,00 = niveau du hasard. */
+  skill: number | null;
+  /** Manches gagnées d'affilée en ce moment, et record. */
+  streak: number;
+  bestStreak: number;
+  /** Dix dernières manches, la plus récente en dernier (W = gagnée, N = non gagnée). */
+  recent: ('W' | 'N')[];
+  /** Palier suivant (null au niveau maximal) et avancement vers lui, de 0 à 1. */
+  next: MasteryStep | null;
+  progress: number;
+}
+export interface VariantStats extends VariantProgress {
   variant: VariantId;
   played: number;
   won: number;

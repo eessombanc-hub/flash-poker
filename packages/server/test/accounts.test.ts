@@ -146,7 +146,7 @@ describe('comptes : parties terminées, historique, statistiques, bankroll, manc
     expect(games[0]).toMatchObject({ name: 'Mardi soir', won, netChips: won ? 200 : -200, rounds: 1, opponents: ['Invité'] });
     const stats = accounts.stats(ana.account.id);
     expect(stats).toMatchObject({ games: 1, gamesWon: won ? 1 : 0 });
-    expect(stats.variants).toEqual([{ variant: 'CLOSED_1', played: 1, won: won ? 1 : 0, points: won ? 1 : 0 }]);
+    expect(stats.variants).toMatchObject([{ variant: 'CLOSED_1', played: 1, won: won ? 1 : 0, points: won ? 1 : 0, level: 'beginner', streak: won ? 1 : 0, recent: [won ? 'W' : 'N'] }]);
     const b = accounts.bankroll(ana.account.id);
     expect(b).toMatchObject({ totalChips: won ? 200 : -200, games: 1 });
     expect(b.series[0]).toMatchObject({ name: 'Mardi soir', cumulativeChips: b.totalChips });

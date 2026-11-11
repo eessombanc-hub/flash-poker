@@ -180,8 +180,11 @@ describe('comptes joueurs dans l’interface', () => {
     expect(await screen.findByText(/Mardi soir/)).toBeTruthy();
 
     await user.click(screen.getByRole('tab', { name: /Statistiques/ }));
-    const table = await screen.findByRole('table');
-    expect(within(table).getByRole('rowheader', { name: /fermé \(1 change\)/i })).toBeTruthy();
+    const card = await screen.findByRole('heading', { level: 3, name: /fermé \(1 change\)/i });
+    const fiche = card.closest('li')!;
+    expect(within(fiche).getAllByText('Débutant').length).toBeGreaterThan(0); // une seule manche : niveau de départ
+    expect(within(fiche).getByRole('progressbar', { name: /palier suivant/i })).toBeTruthy();
+    expect(within(fiche).getByRole('list', { name: 'Dernières manches' })).toBeTruthy();
 
     await user.click(screen.getByRole('tab', { name: /Bankroll/ }));
     expect(await screen.findByRole('img', { name: /Bilan cumulé sur 1 partie/ })).toBeTruthy();

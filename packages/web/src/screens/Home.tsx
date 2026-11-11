@@ -12,7 +12,7 @@ import { useI18n } from '../i18n';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
+export function Home({ onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -58,6 +58,13 @@ export function Home({ onCreate, onJoin, onTrain, onBlackjack, onTableau, notice
           <ActionTile icon={<TrophyIcon size={58} />} title={t('home.solo.title')} text={t('home.solo.text')} onClick={onTrain} />
           <ActionTile icon={<RulesIcon size={58} />} title={t('home.rules.title')} text={t('home.rules.text')} onClick={() => setRules(true)} />
         </section>
+
+        {/* Variantes : fiches, règles et progression personnelle de chaque jeu */}
+        {onVariants && (
+          <section aria-label={t('vi.title')} className="mt-3">
+            <ActionTile icon={<CardsIcon size={58} />} title={t('home.variants.title')} text={t('home.variants.text')} onClick={onVariants} />
+          </section>
+        )}
 
         {/* Blackjack : rubrique à part, distincte des variantes de poker */}
         {onBlackjack && (

@@ -18,12 +18,14 @@ const loadAuth = () => import('./screens/Auth');
 const loadSpace = () => import('./screens/Space');
 const loadBlackjack = () => import('./screens/Blackjack');
 const loadTableau = () => import('./screens/Tableau');
+const loadVariants = () => import('./screens/Variants');
 const AuthScreen = lazy(() => loadAuth().then((m) => ({ default: m.AuthScreen })));
 const Blackjack = lazy(() => loadBlackjack().then((m) => ({ default: m.Blackjack })));
 const Tableau = lazy(() => loadTableau().then((m) => ({ default: m.Tableau })));
+const Variants = lazy(() => loadVariants().then((m) => ({ default: m.Variants })));
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 
-type Screen = 'home' | 'create' | 'join' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | { auth: AuthMode };
+type Screen = 'home' | 'create' | 'join' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -187,7 +189,7 @@ function AppContent() {
   }, [client]);
   useEffect(() => {
     // Écrans de compte préchargés en tâche de fond, une fois l'accueil affiché : ils s'ouvrent ensuite sans attente.
-    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace(), loadBlackjack(), loadTableau()]).catch(() => undefined), 1500);
+    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace(), loadBlackjack(), loadTableau(), loadVariants()]).catch(() => undefined), 1500);
     return () => clearTimeout(t);
   }, []);
 
@@ -210,6 +212,18 @@ function AppContent() {
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} />;
   else if (screen === 'tableau') content = <Tableau onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} initialVariant={tableauVariant} />;
+  else if (screen === 'variants')
+    content = (
+      <Variants
+        onBack={() => setScreen('home')}
+        onPlaySolo={(v) => {
+          setTrainVariant(v);
+          setScreen('train');
+        }}
+        onCreate={() => setScreen('create')}
+        onLogin={() => setScreen({ auth: 'login' })}
+      />
+    );
   else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
   else if (screen === 'solo')
     content = (
@@ -230,6 +244,7 @@ function AppContent() {
       <Home
         onCreate={() => setScreen('create')}
         onTrain={() => setScreen('solo')}
+        onVariants={() => setScreen('variants')}
         onBlackjack={() => setScreen('blackjack')}
         onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
         onJoin={(code) => {

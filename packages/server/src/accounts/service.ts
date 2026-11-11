@@ -7,6 +7,7 @@ import { mail, type Mailer } from './mailer';
 import { DUMMY_HASH, hashPassword, needsRehash, newToken, tokenHash, verifyPassword } from './password';
 import { maskEmail } from '../netSecurity';
 import { RateLimiter } from '../rateLimiter';
+import { variantProgress, type RoundFact } from './progress';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
@@ -320,22 +321,28 @@ export class AccountService {
     return { ...(JSON.parse(row.data as string) as FinishedGame), you: row.player_id as string, favoriteRounds: favs };
   }
 
-  /** Par variante : manches jouées, manches gagnées, points marqués. */
+  /** Par variante : manches jouées, gagnées, points marqués, et progression (niveau, série, forme récente). */
   stats(userId: string): { variants: VariantStats[]; games: number; gamesWon: number } {
-    const by = new Map<VariantId, VariantStats>();
+    const by = new Map<VariantId, { played: number; won: number; points: number; facts: RoundFact[] }>();
     const mine = this.myGames(userId);
-    for (const { game, playerId } of mine) {
+    // myGames renvoie les parties de la plus récente à la plus ancienne : on les relit dans l'ordre chronologique.
+    for (const { game, playerId } of [...mine].reverse()) {
       for (const r of game.history) {
         if (!(playerId in r.points)) continue; // pas encore assis à cette manche
-        const s = by.get(r.variant) ?? { variant: r.variant, played: 0, won: 0, points: 0 };
+        const s = by.get(r.variant) ?? { played: 0, won: 0, points: 0, facts: [] };
         s.played++;
         const winner = r.award.kind === 'POINTS' || r.award.kind === 'INSTANT_VICTORY' ? r.award.winner : null;
-        if (winner === playerId) s.won++;
+        const won = winner === playerId;
+        if (won) s.won++;
         s.points += r.points[playerId] ?? 0;
+        s.facts.push({ won, players: Object.keys(r.points).length });
         by.set(r.variant, s);
       }
     }
-    return { variants: [...by.values()].sort((a, b) => b.played - a.played), games: mine.length, gamesWon: mine.filter((g) => g.won).length };
+    const variants: VariantStats[] = [...by.entries()]
+      .map(([variant, s]) => ({ variant, played: s.played, won: s.won, points: s.points, ...variantProgress(s.facts) }))
+      .sort((a, b) => b.played - a.played);
+    return { variants, games: mine.length, gamesWon: mine.filter((g) => g.won).length };
   }
 
   /** Bilan des parties : gains moins mises, partie après partie (cagnotte virtuelle, assurances comprises). */

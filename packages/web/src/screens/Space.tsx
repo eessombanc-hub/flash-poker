@@ -7,6 +7,7 @@ import { formatChips, formatSignedChips } from '../lib/format';
 import { variantName } from '../lib/labels';
 import type { AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats, Wallet } from '../lib/types';
 import { RoundList } from './Overlays';
+import { VariantProgress } from '../components/VariantProgress';
 import { currentI18n, locale, tr, useI18n } from '../i18n';
 import { errorText } from '../lib/tbText';
 
@@ -399,7 +400,7 @@ function StatsTab() {
   const best = data?.variants.reduce<VariantStats | null>((b, v) => (v.played >= 3 && (!b || v.won / v.played > b.won / b.played) ? v : b), null);
   return (
     <div>
-      <H2>{t('space.statistiques_par_variante')}</H2>
+      <H2>{t('vi.progression_title')}</H2>
       {data === null && !error ? (
         <Loading />
       ) : (
@@ -412,38 +413,15 @@ function StatsTab() {
                 <Kpi label={t('space.manches_jouees')} value={String(data.variants.reduce((a, v) => a + v.played, 0))} />
                 <Kpi label={t('space.meilleure_variante')} value={best ? variantName(best.variant) : '—'} hint={best ? undefined : t('space.des_3_manches')} />
               </dl>
-              <div className="mt-5 overflow-x-auto">
-                <table className="w-full min-w-[28rem] text-sm">
-                  <caption className="sr-only">{t('space.manches_jouees_gagnees')}</caption>
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-wider text-ivory-300/70">
-                      <th className="py-2 font-medium">{t('space.variante')}</th>
-                      <th className="py-2 text-right font-medium">{t('space.manches')}</th>
-                      <th className="py-2 text-right font-medium">{t('space.gagnees')}</th>
-                      <th className="py-2 text-right font-medium">{t('space.reussite')}</th>
-                      <th className="py-2 text-right font-medium">{t('space.points')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.variants.map((v) => (
-                      <tr key={v.variant} className="border-t border-ivory-100/10">
-                        <th scope="row" className="py-2 text-left font-semibold text-ivory-50">{variantName(v.variant)}</th>
-                        <td className="py-2 text-right">{v.played}</td>
-                        <td className="py-2 text-right">{v.won}</td>
-                        <td className="py-2 text-right">
-                          <span className="inline-flex items-center gap-2">
-                            <span className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-ink-600 sm:inline-block" aria-hidden="true">
-                              <span className="block h-full rounded-full bg-gradient-to-r from-gold-500 to-gold-300" style={{ width: `${v.played ? (v.won / v.played) * 100 : 0}%` }} />
-                            </span>
-                            {pct(v.won, v.played)}
-                          </span>
-                        </td>
-                        <td className="py-2 text-right">{v.points}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ul className="mt-5 grid gap-3 md:grid-cols-2" aria-label={t('space.manches_jouees_gagnees')}>
+                {data.variants.map((v) => (
+                  <li key={v.variant} className="rounded-2xl border border-ivory-100/10 bg-ink-900/50 p-4">
+                    <h3 className="mb-3 font-display text-xl text-ivory-50">{variantName(v.variant)}</h3>
+                    <VariantProgress stats={v} />
+                    <p className="mt-3 text-xs text-ivory-300/65">{tp('vi.pts', v.points)}</p>
+                  </li>
+                ))}
+              </ul>
               <p className="mt-3 text-xs text-ivory-300/65">{t('space.une_manche_compte')}</p>
             </>
           )}
