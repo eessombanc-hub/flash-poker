@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { VariantId } from '@poker/engine';
 import { z } from 'zod';
 import { ServerError } from '../errors';
+import { AVATAR_IMAGE_ID, avatarImageId, validAvatarJpeg } from './avatarImage';
 import type { AccountDb } from './db';
 import { mail, type Mailer } from './mailer';
 import { DUMMY_HASH, hashPassword, needsRehash, newToken, tokenHash, verifyPassword } from './password';
@@ -94,7 +95,7 @@ export class AccountService {
     const id = `u_${randomBytes(8).toString('hex')}`;
     this.db
       .prepare('INSERT INTO users (id, nickname, email, pass_hash, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(id, data.nickname, data.email, await hashPassword(data.password), data.avatar ?? null, this.now());
+      .run(id, data.nickname, data.email, await hashPassword(data.password), data.avatar && AVATAR_IMAGE_ID.test(data.avatar) ? null : (data.avatar ?? null), this.now());
     if (data.invite) this.acceptInvite(data.invite, id, data.email);
     return { token: this.openSession(id), account: this.account(id)! };
   }
@@ -156,9 +157,42 @@ export class AccountService {
       if (other && other.id !== userId) throw new ServerError('NICKNAME_TAKEN', 'Ce pseudo est déjà utilisé par un autre compte');
       this.db.prepare('UPDATE users SET nickname = ? WHERE id = ?').run(data.nickname, userId);
     }
-    if (data.avatar !== undefined) this.db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(data.avatar, userId);
+    if (data.avatar !== undefined) {
+      // Une photo ne peut être choisie que si elle a été envoyée par ce compte ; tout autre choix supprime l'ancienne photo.
+      if (data.avatar && AVATAR_IMAGE_ID.test(data.avatar) && !this.db.prepare('SELECT 1 FROM avatar_images WHERE id = ? AND user_id = ?').get(data.avatar, userId)) {
+        throw new ServerError('BAD_REQUEST', 'Cette photo n’existe pas. Envoyez-la de nouveau.', 'AVATAR_IMAGE');
+      }
+      this.db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(data.avatar, userId);
+      this.db.prepare('DELETE FROM avatar_images WHERE user_id = ? AND id IS NOT ?').run(userId, data.avatar);
+    }
     if (data.notifyEmail !== undefined) this.db.prepare('UPDATE users SET notify_email = ? WHERE id = ?').run(data.notifyEmail ? 1 : 0, userId);
     return this.account(userId)!;
+  }
+
+  /** Enregistre la photo de profil (JPEG déjà recadré par le navigateur) et la choisit comme avatar. */
+  setAvatarImage(userId: string, data: unknown): AccountPrivate {
+    if (!(data instanceof Uint8Array) || !validAvatarJpeg(data)) {
+      throw new ServerError('BAD_REQUEST', 'Image refusée. Envoyez un JPEG carré de 32 à 256 pixels, de 48 Ko au plus.', 'AVATAR_IMAGE');
+    }
+    const id = avatarImageId(userId, data);
+    this.db.exec('BEGIN');
+    try {
+      this.db.prepare('INSERT OR REPLACE INTO avatar_images (id, user_id, data, created_at) VALUES (?, ?, ?, ?)').run(id, userId, data, this.now());
+      this.db.prepare('DELETE FROM avatar_images WHERE user_id = ? AND id != ?').run(userId, id);
+      this.db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(id, userId);
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+    return this.account(userId)!;
+  }
+
+  /** Octets d'une photo de profil, pour l'afficher aux autres joueurs. */
+  avatarImage(id: string): Uint8Array | null {
+    if (!AVATAR_IMAGE_ID.test(id)) return null;
+    const r = this.db.prepare('SELECT data FROM avatar_images WHERE id = ?').get(id) as { data: Uint8Array } | undefined;
+    return r ? r.data : null;
   }
 
   async changeEmail(userId: string, input: unknown): Promise<AccountPrivate> {
@@ -203,6 +237,7 @@ export class AccountService {
       favoriteRounds: rows('SELECT game_id, round_no, created_at FROM fav_rounds WHERE user_id = ?'),
       invitations: rows('SELECT code, email, created_at, accepted_at FROM invites WHERE inviter_id = ?'),
       walletRefills: rows('SELECT at, amount FROM wallet_refills WHERE user_id = ?'),
+      avatarImage: ((r) => (r ? { id: account.avatar, mime: 'image/jpeg', base64: Buffer.from(r).toString('base64') } : null))(account.avatar ? this.avatarImage(account.avatar) : null),
       ...owned,
     };
   }

@@ -232,7 +232,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   if (opts.accounts && opts.tableau) registerTableauRoutes(app, opts.tableau, opts.accounts, { now });
   if (opts.accounts && opts.blackjack) registerBlackjackRoutes(app, opts.blackjack, opts.accounts, { now, tables: opts.blackjackTables });
 
-  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
+  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/avatars', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
 
   if (opts.webDist && existsSync(opts.webDist)) {
     // Fichiers avec hash dans leur nom (assets Vite) : cache long ; `index.html` : jamais mis en cache (sert

@@ -7,9 +7,11 @@ import { AccountClient } from './lib/account';
 import { AccountProvider, ClientProvider } from './lib/context';
 import { LocalSessionStore } from './lib/session';
 import { installErrorReporting } from './lib/errorReport';
+import { setAvatarBase } from './lib/avatarImage';
 
 // Même origine en production (reverse proxy) ; en développement, Vite relaie /rooms et /socket.io vers le serveur.
 const baseUrl = import.meta.env.VITE_SERVER_URL ?? '';
+setAvatarBase(baseUrl);
 const account = new AccountClient({ baseUrl });
 const client = new GameClient({ baseUrl, storage: new LocalSessionStore(), accountToken: () => account.token });
 

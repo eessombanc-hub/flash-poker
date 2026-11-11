@@ -148,6 +148,30 @@ export class AccountClient {
     this.store.setState({ account });
     return account;
   }
+  /** Envoie la photo de profil (JPEG déjà recadré) : elle devient l'avatar du compte. */
+  async uploadAvatar(jpeg: Blob): Promise<AccountPrivate> {
+    const headers: Record<string, string> = { 'content-type': 'image/jpeg' };
+    if (this.token) headers.authorization = `Bearer ${this.token}`;
+    let res: Response;
+    try {
+      res = await (this.opts.fetchFn ?? fetch)(`${this.opts.baseUrl ?? ''}/me/avatar-image`, { method: 'POST', headers, body: jpeg });
+    } catch {
+      throw new ApiError('NETWORK', 'Impossible de joindre le serveur. Vérifiez votre connexion.');
+    }
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      /* corps vide */
+    }
+    if (!res.ok) {
+      const e = (data as { error?: { code?: string; message?: string; ruleCode?: string } } | null)?.error;
+      throw new ApiError(e?.code ?? 'HTTP', e?.message ?? `Erreur serveur (${res.status})`, e?.ruleCode);
+    }
+    const account = data as AccountPrivate;
+    this.store.setState({ account });
+    return account;
+  }
   async changeEmail(email: string, password: string): Promise<AccountPrivate> {
     const account = await this.request<AccountPrivate>('POST', '/me/email', { email, password });
     this.store.setState({ account });

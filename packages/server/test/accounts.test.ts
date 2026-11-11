@@ -348,3 +348,13 @@ describe('comptes : routes HTTP et socket de présence', () => {
     expect(await new Promise((resolve) => bad.on('fatal', resolve))).toMatchObject({ code: 'UNAUTHORIZED' });
   });
 });
+
+describe('Avatar personnalisé', () => {
+  it('le profil et l’inscription acceptent un code d’avatar composé, et refusent une URL', async () => {
+    const { profileSchema, registerSchema } = await import('../src/accounts/service');
+    expect(profileSchema.parse({ avatar: 'm01234567' }).avatar).toBe('m01234567');
+    expect(registerSchema.parse({ nickname: 'Zoé', email: 'zoe@example.com', password: 'Mot2passe-solide', avatar: 'm76543210' }).avatar).toBe('m76543210');
+    expect(() => profileSchema.parse({ avatar: 'https://exemple.fr/a.png' })).toThrow();
+    expect(() => profileSchema.parse({ avatar: 'm' + '0'.repeat(40) })).toThrow();
+  });
+});

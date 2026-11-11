@@ -1,8 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { clockText, initials } from '../lib/format';
 import type { Tone } from '../lib/events';
 import { useI18n } from '../i18n';
+import { DEFAULT_SPEC, encodeAvatar, parseAvatar } from '../lib/avatarSpec';
+import { avatarImageUrl, isImageAvatar } from '../lib/avatarImage';
+import { AvatarEditor } from './AvatarEditor';
+import { AvatarFace } from './AvatarFace';
 
 // ---------- Boutons ----------
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -100,7 +104,27 @@ function hash(s: string): number {
   return h;
 }
 
+/** Photo de profil ; si elle ne se charge pas (serveur injoignable, photo supprimée), on retombe sur un préréglage. */
+function AvatarPhoto({ nickname, id, size, dim }: { nickname: string; id: string; size: number; dim: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <Avatar nickname={nickname} avatar={null} size={size} dim={dim} />;
+  return (
+    <span aria-hidden="true" className={`inline-flex shrink-0 overflow-hidden rounded-full ring-2 ring-gold-500/50 ${dim ? 'opacity-50 grayscale' : ''}`} style={{ width: size, height: size }}>
+      <img src={avatarImageUrl(id)} alt="" width={size} height={size} decoding="async" draggable={false} onError={() => setFailed(true)} style={{ width: size, height: size, objectFit: 'cover' }} />
+    </span>
+  );
+}
+
 export function Avatar({ nickname, avatar, size = 40, dim = false }: { nickname: string; avatar?: string | null; size?: number; dim?: boolean }) {
+  if (isImageAvatar(avatar)) return <AvatarPhoto key={avatar} nickname={nickname} id={avatar} size={size} dim={dim} />;
+  const custom = parseAvatar(avatar);
+  if (custom) {
+    return (
+      <span aria-hidden="true" className={`inline-flex shrink-0 overflow-hidden rounded-full ring-2 ring-gold-500/50 ${dim ? 'opacity-50 grayscale' : ''}`} style={{ width: size, height: size }}>
+        <AvatarFace spec={custom} size={size} />
+      </span>
+    );
+  }
   const key = avatar && AVATARS[avatar] ? avatar : AVATAR_IDS[hash(nickname) % AVATAR_IDS.length]!;
   const [a, b] = AVATARS[key]!;
   const dark = key === 'onyx' || key === 'saphir' || key === 'rubis' || key === 'emeraude' || key === 'ardoise';
@@ -116,22 +140,51 @@ export function Avatar({ nickname, avatar, size = 40, dim = false }: { nickname:
 }
 
 export function AvatarPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { t, tp } = useI18n();
+  const { t } = useI18n();
+  const custom = parseAvatar(value) !== null;
+  const [editing, setEditing] = useState(false);
   return (
-    <div role="radiogroup" aria-label={t('ui.avatar')} className="flex flex-wrap gap-2">
-      {AVATAR_IDS.map((id) => (
+    <div className="space-y-3">
+      <div role="radiogroup" aria-label={t('ui.avatar')} className="flex flex-wrap gap-2">
+        {AVATAR_IDS.map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={value === id}
+            aria-label={t('ui.avatar2', { id })}
+            onClick={() => onChange(id)}
+            className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-1 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${value === id ? 'ring-2 ring-gold-400' : 'opacity-70 hover:opacity-100'}`}
+          >
+            <Avatar nickname="?" avatar={id} size={38} />
+          </button>
+        ))}
+        {custom && (
+          <button
+            type="button"
+            role="radio"
+            aria-checked
+            aria-label={t('av.mine')}
+            onClick={() => setEditing(true)}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-1 ring-2 ring-gold-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400"
+          >
+            <Avatar nickname="?" avatar={value} size={38} />
+          </button>
+        )}
+      </div>
+      {!editing && (
         <button
-          key={id}
           type="button"
-          role="radio"
-          aria-checked={value === id}
-          aria-label={t('ui.avatar2', { id })}
-          onClick={() => onChange(id)}
-          className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-1 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400 ${value === id ? 'ring-2 ring-gold-400' : 'opacity-70 hover:opacity-100'}`}
+          onClick={() => {
+            if (!custom) onChange(encodeAvatar(DEFAULT_SPEC));
+            setEditing(true);
+          }}
+          className="min-h-[44px] rounded-xl border border-gold-500/60 px-4 text-sm font-semibold text-gold-300 transition hover:bg-gold-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400"
         >
-          <Avatar nickname="?" avatar={id} size={38} />
+          {custom ? t('av.edit') : t('av.create')}
         </button>
-      ))}
+      )}
+      {editing && <AvatarEditor value={custom ? value : encodeAvatar(DEFAULT_SPEC)} onChange={onChange} onClose={() => setEditing(false)} />}
     </div>
   );
 }

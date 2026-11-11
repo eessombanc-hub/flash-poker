@@ -24,6 +24,7 @@ import {
   type RoomSummary,
   type RoomView,
 } from './protocol';
+import { AVATAR_IMAGE_ID } from './accounts/avatarImage';
 import type { FinishedGame } from './accounts/service';
 import type { Scheduler, Timer } from './scheduler';
 import { InMemoryRoomStore, type RoomConfig, type RoomSnapshot, type RoomStore } from './store';
@@ -758,7 +759,8 @@ export class RoomManager {
     if (this.deps.accounts?.isReservedNickname(nickname)) {
       throw new ServerError('NICKNAME_RESERVED', 'Ce pseudo appartient à un joueur inscrit. Connectez-vous ou choisissez-en un autre');
     }
-    return { nickname, avatar, accountId: null };
+    // Un invité ne peut pas afficher la photo d'un compte : seuls les préréglages lui sont ouverts.
+    return { nickname, avatar: avatar !== null && AVATAR_IMAGE_ID.test(avatar) ? null : avatar, accountId: null };
   }
   private newPlayer(who: { nickname: string; avatar: string | null; accountId: string | null }, state: PlayerState, assistanceApproved: boolean | null): { rec: PlayerRec; token: string } {
     const token = this.deps.tokenFactory ? this.deps.tokenFactory() : randomBytes(24).toString('hex');

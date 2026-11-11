@@ -202,7 +202,7 @@ Les commandes d'échéance (`TIMEOUT`…), d'arrivée et d'exclusion **n'existen
 - **Hygiène** : `sweep()` supprime les rooms périmées (lobby 2 h, terminées 1 h) et abandonne une partie sans aucun joueur
   connecté depuis 30 min (sécurité opérationnelle, configurable — pas une règle du jeu).
 - **Sécurité** : jetons aléatoires (192 bits) hachés ; validation Zod de toute entrée ; corps HTTP et messages WebSocket
-  limités à 10 ko ; limitation de débit par IP (création/arrivée) et par connexion ; pseudo restreint, avatar = préréglage.
+  limités à 10 ko ; limitation de débit par IP (création/arrivée) et par connexion ; pseudo restreint. Avatar : préréglage, visage composé (simple code de neuf caractères, dessiné par chaque navigateur) ou photo de profil réservée aux comptes. La photo est recadrée et réduite dans le navigateur (JPEG de 128 pixels), puis le serveur contrôle signature, poids (48 Ko) et dimensions avant de la servir par une adresse non devinable ; elle est supprimée avec le compte.
 
 ## Règles confirmées (résumé des décisions)
 

@@ -143,6 +143,13 @@ export class AccountDb {
         notify_email INTEGER NOT NULL DEFAULT 1,
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS avatar_images (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        data BLOB NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS avatar_images_by_user ON avatar_images (user_id);
       CREATE TABLE IF NOT EXISTS sessions (
         token_hash TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

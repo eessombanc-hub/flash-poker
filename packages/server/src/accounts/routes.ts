@@ -3,6 +3,7 @@ import type { Server as IOServer } from 'socket.io';
 import { z } from 'zod';
 import { ServerError } from '../errors';
 import { RateLimiter } from '../rateLimiter';
+import { AVATAR_IMAGE_MAX_BYTES } from './avatarImage';
 import type { AccountPrivate, AccountService } from './service';
 
 export interface AccountRouteOptions {
@@ -78,6 +79,28 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
   // ---------- Mon espace ----------
   app.get('/me', async (req) => me(req));
   app.patch('/me', async (req) => accounts.updateProfile(me(req).id, req.body));
+  // ---------- Photo de profil ----------
+  // Le navigateur envoie un JPEG déjà recadré (128 × 128). Corps binaire borné, 5 envois par quart d'heure et par compte.
+  const uploads = new RateLimiter(5, 15 * 60_000, now);
+  app.addContentTypeParser('image/jpeg', { parseAs: 'buffer', bodyLimit: AVATAR_IMAGE_MAX_BYTES }, (_req, body, done) => done(null, body));
+  app.post('/me/avatar-image', { bodyLimit: AVATAR_IMAGE_MAX_BYTES }, async (req) => {
+    const account = me(req);
+    if (!uploads.hit(account.id)) throw new ServerError('RATE_LIMITED', 'Trop d’envois de photo, réessayez dans quelques minutes');
+    return accounts.setAvatarImage(account.id, req.body);
+  });
+  // Lecture publique : les autres joueurs voient la photo sans jeton. L'adresse contient un identifiant qui ne se devine pas
+  // et le contenu ne change jamais pour une adresse donnée, d'où le cache long.
+  app.get<{ Params: { file: string } }>('/avatars/:file', async (req, reply) => {
+    const m = /^(i[0-9a-f]{16})\.jpg$/.exec(req.params.file);
+    const data = m ? accounts.avatarImage(m[1]!) : null;
+    if (!data) throw new ServerError('NOT_FOUND', 'Photo introuvable');
+    return reply
+      .header('Content-Type', 'image/jpeg')
+      .header('Cache-Control', 'public, max-age=31536000, immutable')
+      .header('Cross-Origin-Resource-Policy', 'cross-origin')
+      .send(Buffer.from(data));
+  });
+
   app.post('/me/email', async (req) => {
     const account = me(req);
     guard('email', req.ip);

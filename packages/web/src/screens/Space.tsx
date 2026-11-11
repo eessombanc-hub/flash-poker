@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { BellIcon, ChipsIcon, JoinIcon, ProfileIcon, StarIcon, StatsIcon, TrophyIcon } from '../components/Icons3D';
+import { AvatarUpload } from '../components/AvatarUpload';
 import { Avatar, AvatarPicker, Badge, Button, Eyebrow, Field, inputClass, Panel, Segmented } from '../components/ui';
 import { ApiError } from '../lib/api';
 import { useAccount, useAccountClient } from '../lib/context';
@@ -214,6 +215,19 @@ function ProfileTab() {
         </Field>
         <Field label={t('space.avatar')}>
           <AvatarPicker value={avatar} onChange={setAvatar} />
+        </Field>
+        <Field label={t('avu.label')}>
+          <AvatarUpload
+            current={avatar}
+            upload={async (jpeg) => {
+              const updated = await account.uploadAvatar(jpeg);
+              setAvatar(updated.avatar ?? 'or');
+            }}
+            onRemove={async () => {
+              await account.updateProfile({ avatar: 'or' });
+              setAvatar('or');
+            }}
+          />
         </Field>
         {state && <Notice tone={state.tone}>{state.text}</Notice>}
         <Button type="submit" disabled={nickname.trim().length < 2}>
