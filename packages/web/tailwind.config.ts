@@ -25,7 +25,7 @@ export default {
         sans: ['system-ui', '-apple-system', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 1px 0 rgba(255,255,255,.6) inset, 0 6px 14px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.6)',
+        card: '0 1px 0 rgba(255,255,255,.6) inset, 0 3px 6px rgba(0,0,0,.45)',
         gold: '0 0 0 2px #c9a25a, 0 10px 22px rgba(201,162,90,.28)',
         panel: '0 18px 50px rgba(0,0,0,.45)',
       },
@@ -39,7 +39,7 @@ export default {
       },
       animation: {
         pulseRing: 'pulseRing 1s ease-in-out infinite',
-        winGlow: 'winGlow 1.8s ease-in-out infinite',
+        winGlow: 'winGlow 1.8s ease-in-out 3',
       },
     },
   },

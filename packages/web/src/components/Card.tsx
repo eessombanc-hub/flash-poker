@@ -176,16 +176,20 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
       {code ? <Face code={code} fourColor={fourColor} /> : <Back id={`back-${uid}`} back={back} />}
     </svg>
   );
+  // Carte atténuée : voile sombre opaque plutôt que transparence, pour que les cartes superposées ne se voient pas à travers.
+  const veil = dimmed ? <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-[9px] bg-black/45" /> : null;
   const common = {
     initial: reduce ? false : flip ? { rotateY: 90, opacity: 0.4 } : { y: -22, opacity: 0, scale: 0.94, rotate: dealIndex === undefined ? 0 : ((dealIndex % 3) - 1) * 2.5 },
-    animate: { rotateY: 0, rotate: 0, scale: 1, y: selected ? (reduce ? 0 : -14) : 0, opacity: dimmed ? 0.45 : 1 },
+    animate: { ...(flip ? { rotateY: 0 } : {}), rotate: 0, scale: 1, y: selected ? (reduce ? 0 : -14) : 0, opacity: 1 },
     // Ressort plutôt que tracé fixe : la carte se pose avec un très léger rebond, et la sélection répond sans à-coup.
     transition: reduce
       ? { duration: 0 }
       : flip
         ? { duration: 0.34, ease: [0.22, 1, 0.36, 1] as [number, number, number, number], delay: dealDelay(dealIndex, false, true) }
         : { type: 'spring' as const, stiffness: 330, damping: 26, mass: 0.9, delay: dealDelay(dealIndex, false, false), opacity: { duration: 0.2 } },
-    style: { transformPerspective: 700 },
+    // La perspective 3D n'est utile qu'au retournement : sans elle, une carte ne crée pas de couche graphique 3D
+    // (des dizaines de couches saturent la mémoire graphique de certains téléphones et abîment l'image).
+    style: flip ? { transformPerspective: 700 } : undefined,
     className: `relative inline-block shrink-0 rounded-[9px] ${WIDTH[size]} ${ring} ${className}`,
   };
   if (onClick) {
@@ -203,10 +207,16 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
             rang dessiné en double (coins, centre) n'entre pas en conflit avec le nom (WCAG 2.5.3). */}
         <span className="sr-only">{hint ? `${label}, ${hint}` : label}</span>
         {inner}
+        {veil}
       </motion.button>
     );
   }
-  return <motion.span {...common}>{inner}</motion.span>;
+  return (
+    <motion.span {...common}>
+      {inner}
+      {veil}
+    </motion.span>
+  );
 }
 
 /** Emplacement de plateau : carte, ou gabarit en pointillés tant qu'elle n'est pas dévoilée. */

@@ -26,7 +26,7 @@ export function Button({ variant = 'primary', className = '', ...props }: Button
 // ---------- Surfaces ----------
 export function Panel({ children, className = '', as: Tag = 'section', ...rest }: { children: ReactNode; className?: string; as?: 'section' | 'div' | 'aside' } & React.HTMLAttributes<HTMLElement>) {
   return (
-    <Tag {...rest} className={`rounded-[28px] border border-ivory-100/10 bg-ink-800/90 shadow-panel backdrop-blur ${className}`}>
+    <Tag {...rest} className={`rounded-[28px] border border-ivory-100/10 bg-ink-800/95 shadow-panel ${className}`}>
       {children}
     </Tag>
   );
