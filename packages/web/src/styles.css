@@ -123,3 +123,8 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Partie du Tableau sur téléphone : le sélecteur de langue passe sur la ligne du bouton Retour pour gagner de la hauteur. */
+@media (max-width: 1023px) {
+  body[data-tb-game] .topbar-lang { position: absolute; right: 0.5rem; top: 0.4rem; z-index: 20; padding: 0; }
+}

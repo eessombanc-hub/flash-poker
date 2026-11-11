@@ -151,7 +151,7 @@ export function App() {
 /** Bandeau fin en haut de page : choix de la langue (masqué à la table de poker en direct, pour ne pas gêner le jeu). */
 function TopBar() {
   return (
-    <div className="mx-auto flex max-w-6xl justify-end px-5 pt-3">
+    <div className="topbar-lang mx-auto flex max-w-6xl justify-end px-5 pt-3">
       <LanguageSelect />
     </div>
   );

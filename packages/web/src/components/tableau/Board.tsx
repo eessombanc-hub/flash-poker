@@ -10,7 +10,7 @@ type CardLook = { fourColor: boolean; back: 'losange' | 'rayures' | 'etoile' };
 
 /**
  * Une colonne du Tableau : cinq emplacements empilés, chaque carte laissant voir son coin (rang et couleur).
- * La largeur des cartes vient de --w, qui s'adapte à l'écran (cinq colonnes tiennent sur un téléphone de 320 px).
+ * La largeur des cartes vient de --w, qui s'adapte à l'écran : sur téléphone, elle dépend aussi de la hauteur disponible pour que les deux plateaux, la carte à jouer et la main tiennent ensemble.
  */
 export function ColumnStack({
   cards, label, index, side, fresh, selectable, pending, onPick, forming, look, owner,
@@ -36,8 +36,7 @@ export function ColumnStack({
   const name = `${owner}, ${t('tb.board.col')} ${ROMAN[index]}. ${tp('tb.board.cardsOf5', cards.length)}. ${label}`;
   const body = (
     <span
-      className={`relative flex flex-col items-center rounded-xl px-[2px] pb-1 pt-1 transition ${full ? 'bg-gold-500/10 ring-1 ring-gold-500/40' : 'bg-ink-950/25'} ${selectable ? 'ring-2 ring-gold-300/80' : ''} ${pending ? 'ring-[3px] ring-gold-200 bg-gold-500/20' : ''}`}
-      style={{ ['--w' as string]: 'min(15.5vw, 4.3rem)' }}
+      className={`relative flex flex-col items-center rounded-xl px-[2px] pb-1 pt-1 transition [--w:min(15.5vw,4.3rem,max(1.95rem,calc((100dvh_-_29rem)/6.56)))] lg:[--w:4.3rem] ${full ? 'bg-gold-500/10 ring-1 ring-gold-500/40' : 'bg-ink-950/25'} ${selectable ? 'ring-2 ring-gold-300/80' : ''} ${pending ? 'ring-[3px] ring-gold-200 bg-gold-500/20' : ''}`}
     >
       {slots.map((code, i) => {
         const isFresh = fresh && i === cards.length - 1;
@@ -64,7 +63,7 @@ export function ColumnStack({
     </span>
   );
   const labelEl = (
-    <span className={`mt-1 block min-h-[2.1rem] w-full px-0.5 text-center text-[10.5px] leading-tight sm:text-xs ${full ? 'font-semibold text-gold-200' : 'text-ivory-300/80'}`}>{label}</span>
+    <span className={`mt-1 block min-h-[2.1rem] w-full px-0.5 text-center text-[10.5px] leading-tight max-lg:mt-0.5 max-lg:min-h-[1.1rem] max-lg:text-[8.5px] max-lg:tracking-tight sm:text-xs ${full ? 'font-semibold text-gold-200' : 'text-ivory-300/80'}`}>{label}</span>
   );
   const inner = (
     <>

@@ -42,16 +42,22 @@ export function Tableau({ onBack, onLogin, initialCode, initialVariant = 'classi
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
   const [game, setGame] = useState<TbGameDto | null>(null);
+  const inGame = game !== null;
+  useEffect(() => {
+    if (!inGame) return;
+    document.body.dataset.tbGame = '1';
+    return () => { delete document.body.dataset.tbGame; };
+  }, [inGame]);
   return (
     <div className="min-h-[calc(100dvh-3rem)]">
-      <header className={`mx-auto flex items-center justify-between px-4 py-4 ${game ? 'max-w-5xl' : 'max-w-3xl'}`}>
+      <header className={`mx-auto flex items-center justify-between px-4 py-4 ${game ? 'max-w-5xl max-lg:py-1.5' : 'max-w-3xl'}`}>
         <button type="button" onClick={game ? () => setGame(null) : onBack} className="rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
           {game ? t('tb.back.menu') : t('common.backHome')}
         </button>
-        <p className="font-display text-xl tracking-wide text-ivory-50">{t('tb.title')}</p>
+        <p className={`font-display text-xl tracking-wide text-ivory-50 ${game ? 'max-lg:hidden' : ''}`}>{t('tb.title')}</p>
         <span className="w-16" aria-hidden="true" />
       </header>
-      <main className={`mx-auto px-4 pb-12 ${game ? 'max-w-5xl' : 'max-w-3xl'}`}>
+      <main className={`mx-auto px-4 pb-12 ${game ? 'max-w-5xl max-lg:px-3 max-lg:pb-3' : 'max-w-3xl'}`}>
         {!client || !ready ? (
           <p className="py-10 text-center text-sm text-ivory-300/70">{client ? t('common.loading') : t('tb.noServer')}</p>
         ) : game ? (
@@ -545,6 +551,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
   }
 
   const finished = dto.status === 'finished';
+  const deadlineSize = typeof window !== 'undefined' && window.innerWidth < 1024 ? 40 : 56;
   const look = { fourColor, back: cardBack };
   const opponent = dto.players[opp];
   const mine = dto.players[you];
@@ -557,7 +564,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
 
   return (
     <FitToScreen enabled={!finished}>
-    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-x-5">
+    <div className="flex flex-col gap-1.5 lg:gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:gap-x-5">
       <p className="sr-only" role="status" aria-live="polite">
         {announce(dto, t)}
       </p>
@@ -572,56 +579,61 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       </div>
 
       {/* Bande centrale (à droite des deux plateaux sur grand écran) */}
-      <div className="rounded-2xl border border-gold-500/25 bg-felt-900/70 p-3 lg:col-start-2 lg:row-span-3 lg:row-start-1">
-        <VerdictRow verdicts={dto.verdicts} you={you} final={finished} />
+      <div className="rounded-2xl border border-gold-500/25 bg-felt-900/70 p-3 max-lg:p-1.5 lg:col-start-2 lg:row-span-3 lg:row-start-1">
+        <div className={!finished && (dto.verdicts ?? []).every((v) => v == null) ? 'max-lg:hidden' : ''}>
+          <VerdictRow verdicts={dto.verdicts} you={you} final={finished} />
+        </div>
         {!finished ? (
-          <div className="mt-3 flex items-center justify-center gap-4">
-            {dto.deadline !== null && myTurn ? <CountdownRing secondsLeft={left} total={dto.turnMs / 1000} label={t('tb.timeLeft')} /> : <span className="w-14" aria-hidden="true" />}
-            <div className="flex min-h-[7.2rem] min-w-[5.5rem] items-center justify-center" data-testid="tb-drawn">
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-3 max-lg:mt-0 max-lg:flex-nowrap max-lg:gap-x-2.5">
+            {dto.deadline !== null && myTurn ? <CountdownRing secondsLeft={left} total={dto.turnMs / 1000} label={t('tb.timeLeft')} size={deadlineSize} /> : <span className="w-14 max-lg:w-10" aria-hidden="true" />}
+            <div className="flex min-h-[7.2rem] min-w-[5.5rem] items-center justify-center max-lg:min-h-0 max-lg:min-w-0" data-testid="tb-drawn">
               {myTurn && view.yourCard ? (
-                <PlayingCard code={view.yourCard} size="lg" fourColor={fourColor} highlight selected={pending !== null} hint={t('tb.drawnCard')} />
+                <PlayingCard code={view.yourCard} size="lg" fourColor={fourColor} highlight selected={pending !== null} hint={t('tb.drawnCard')} className="max-lg:!w-[3.1rem]" />
               ) : (
-                <PlayingCard code={null} size="lg" back={cardBack} dimmed />
+                <PlayingCard code={null} size="lg" back={cardBack} dimmed className="max-lg:!w-[3.1rem]" />
               )}
             </div>
-            <div className="w-28 text-sm leading-snug text-ivory-100" aria-live="polite">
-              {dto.paused ? (
-                <span className="text-amber-200">{t('tb.paused')}</span>
-              ) : myTurn ? (
-                <span className="font-semibold text-gold-200">{hand5 ? t('tb.turn.hand5') : confirm ? t('tb.turn.confirm') : t('tb.turn.tap')}</span>
-              ) : (
-                <span className="text-ivory-300">{opponent?.kind === 'cpu' ? t('tb.thinks', { name: oppName }) : t('tb.oppPlays')}</span>
+            <div className="flex w-28 flex-col items-center gap-2 max-lg:w-auto max-lg:min-w-0 max-lg:flex-1 max-lg:items-start max-lg:gap-1 lg:contents">
+              <div className="w-28 text-sm leading-snug text-ivory-100 max-lg:w-auto max-lg:text-[13px] max-lg:leading-tight" aria-live="polite">
+                {dto.paused ? (
+                  <span className="text-amber-200">{t('tb.paused')}</span>
+                ) : myTurn ? (
+                  <span className="font-semibold text-gold-200">{hand5 ? t('tb.turn.hand5') : confirm ? t('tb.turn.confirm') : t('tb.turn.tap')}</span>
+                ) : (
+                  <span className="text-ivory-300">{opponent?.kind === 'cpu' ? t('tb.thinks', { name: oppName }) : t('tb.oppPlays')}</span>
+                )}
+              </div>
+              {myTurn && (
+                <div className="flex flex-wrap items-center justify-center gap-2 max-lg:justify-start max-lg:gap-1.5 lg:mt-0 lg:basis-full">
+                  {pending !== null && (
+                    <Button disabled={busy} onClick={() => void place(pending)} className="max-lg:!min-h-10 max-lg:!px-3 max-lg:!py-1 max-lg:!text-sm">
+                      {t('tb.placeIn', { c: ROMAN[pending]! })}
+                    </Button>
+                  )}
+                  {dto.mode === 'training' && (
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      className="max-lg:!min-h-10 max-lg:!px-3 max-lg:!py-1 max-lg:!text-sm"
+                      onClick={() =>
+                        void client
+                          .tbAdvice(dto.code)
+                          .then((a) => {
+                            setAdvice({ col: a.col, card: a.card, kind: a.kind, after: a.after, afterCodes: [...(view.columns[you]![a.col] ?? []), a.card], fromHand: view.hand.includes(a.card) });
+                            if (hand5) setPicked(a.card);
+                          })
+                          .catch((e) => setError(errorText(i18n, e)))
+                      }
+                    >
+                      {t('tb.advice')}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           </div>
         ) : (
           <p className="mt-2 text-center text-sm text-ivory-200">{t('tb.over')}</p>
-        )}
-        {myTurn && (
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            {pending !== null && (
-              <Button disabled={busy} onClick={() => void place(pending)}>
-                {t('tb.placeIn', { c: ROMAN[pending]! })}
-              </Button>
-            )}
-            {dto.mode === 'training' && (
-              <Button
-                variant="secondary"
-                disabled={busy}
-                onClick={() =>
-                  void client
-                    .tbAdvice(dto.code)
-                    .then((a) => {
-                      setAdvice({ col: a.col, card: a.card, kind: a.kind, after: a.after, afterCodes: [...(view.columns[you]![a.col] ?? []), a.card], fromHand: view.hand.includes(a.card) });
-                      if (hand5) setPicked(a.card);
-                    })
-                    .catch((e) => setError(errorText(i18n, e)))
-                }
-              >
-                {t('tb.advice')}
-              </Button>
-            )}
-          </div>
         )}
         {advice && (
           <p className="mt-2 rounded-xl bg-gold-500/15 px-3 py-2 text-center text-sm text-gold-100" role="note">
@@ -641,13 +653,13 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
         <Board dto={dto} seat={you} side="mine" look={look} owner={t('tb.you')} selectable={myTurn && !busy} pending={pending} onPick={(c) => void place(c)} />
       </div>
       {hand5 && (
-        <div className="rounded-2xl border border-gold-500/25 bg-ink-800/70 p-2 lg:col-start-2 lg:row-start-4" data-testid="tb-hand">
-          <p className="mb-1 text-center text-xs text-ivory-300/85">
+        <div className="rounded-2xl border border-gold-500/25 bg-ink-800/70 p-2 max-lg:p-1 lg:col-start-2 lg:row-start-4" data-testid="tb-hand">
+          <p className="mb-1 text-center text-xs text-ivory-300/85 max-lg:mb-0 max-lg:text-[9.5px] max-lg:leading-tight">
             {view.pile[you] === 0 ? t('tb.hand.title.noPile') : tp('tb.hand.title.pile', view.pile[you])}
           </p>
           <div className="flex justify-center gap-1.5 sm:gap-2">
             {view.hand.map((c) => (
-              <PlayingCard key={c} code={c} size="md" fourColor={fourColor} selected={myTurn && card === c} disabled={!myTurn} onClick={myTurn ? () => { setPicked(c); setPending(null); } : undefined} hint={t('tb.handCard')} />
+              <PlayingCard key={c} code={c} size="md" className="max-lg:!w-[2.4rem]" fourColor={fourColor} selected={myTurn && card === c} disabled={!myTurn} onClick={myTurn ? () => { setPicked(c); setPending(null); } : undefined} hint={t('tb.handCard')} />
             ))}
           </div>
         </div>
@@ -660,12 +672,12 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       {finished ? (
         <Finished dto={dto} outcome={outcome} oppName={oppName} onExit={onExit} onAgain={dto.mode === 'training' ? () => client.tbCreate({ mode: 'training', level: (dto.players[opp]?.level ?? 'intermediate') as AiLevel, variant: dto.variant }).then((d) => { latest.current = d; skew.current = clockSkew(d); seenPly.current = 0; setDto(d); setError(''); }).catch((e) => setError(errorText(i18n, e))) : undefined} />
       ) : (
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <label className="flex items-center gap-2 text-xs text-ivory-200">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 max-lg:pt-0">
+          <label className="flex items-center gap-2 text-xs text-ivory-200 max-lg:text-[11px]">
             <input type="checkbox" checked={confirm} onChange={(e) => toggleConfirm(e.target.checked)} className="h-4 w-4 accent-[#c9a25a]" />
             {t('tb.confirm')}
           </label>
-          <Button variant="ghost" onClick={() => setLeaving(true)}>
+          <Button variant="ghost" className="max-lg:!min-h-8 max-lg:!py-0.5" onClick={() => setLeaving(true)}>
             {t('tb.quit')}
           </Button>
         </div>
@@ -694,24 +706,24 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
 function PlayerBar({ name, avatar, badge, remaining, score, active }: { name: string; avatar: string | null; badge: string; remaining: number; score: number; active: boolean }) {
   const { t } = useI18n();
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 ${active ? 'border-gold-400/70 bg-gold-500/10' : 'border-ivory-100/10 bg-ink-800/70'}`}>
+    <div className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 max-lg:py-0.5 ${active ? 'border-gold-400/70 bg-gold-500/10' : 'border-ivory-100/10 bg-ink-800/70'}`}>
       <div className="flex min-w-0 items-center gap-2">
-        <Avatar nickname={name} avatar={avatar} size={36} />
-        <div className="min-w-0">
+        <Avatar nickname={name} avatar={avatar} size={30} />
+        <div className="min-w-0 max-lg:flex max-lg:items-center max-lg:gap-2">
           <p className="truncate text-sm font-semibold text-ivory-50">{name}</p>
-          <Badge tone={active ? 'gold' : 'neutral'}>{badge}</Badge>
+          <span className="max-lg:hidden"><Badge tone={active ? 'gold' : 'neutral'}>{badge}</Badge></span>
         </div>
       </div>
-      <dl className="flex shrink-0 gap-4 text-center">
+      <dl className="flex shrink-0 gap-4 text-center max-lg:items-baseline max-lg:gap-3">
         <div>
-          <dt className="text-[10px] text-ivory-300/80">{t('tb.remaining')}</dt>
-          <dd className="font-display text-lg tabular-nums text-ivory-50" data-testid="tb-remaining">
+          <dt className="text-[10px] text-ivory-300/80 max-lg:text-[9px]">{t('tb.remaining')}</dt>
+          <dd className="font-display text-lg tabular-nums text-ivory-50 max-lg:text-base max-lg:leading-tight" data-testid="tb-remaining">
             {remaining}
           </dd>
         </div>
         <div>
           <dt className="text-[10px] text-ivory-300/80">{t('tb.columns')}</dt>
-          <dd className="font-display text-lg tabular-nums text-gold-300">{score}</dd>
+          <dd className="font-display text-lg tabular-nums text-gold-300 max-lg:text-base max-lg:leading-tight">{score}</dd>
         </div>
       </dl>
     </div>
