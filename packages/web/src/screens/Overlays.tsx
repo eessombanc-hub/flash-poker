@@ -1,4 +1,4 @@
-import { useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { PlayingCard } from '../components/Card';
 import { Confetti } from '../components/Confetti';
@@ -49,46 +49,160 @@ export function awardTextBy(record: RoundRecord, nameOf: (id: string) => string)
 }
 
 // ---------- Hold'em de départage ----------
-export function TiebreakSequence({ tiebreak, view }: { tiebreak: TiebreakOutcome; view: RoomView }) {
+const TIEBREAK_INTRO_MS = 3200;
+const SUITS = ['♠', '♥', '♦', '♣'] as const;
+
+/**
+ * Ouverture du départage : un décor à part (rouge sombre et or, symboles de couleurs qui flottent), le mot
+ * « Égalité » qui s'abat, puis les joueurs à égalité face à face. Elle dit d'un coup d'œil que ce qui suit n'est
+ * plus la manche en cours mais un Hold'em joué entre les seuls ex aequo.
+ */
+function TiebreakIntro({ players, view, reduce }: { players: readonly string[]; view: RoomView; reduce: boolean }) {
+  const { t } = useI18n();
+  const dur = reduce ? 0 : 1;
+  return (
+    <div className="relative flex min-h-[15rem] flex-col items-center justify-center overflow-hidden px-3 py-6 text-center" role="status" aria-live="polite">
+      {SUITS.map((suit, i) => (
+        <motion.span
+          key={suit}
+          aria-hidden="true"
+          className={`pointer-events-none absolute select-none text-6xl ${i % 2 === 0 ? 'text-ivory-100/10' : 'text-ruby-400/15'}`}
+          style={{ left: `${8 + i * 26}%`, top: i % 2 === 0 ? '8%' : '58%' }}
+          initial={reduce ? false : { opacity: 0, y: 30, rotate: -20 }}
+          animate={reduce ? undefined : { opacity: 1, y: [0, -10, 0], rotate: [-8, 8, -8] }}
+          transition={{ duration: 3.2, delay: 0.15 * i, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          {suit}
+        </motion.span>
+      ))}
+      <motion.p
+        className="relative font-display text-4xl uppercase tracking-[0.22em] text-amber-200 sm:text-5xl"
+        initial={reduce ? false : { scale: 2.6, opacity: 0, rotate: -4 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 15, delay: 0.1 * dur }}
+      >
+        {t('tbk.egalite')}
+      </motion.p>
+      <motion.span
+        aria-hidden="true"
+        className="mt-2 block h-px bg-gradient-to-r from-transparent via-amber-300 to-transparent"
+        initial={reduce ? false : { width: 0, opacity: 0 }}
+        animate={{ width: '70%', opacity: 1 }}
+        transition={{ duration: 0.7 * dur, delay: 0.55 * dur }}
+      />
+      <motion.p
+        className="relative mt-2 font-display text-xl text-ivory-50"
+        initial={reduce ? false : { y: 12, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 * dur, delay: 0.8 * dur }}
+      >
+        {t('overlays.hold_em_de')}
+      </motion.p>
+      <ul className="relative mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-2" aria-label={t('tbk.joueurs')}>
+        {players.map((p, i) => (
+          <li key={p} className="flex items-center gap-2">
+            {i > 0 && (
+              <motion.span
+                aria-hidden="true"
+                className="font-display text-sm text-ruby-300"
+                initial={reduce ? false : { scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 14, delay: (1.2 + 0.2 * i) * dur }}
+              >
+                {t('tbk.contre')}
+              </motion.span>
+            )}
+            <motion.span
+              className="flex items-center gap-2 rounded-full border border-amber-300/50 bg-ink-900/80 py-1 pl-1 pr-3"
+              initial={reduce ? false : { x: i % 2 === 0 ? -60 : 60, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 20, delay: (1.1 + 0.2 * i) * dur }}
+            >
+              <Avatar nickname={nick(view, p)} avatar={null} size={28} />
+              <span className="max-w-[7rem] truncate text-sm font-semibold text-ivory-50">{nick(view, p)}</span>
+            </motion.span>
+          </li>
+        ))}
+      </ul>
+      <motion.p
+        className="relative mt-4 max-w-xs text-xs text-ivory-200/80"
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 * dur, delay: 1.9 * dur }}
+      >
+        {t('tbk.note')}
+      </motion.p>
+    </div>
+  );
+}
+
+export function TiebreakSequence({ tiebreak, view, intro = false }: { tiebreak: TiebreakOutcome; view: RoomView; intro?: boolean }) {
   const { t } = useI18n();
   const { fourColor } = useSettings();
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotion() ?? false;
   const total = tiebreak.rounds.length * 4;
   const [tick, setT] = useState(reduce ? total - 1 : 0);
+  const [opening, setOpening] = useState(intro && !reduce);
   useEffect(() => {
-    if (tick >= total - 1) return;
+    if (!opening) return;
+    Sound.confirm();
+    const id = setTimeout(() => setOpening(false), TIEBREAK_INTRO_MS);
+    return () => clearTimeout(id);
+  }, [opening]);
+  useEffect(() => {
+    if (opening || tick >= total - 1) return;
     const id = setTimeout(() => setT((x) => x + 1), 1100);
     return () => clearTimeout(id);
-  }, [tick, total]);
+  }, [tick, total, opening]);
   const r = tiebreak.rounds[Math.min(Math.floor(tick / 4), tiebreak.rounds.length - 1)]!;
   const step = tick % 4; // 0 mains ouvertes, 1 flop, 2 turn, 3 river
   const shown = step === 0 ? 0 : step === 1 ? 3 : step === 2 ? 4 : 5;
   const done = tick >= total - 1;
   return (
-    <section aria-label={t('overlays.hold_em_de')} className="rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <Eyebrow>{t('overlays.hold_em_de')}{tiebreak.rounds.length > 1 ? (" " + t('overlays.tour', { v: Math.floor(tick / 4) + 1 })) : ''}</Eyebrow>
-        {!done && (
-          <Button variant="ghost" className="min-h-[32px] px-2 py-1 text-xs" onClick={() => setT(total - 1)}>
-            {t('overlays.passer')}</Button>
-        )}
-      </div>
-      <div className="mt-3 flex items-end justify-center gap-1.5" role="group" aria-label={t('overlays.cartes_communes_du')}>
-        {Array.from({ length: 5 }, (_, i) => (i < shown ? <PlayingCard key={`${tick}-${i}`} code={r.board[i]!} size="sm" fourColor={fourColor} flip /> : <span key={i} className="aspect-[5/7] w-12 rounded-[9px] border border-dashed border-ivory-100/25" aria-hidden="true" />))}
-      </div>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-        {r.players.map((p) => (
-          <li key={p} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${step === 3 && r.winners.includes(p) ? 'bg-gold-500/20 ring-1 ring-gold-400' : 'bg-ink-800/70'}`}>
-            <span className="w-20 truncate text-sm font-medium text-ivory-50">{nick(view, p)}</span>
-            <span className="flex -space-x-2">
-              {r.hands[p]!.map((c) => (
-                <PlayingCard key={c} code={c} size="xs" fourColor={fourColor} />
-              ))}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {done && <p className="mt-3 text-center text-sm font-semibold text-gold-300">{t('overlays.vainqueur_du_departage', { nick: nick(view, tiebreak.winner) })}</p>}
+    <section aria-label={t('overlays.hold_em_de')} className="rounded-xl border border-amber-400/50 bg-gradient-to-b from-[#2b0f12] via-ink-900/90 to-ink-900/80 p-4 shadow-[0_0_0_1px_rgba(240,180,92,.12)]">
+      {opening ? (
+        <>
+          <TiebreakIntro players={tiebreak.rounds[0]!.players} view={view} reduce={reduce} />
+          <div className="flex justify-end">
+            <Button variant="ghost" className="min-h-[32px] px-2 py-1 text-xs" onClick={() => setOpening(false)}>
+              {t('overlays.passer')}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <Eyebrow>
+              <span className="inline-flex items-center gap-2">
+                {!done && <span aria-hidden="true" className="h-2 w-2 animate-pulse rounded-full bg-ruby-400" />}
+                {t('overlays.hold_em_de')}
+                {tiebreak.rounds.length > 1 ? ' ' + t('overlays.tour', { v: Math.floor(tick / 4) + 1 }) : ''}
+              </span>
+            </Eyebrow>
+            {!done && (
+              <Button variant="ghost" className="min-h-[32px] px-2 py-1 text-xs" onClick={() => setT(total - 1)}>
+                {t('overlays.passer')}
+              </Button>
+            )}
+          </div>
+          <div className="mt-3 flex items-end justify-center gap-1.5 rounded-2xl bg-felt-900/85 px-2 py-3 ring-1 ring-amber-300/25" role="group" aria-label={t('overlays.cartes_communes_du')}>
+            {Array.from({ length: 5 }, (_, i) => (i < shown ? <PlayingCard key={`${tick}-${i}`} code={r.board[i]!} size="sm" fourColor={fourColor} flip /> : <span key={i} className="aspect-[5/7] w-12 rounded-[9px] border border-dashed border-ivory-100/25" aria-hidden="true" />))}
+          </div>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {r.players.map((p) => (
+              <li key={p} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${step === 3 && r.winners.includes(p) ? 'bg-gold-500/20 ring-1 ring-gold-400' : 'bg-ink-800/70'}`}>
+                <span className="w-20 truncate text-sm font-medium text-ivory-50">{nick(view, p)}</span>
+                <span className="flex -space-x-2">
+                  {r.hands[p]!.map((c) => (
+                    <PlayingCard key={c} code={c} size="xs" fourColor={fourColor} />
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {done && <p className="mt-3 text-center text-sm font-semibold text-gold-300">{t('overlays.vainqueur_du_departage', { nick: nick(view, tiebreak.winner) })}</p>}
+        </>
+      )}
     </section>
   );
 }
@@ -138,7 +252,7 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
 
       {record.award.kind === 'POINTS' && record.award.tiebreak && (
         <div className="mt-4">
-          <TiebreakSequence tiebreak={record.award.tiebreak} view={view} />
+          <TiebreakSequence tiebreak={record.award.tiebreak} view={view} intro />
         </div>
       )}
 

@@ -288,6 +288,22 @@ describe('Hold’em de départage', () => {
     expect(screen.getByText('Vainqueur du départage, Alice')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Passer' })).toBeNull();
   });
+  it('avec l’ouverture : « Égalité » et les joueurs concernés, puis le départage après le délai ou « Passer »', async () => {
+    vi.useFakeTimers();
+    renderWith(<TiebreakSequence tiebreak={tb} view={roomView()} intro />, roomView());
+    expect(screen.getByText('Égalité')).toBeInTheDocument();
+    expect(screen.getByText('contre')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Cartes communes du départage' })).toBeNull();
+    act(() => void vi.advanceTimersByTime(3300));
+    expect(screen.getByRole('group', { name: 'Cartes communes du départage' })).toBeInTheDocument();
+    expect(screen.queryByText('Égalité')).toBeNull();
+  });
+  it('l’ouverture se passe d’un clic', async () => {
+    const user = userEvent.setup();
+    renderWith(<TiebreakSequence tiebreak={tb} view={roomView()} intro />, roomView());
+    await user.click(screen.getByRole('button', { name: 'Passer' }));
+    expect(screen.getByRole('group', { name: 'Cartes communes du départage' })).toBeInTheDocument();
+  });
   it('égalité répétée : chaque tour est rejoué', () => {
     vi.useFakeTimers();
     const two = { winner: 'p1', rounds: [{ ...tb.rounds[0]!, winners: ['p1', 'p2'] }, { ...tb.rounds[0]!, board: ['6s', '7s', '8s', 'Td', 'Qc'], winners: ['p1'] }] };
