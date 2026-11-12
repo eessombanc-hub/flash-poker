@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Avatar, Button, Panel, ToastHost } from './components/ui';
 import { ProfileIcon } from './components/Icons3D';
+import { useLiveStats } from './lib/liveStats';
 import { useAccount, useAccountClient, useClient, useGame } from './lib/context';
 import { SettingsProvider, useSettings } from './lib/settings';
 import { Sound } from './lib/sound';
@@ -165,6 +166,7 @@ function AppContent() {
   const client = useClient();
   const session = useGame((s) => s.session);
   const view = useGame((s) => s.view);
+  const live = useLiveStats(client);
   const closed = useGame((s) => s.closed);
   const toasts = useGame((s) => s.toasts);
   const account = useAccountClient();
@@ -251,6 +253,7 @@ function AppContent() {
         onQuickStart={() => { setTrainVariant('CLOSED_1'); setGuided(true); setScreen('train'); }}
         onVariants={() => setScreen('variants')}
         me={me}
+        live={live}
         onSpace={(tab) => { setSpaceTab(tab); setScreen('space'); }}
         onRegister={() => setScreen({ auth: 'register' })}
         onBlackjack={() => setScreen('blackjack')}

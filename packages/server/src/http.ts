@@ -229,6 +229,24 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     return reply.status(204).send();
   });
   if (opts.debugIp) app.get('/_ip', async (req) => ({ ip: req.ip, forwardedFor: req.headers['x-forwarded-for'] ?? null, socket: req.socket.remoteAddress ?? null }));
+  // Fréquentation : chaque onglet ouvert se signale toutes les ~20 s avec un identifiant aléatoire (jamais conservé ni
+  // relié à un compte) ; « en ligne » = identifiants vus depuis moins de 45 s. Réponse : joueurs en ligne, parties ouvertes.
+  const seen = new Map<string, number>();
+  let lastPrune = 0;
+  const ONLINE_MS = 45_000;
+  app.get<{ Querystring: { v?: string } }>('/stats', async (req, reply) => {
+    guard('stats', req.ip);
+    const t = now();
+    const v = req.query.v;
+    if (typeof v === 'string' && /^[A-Za-z0-9_-]{8,40}$/.test(v) && (seen.size < 50_000 || seen.has(v))) seen.set(v, t);
+    if (t - lastPrune > 10_000) {
+      lastPrune = t;
+      for (const [id, at] of seen) if (t - at > ONLINE_MS) seen.delete(id);
+    }
+    let online = 0;
+    for (const at of seen.values()) if (t - at <= ONLINE_MS) online++;
+    return reply.header('Cache-Control', 'no-store').send({ online, rooms: opts.manager.listOpen().length });
+  });
   app.get('/rooms', async (req, reply) => {
     guard('list', req.ip); // limite le polling de la liste, distinct de la création/arrivée
     return reply.send({ rooms: opts.manager.listOpen() });
@@ -247,7 +265,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   if (opts.accounts && opts.tableau) registerTableauRoutes(app, opts.tableau, opts.accounts, { now });
   if (opts.accounts && opts.blackjack) registerBlackjackRoutes(app, opts.blackjack, opts.accounts, { now, tables: opts.blackjackTables });
 
-  const isApiPath = (url: string): boolean => ['/rooms', '/socket.io', '/health', '/auth/', '/me', '/avatars', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
+  const isApiPath = (url: string): boolean => ['/rooms', '/stats', '/socket.io', '/health', '/auth/', '/me', '/avatars', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
 
   if (opts.webDist && existsSync(opts.webDist)) {
     // Fichiers avec hash dans leur nom (assets Vite) : cache long ; `index.html` : jamais mis en cache (sert

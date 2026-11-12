@@ -2,7 +2,7 @@ import { COMMON_RULES } from '../lib/rulesText';
 import { VARIANTS } from '../lib/labels';
 import { useClient } from '../lib/context';
 import { formatChips } from '../lib/format';
-import { ApiError, type RoomSummary } from '../lib/api';
+import { ApiError, type LiveStats, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { BrandMark } from '../components/BrandMark';
 import { Banner, InfoTile, RailTile, SidePanel, type Slide } from '../components/Lobby';
@@ -16,7 +16,7 @@ import { isFirstVisit, markOnboarded } from '../lib/onboarding';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, onSpace, onRegister, me, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; onRegister?: () => void; me?: { nickname: string; avatar?: string | null } | null; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, onSpace, onRegister, me, live, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; onRegister?: () => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -120,7 +120,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           <p className="pt-4 text-center text-xs text-ivory-300/60">{t('home.footer')}</p>
         </div>
 
-        <SidePanel me={me} onProfile={me && onSpace ? () => onSpace('profil') : undefined} onRegister={onRegister} onJoin={(c) => onJoin(c)}>
+        <SidePanel live={live} me={me} onProfile={me && onSpace ? () => onSpace('profil') : undefined} onRegister={onRegister} onJoin={(c) => onJoin(c)}>
           {me && onChallenges && <DailyStrip onOpen={onChallenges} />}
         </SidePanel>
       </main>

@@ -82,3 +82,19 @@ export async function listRooms(baseUrl: string, fetchFn: typeof fetch = fetch):
   const data = (await res.json()) as { rooms: RoomSummary[] };
   return data.rooms;
 }
+
+export interface LiveStats {
+  online: number;
+  rooms: number;
+}
+/** Signale cet onglet (identifiant aléatoire) et renvoie le nombre de joueurs en ligne et de parties ouvertes. */
+export async function fetchStats(baseUrl: string, visitor: string, fetchFn: typeof fetch = fetch): Promise<LiveStats> {
+  let res: Response;
+  try {
+    res = await fetchFn(`${baseUrl}/stats?v=${encodeURIComponent(visitor)}`);
+  } catch {
+    throw new ApiError('NETWORK', 'Impossible de joindre le serveur. Vérifiez votre connexion.');
+  }
+  if (!res.ok) throw new ApiError('HTTP', `Erreur serveur (${res.status})`);
+  return (await res.json()) as LiveStats;
+}

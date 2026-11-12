@@ -104,7 +104,7 @@ export function InfoTile({ title, onClick, icon, tone = 'ink' }: { title: string
 }
 
 /** Panneau joueur : profil si connecté, invitation à ouvrir un compte sinon ; entrée rapide par code de partie. */
-export function SidePanel({ me, onProfile, onRegister, onJoin, children }: { me?: { nickname: string; avatar?: string | null } | null; onProfile?: () => void; onRegister?: () => void; onJoin: (code: string) => void; children?: ReactNode }) {
+export function SidePanel({ me, live, onProfile, onRegister, onJoin, children }: { live?: { online: number; rooms: number } | null; me?: { nickname: string; avatar?: string | null } | null; onProfile?: () => void; onRegister?: () => void; onJoin: (code: string) => void; children?: ReactNode }) {
   const { t } = useI18n();
   const [code, setCode] = useState('');
   const field = useId();
@@ -141,6 +141,20 @@ export function SidePanel({ me, onProfile, onRegister, onJoin, children }: { me?
           <Button type="submit" variant="secondary" disabled={code.trim().length < 3}>{t('lob.code.go')}</Button>
         </div>
       </form>
+      <dl className="grid grid-cols-2 gap-2" aria-label={t('lob.live')}>
+        {([
+          ['lob.live.online', live?.online, 'bg-jade-400'],
+          ['lob.live.rooms', live?.rooms, 'bg-gold-400'],
+        ] as const).map(([key, n, dot]) => (
+          <div key={key} className="rounded-2xl border border-ivory-100/12 bg-ink-800/70 px-3 py-3 text-center">
+            <dd className="font-display text-3xl leading-none text-ivory-50" data-testid={key}>{n ?? '—'}</dd>
+            <dt className="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-ivory-200/80">
+              <span aria-hidden="true" className={`h-2 w-2 rounded-full ${dot} ${n !== undefined ? 'motion-safe:animate-pulseRing' : 'opacity-40'}`} />
+              {t(key)}
+            </dt>
+          </div>
+        ))}
+      </dl>
     </aside>
   );
 }

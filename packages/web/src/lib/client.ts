@@ -1,6 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import { ApiError, createRoom, joinRoom, listRooms, type CreateRoomInput, type JoinRoomInput, type RoomSummary } from './api';
+import { ApiError, createRoom, fetchStats, joinRoom, listRooms, type LiveStats, type CreateRoomInput, type JoinRoomInput, type RoomSummary } from './api';
 import { describeEvent, type Tone } from './events';
 import { currentI18n } from '../i18n';
 import { errorText as localizedError } from './tbText';
@@ -127,6 +127,11 @@ export class GameClient {
   /** Liste publique des parties ouvertes (accueil) : aucun effet sur la session en cours. */
   listRooms(): Promise<RoomSummary[]> {
     return listRooms(this.baseUrl, this.opts.fetchFn);
+  }
+
+  /** Fréquentation du site (joueurs en ligne, parties ouvertes) ; signale aussi cet onglet. */
+  stats(visitor: string): Promise<LiveStats> {
+    return fetchStats(this.baseUrl, visitor, this.opts.fetchFn);
   }
 
   private begin(session: Session): void {
