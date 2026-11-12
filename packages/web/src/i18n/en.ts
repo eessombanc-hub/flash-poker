@@ -1565,6 +1565,7 @@ export const en: Record<Key, string> = {
   'overlays.compte.titre': 'Keep track of your games',
   'overlays.compte.texte': 'This game is not saved because you are playing as a guest. With a free account, your next games feed your stats, your challenges and the rankings.',
   'overlays.compte.cta': 'Create my free account',
+  'blackjack.intro': 'Beat the dealer by getting closer to 21 without going over. Pick a table that matches your level: chips are virtual and have no monetary value.',
   'tb.history': 'My latest games',
   'tb.winsOf.one': '{w} win out of {n}',
   'tb.winsOf.other': '{w} wins out of {n}',

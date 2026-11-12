@@ -338,6 +338,8 @@ function Lobby({ prefs, patch, overview, busy, error, inProgress, onResume, onSt
         </Panel>
       )}
 
+      <p className="max-w-2xl text-sm leading-relaxed text-ivory-100/90" data-testid="bj-intro">{t('blackjack.intro')}</p>
+
       <Panel className="p-4 sm:p-5">
         <Eyebrow>{t('blackjack.tables')}</Eyebrow>
         <ul className="mt-2 grid gap-2 sm:grid-cols-2" aria-label={t('blackjack.tables_disponibles')}>

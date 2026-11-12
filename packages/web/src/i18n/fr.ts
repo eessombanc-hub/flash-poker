@@ -1568,6 +1568,7 @@ export const fr = {
   'overlays.compte.titre': 'Gardez la trace de vos parties',
   'overlays.compte.texte': 'Cette partie n’est pas enregistrée, car vous jouez en invité. Avec un compte gratuit, vos prochaines parties alimentent vos statistiques, vos défis et le classement.',
   'overlays.compte.cta': 'Créer mon compte gratuit',
+  'blackjack.intro': 'Battez le croupier en vous rapprochant de 21 sans le dépasser. Choisissez une table selon votre niveau : les jetons sont virtuels et n’ont aucune valeur monétaire.',
   'tb.history': 'Mes dernières parties',
   'tb.winsOf.one': '{w} victoire sur {n}',
   'tb.winsOf.other': '{w} victoires sur {n}',
