@@ -42,7 +42,7 @@ describe('accueil : entrée du mode entraînement', () => {
         </ClientProvider>
       </SettingsProvider>,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Jouer en solo' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Jouer en solo' })[0]);
     expect(onTrain).toHaveBeenCalledTimes(1);
   });
 });

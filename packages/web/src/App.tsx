@@ -251,8 +251,8 @@ function AppContent() {
   else
     content = (
       <Home
-        onCreate={() => {
-          setCreateVariant(undefined);
+        onCreate={(v) => {
+          setCreateVariant(v);
           setScreen('create');
         }}
         onTrain={() => setScreen('solo')}

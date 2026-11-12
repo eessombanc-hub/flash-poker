@@ -5,7 +5,9 @@ import { formatChips } from '../lib/format';
 import { ApiError, type LiveStats, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { BrandMark } from '../components/BrandMark';
-import { Banner, InfoTile, RailGroup, RailTile, SidePanel, type Slide } from '../components/Lobby';
+import { InfoTile, RailGroup, RailTile, SidePanel } from '../components/Lobby';
+import { GameShowcase, type Showcase } from '../components/GameShowcase';
+import { BlackjackArt, ClosedArt, HoldemArt, OmahaArt, PokerArt, TableauArt } from '../components/GameArt';
 import { TablePreview } from '../components/TablePreview';
 import type { SpaceTab } from './Space';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -14,24 +16,29 @@ import { SettingsBody } from '../components/SettingsBody';
 import { useI18n } from '../i18n';
 import { DailyStrip } from '../components/Engagement';
 import { isFirstVisit, markOnboarded } from '../lib/onboarding';
+import type { VariantId } from '../lib/types';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, onSpace, me, live, langSelect, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, onSpace, me, live, langSelect, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
   const [welcome, setWelcome] = useState(() => !!onQuickStart && isFirstVisit());
   const space = (tab: SpaceTab) => () => onSpace?.(tab);
 
-  // Joueur inscrit : bandeau à diapositives. Visiteur ou première visite : un seul message, une seule action.
-  const slides: Slide[] = [
-    { id: 'table', title: t('lob.s1.title'), text: t('lob.s1.text'), cta: t('lob.s1.cta'), onClick: onCreate, icon: <CardsIcon size={64} />, suit: '♠', bg: 'from-felt-700 via-felt-900 to-ink-900' },
-    ...(onQuickStart ? [{ id: 'guide', title: t('lob.s2.title'), text: t('lob.s2.text'), cta: t('lob.s2.cta'), onClick: onQuickStart, icon: <TrophyIcon size={64} />, suit: '♥', bg: 'from-ruby-600/60 via-ink-800 to-ink-900' }] : []),
-    ...(me && onChallenges ? [{ id: 'defis', title: t('lob.s3.title'), text: t('lob.s3.text'), cta: t('lob.s3.cta'), onClick: onChallenges, icon: <TrophyIcon size={64} />, suit: '♦', bg: 'from-gold-700/50 via-ink-800 to-ink-900' }] : []),
-    ...(onVariants ? [{ id: 'variantes', title: t('lob.s4.title'), text: t('lob.s4.text'), cta: t('lob.s4.cta'), onClick: onVariants, icon: <ChipsIcon size={64} />, suit: '♣', bg: 'from-ink-600 via-ink-800 to-ink-900' }] : []),
+  const play = (v: VariantId) => () => onCreate(v);
+  const more = onVariants;
+  // Le tour des jeux : une diapositive par jeu, chacune avec sa couleur et sa scène ; les défis ferment la marche pour un joueur inscrit.
+  const slides: Showcase[] = [
+    { id: 'poker', name: t('gs.poker.name'), title: t('gs.poker.title'), text: t('gs.poker.text'), cta: t('lob.s1.cta'), onClick: () => onCreate(), cta2: t('home.solo.title'), onClick2: onTrain, art: <PokerArt />, bg: 'from-felt-700 via-felt-900 to-ink-900', suit: '♠' },
+    { id: 'omaha', name: t('gs.omaha.name'), title: t('gs.omaha.title'), text: t('gs.omaha.text'), cta: t('gs.omaha.cta'), onClick: play('V6_3'), cta2: more ? t('lob.s4.cta') : undefined, onClick2: more, art: <OmahaArt />, bg: 'from-ruby-600/55 via-ink-800 to-ink-900', suit: '♥' },
+    { id: 'closed', name: t('gs.closed.name'), title: t('gs.closed.title'), text: t('gs.closed.text'), cta: t('gs.closed.cta'), onClick: play('CLOSED_1'), cta2: more ? t('lob.s4.cta') : undefined, onClick2: more, art: <ClosedArt />, bg: 'from-gold-700/55 via-ink-800 to-ink-900', suit: '♦' },
+    { id: 'holdem', name: t('gs.holdem.name'), title: t('gs.holdem.title'), text: t('gs.holdem.text'), cta: t('gs.holdem.cta'), onClick: play('MORPION'), cta2: more ? t('lob.s4.cta') : undefined, onClick2: more, art: <HoldemArt />, bg: 'from-jade-500/35 via-ink-800 to-ink-900', suit: '♣' },
+    ...(onBlackjack ? [{ id: 'blackjack', name: t('home.blackjack'), title: t('gs.bj.title'), text: t('gs.bj.text'), cta: t('gs.bj.cta'), onClick: onBlackjack, art: <BlackjackArt />, bg: 'from-ink-950 via-ink-800 to-felt-900', suit: '♠' }] : []),
+    ...(onTableau ? [{ id: 'tableau', name: t('tb.variant.classic'), title: t('gs.tb.title'), text: t('gs.tb.text'), cta: t('gs.tb.cta'), onClick: () => onTableau('classic'), cta2: t('tb.variant.hand5'), onClick2: () => onTableau('hand5'), art: <TableauArt />, bg: 'from-amber-600/35 via-ink-800 to-ink-900', suit: '♥' }] : []),
+    ...(me && onChallenges ? [{ id: 'defis', name: t('lob.ev.defis'), title: t('lob.s3.title'), text: t('lob.s3.text'), cta: t('lob.s3.cta'), onClick: onChallenges, art: <TrophyIcon size={120} />, bg: 'from-gold-700/50 via-ink-800 to-ink-900', suit: '♦' }] : []),
   ];
-  const showHero = welcome || !me;
 
   return (
     <div className="min-h-[calc(100dvh-3rem)]">
@@ -49,7 +56,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
       <main className="mx-auto grid max-w-[88rem] gap-4 px-4 pb-12 sm:px-5 lg:grid-cols-[13.5rem_minmax(0,1fr)_19rem] lg:items-start">
         {/* Rail des jeux : deux actions fortes, puis le poker, puis les autres jeux */}
         <nav aria-label={t('lob.rail')} className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
-          <RailTile icon={<CardsIcon size={40} />} title={t('home.create.title')} onClick={onCreate} tone="gold" suit="♠" />
+          <RailTile icon={<CardsIcon size={40} />} title={t('home.create.title')} onClick={() => onCreate()} tone="gold" suit="♠" />
           <RailTile icon={<JoinIcon size={38} />} title={t('home.join.title')} onClick={() => onJoin()} tone="felt" suit="♥" />
           <RailGroup label={t('lob.group.poker')} />
           <RailTile icon={<TrophyIcon size={38} />} title={t('home.solo.title')} onClick={onTrain} tone="ink" suit="♦" />
@@ -68,33 +75,24 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
             </p>
           )}
 
-          {showHero ? (
-            <section aria-label={welcome && onQuickStart ? t('ob.title') : t('lob.banner')} className="relative overflow-hidden rounded-3xl border border-gold-500/40 bg-gradient-to-br from-felt-700 via-felt-900 to-ink-900 p-5 shadow-gold sm:p-8">
+          {welcome && onQuickStart ? (
+            <section aria-label={t('ob.title')} className="relative overflow-hidden rounded-3xl border border-gold-500/40 bg-gradient-to-br from-felt-700 via-felt-900 to-ink-900 p-5 shadow-gold sm:p-8">
               <span aria-hidden="true" className="pointer-events-none absolute -right-6 -top-12 select-none font-display text-[18rem] leading-none text-ivory-100/[0.05]">♠</span>
               <div className="relative grid items-center gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
                 <div>
-                  {welcome && onQuickStart && <Eyebrow>{t('ob.eyebrow')}</Eyebrow>}
-                  <h2 className="mt-1 font-display text-3xl leading-tight tracking-wide text-ivory-50 sm:text-4xl">{welcome && onQuickStart ? t('ob.title') : t('lob.s1.title')}</h2>
-                  <p className="mt-3 max-w-md text-sm text-ivory-100/90 sm:text-base">{welcome && onQuickStart ? t('ob.text') : t('lob.s1.text')}</p>
+                  <Eyebrow>{t('ob.eyebrow')}</Eyebrow>
+                  <h2 className="mt-1 font-display text-3xl leading-tight tracking-wide text-ivory-50 sm:text-4xl">{t('ob.title')}</h2>
+                  <p className="mt-3 max-w-md text-sm text-ivory-100/90 sm:text-base">{t('ob.text')}</p>
                   <div className="mt-5 flex flex-wrap items-center gap-3">
-                    {welcome && onQuickStart ? (
-                      <>
-                        <Button className="px-6 py-3 text-base" onClick={onQuickStart}>{t('ob.start')}</Button>
-                        <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button className="px-6 py-3 text-base" onClick={onCreate}>{t('lob.s1.cta')}</Button>
-                        {onQuickStart && <Button variant="ghost" onClick={onQuickStart}>{t('lob.s2.cta')}</Button>}
-                      </>
-                    )}
+                    <Button className="px-6 py-3 text-base" onClick={onQuickStart}>{t('ob.start')}</Button>
+                    <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
                   </div>
                 </div>
                 <TablePreview />
               </div>
             </section>
           ) : (
-            <Banner slides={slides} />
+            <GameShowcase slides={slides} label={t('lob.banner')} />
           )}
 
           {me && (
@@ -136,7 +134,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           </ul>
 
           <div id="open-rooms" className="scroll-mt-4">
-            <OpenRooms onSelect={onJoin} onCreate={onCreate} />
+            <OpenRooms onSelect={onJoin} onCreate={() => onCreate()} />
           </div>
           <footer className="space-y-2 pt-4 text-center text-xs text-ivory-100/80">
             <p className="font-semibold text-ivory-100">{t('home.footer')}</p>
