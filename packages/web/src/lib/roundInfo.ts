@@ -1,4 +1,4 @@
-import type { LineResult, NextReason, NextReason10, RevealStep, RevealStep10, RoundView, SideBet, SideBetPool, SideBetResult } from './types';
+import type { LineResult, NextReason, NextReason10, RevealStep, RevealStep10, RoundRecord, RoundView, SideBet, SideBetPool, SideBetResult } from './types';
 
 /** `RoundView.info` est un objet libre côté moteur : on le lit ici avec des valeurs par défaut sûres. */
 const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -125,4 +125,19 @@ export function assistCards(round: RoundView): string[] {
 export function assistCategory(round: RoundView): number | null {
   const v = round.info.assistCategory;
   return typeof v === 'number' ? v : null;
+}
+
+/** Catégorie « quinte flush » dans le résumé d'une manche (HandCategory.StraightFlush du moteur). */
+const STRAIGHT_FLUSH = 8;
+
+/**
+ * Une quinte flush a-t-elle été réalisée pendant cette manche ? Victoire instantanée du 6-3, main abattue
+ * à l'abattage (toutes variantes) ou main de départage. Se lit sur l'historique de la manche : le son est donc
+ * identique pour tous les joueurs de la table.
+ */
+export function hasStraightFlush(record: RoundRecord): boolean {
+  if (record.award.kind === 'INSTANT_VICTORY') return true;
+  const hands = record.summary?.hands;
+  if (hands && Object.values(hands).some((h) => h.category === STRAIGHT_FLUSH)) return true;
+  return record.summary?.tiebreak?.category === STRAIGHT_FLUSH;
 }

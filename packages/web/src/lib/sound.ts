@@ -3,9 +3,20 @@
  * simples bips ; plus la vibration mobile. Silencieux si le réglage « Sons » est désactivé, si l'appareil ne supporte pas l'API, ou si `prefers-reduced-motion` est
  * actif pour la vibration.
  */
+import { renderCheer } from './cheer';
+
 let ctx: AudioContext | null = null;
 let bus: AudioNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
+
+function noiseBuffer(c: AudioContext): AudioBuffer {
+  if (!noiseBuf) {
+    noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return noiseBuf;
+}
 
 /**
  * Chaîne audio commune : compresseur doux (pas de saturation quand plusieurs sons se chevauchent), filtre passe-bas
@@ -78,14 +89,9 @@ function bell(freq: number, duration = 0.5, gain = 0.1, delay = 0, brightness = 
 function noise(duration: number, freq: number, q = 1, gain = 0.1, delay = 0, type: BiquadFilterType = 'bandpass', sweepTo?: number): void {
   const c = audioCtx();
   if (!c || !bus) return;
-  if (!noiseBuf) {
-    noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  }
   const t0 = c.currentTime + delay;
   const src = c.createBufferSource();
-  src.buffer = noiseBuf;
+  src.buffer = noiseBuffer(c);
   const f = c.createBiquadFilter();
   f.type = type;
   f.Q.value = q;
@@ -157,6 +163,12 @@ function chip(delay = 0, gain = 0.09, pitch = 1): void {
 }
 
 export const Sound = {
+  /** Quinte flush : « Ohhh… yeahhh ! », voix de synthèse (voir cheer.ts), environ deux secondes. */
+  cheer: () => {
+    const c = audioCtx();
+    if (!c || !bus) return;
+    renderCheer(c, bus, c.currentTime + 0.05, noiseBuffer(c));
+  },
   /** Sélection d'une carte : petit tapotement de carte sur le feutre. */
   select: () => {
     thump(jit(250), 160, 0.06, 0.07);

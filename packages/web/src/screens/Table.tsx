@@ -24,7 +24,7 @@ import { Reveal10Panel } from '../panels/Reveal10Panel';
 import { InsurancePanel } from '../panels/InsurancePanel';
 import { Line63Panel } from '../panels/Line63Panel';
 import { Reveal61Panel } from '../panels/Reveal61Panel';
-import { morpionInfo, reveal10Info } from '../lib/roundInfo';
+import { hasStraightFlush, morpionInfo, reveal10Info } from '../lib/roundInfo';
 import { VariantPicker } from '../panels/VariantPicker';
 import { RulesModal } from './Home';
 import { collectRoundEvents, GameOverModal, RoundResultModal, ScoreModal } from './Overlays';
@@ -323,7 +323,7 @@ export function Table() {
       if (game.phase === 'GAME_OVER') setFinalOpen(false);
       if (sound) {
         const iWon = (record.award.kind === 'POINTS' || record.award.kind === 'INSTANT_VICTORY') && record.award.winner === me;
-        Sound[iWon ? 'win' : 'flip']();
+        Sound[hasStraightFlush(record) ? 'cheer' : iWon ? 'win' : 'flip']();
       }
     }
     seen.current = game.history.length;
