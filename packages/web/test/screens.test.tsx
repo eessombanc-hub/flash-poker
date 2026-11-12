@@ -241,6 +241,22 @@ describe('fin de partie', () => {
     expect(screen.queryByTestId('guest-invite')).toBeNull();
   });
 
+  it('revanche : le bouton propose d’ouvrir, puis de rejoindre quand la table existe ; absent sans action', async () => {
+    const user = userEvent.setup();
+    const onRematch = vi.fn();
+    const v = over(outcome());
+    const first = renderWith(<GameOverModal view={v} onClose={() => undefined} onLeave={() => undefined} onRematch={onRematch} />, v);
+    await user.click(screen.getByRole('button', { name: 'Revanche avec les mêmes joueurs' }));
+    expect(onRematch).toHaveBeenCalledTimes(1);
+    first.unmount();
+    const open = { ...over(outcome()), rematch: 'POKER-NEXT' };
+    const second = renderWith(<GameOverModal view={open} onClose={() => undefined} onLeave={() => undefined} onRematch={onRematch} />, open);
+    expect(screen.getByRole('button', { name: 'Rejoindre la revanche' })).toBeInTheDocument();
+    second.unmount();
+    renderWith(<GameOverModal view={v} onClose={() => undefined} onLeave={() => undefined} />, v);
+    expect(screen.queryByRole('button', { name: /revanche/i })).toBeNull();
+  });
+
   it('vainqueur, classement et répartition de la cagnotte (mise, gain, solde)', () => {
     renderWith(<GameOverModal view={over(outcome())} onClose={() => undefined} onLeave={() => undefined} />, over(outcome()));
     expect(screen.getByRole('heading', { name: 'Victoire d’Emeric' })).toBeInTheDocument();

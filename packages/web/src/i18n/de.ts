@@ -1566,6 +1566,8 @@ export const de: Record<Key, string> = {
   'overlays.compte.texte': 'Diese Partie wird nicht gespeichert, weil du als Gast spielst. Mit einem kostenlosen Konto fließen deine nächsten Partien in Statistiken, Herausforderungen und Ranglisten ein.',
   'overlays.compte.cta': 'Mein kostenloses Konto erstellen',
   'blackjack.intro': 'Schlage den Dealer, indem du der 21 näher kommst, ohne sie zu überschreiten. Wähle einen Tisch passend zu deinem Niveau: Die Chips sind virtuell und haben keinen Geldwert.',
+  'overlays.revanche.ouvrir': 'Revanche mit denselben Spielern',
+  'overlays.revanche.rejoindre': 'Der Revanche beitreten',
   'tb.history': 'Meine letzten Partien',
   'tb.winsOf.one': '{w} Sieg aus {n}',
   'tb.winsOf.other': '{w} Siege aus {n}',

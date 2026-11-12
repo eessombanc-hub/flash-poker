@@ -364,7 +364,7 @@ export function Table({ onRegister }: { onRegister?: () => void } = {}) {
       </div>
 
       {result && <RoundResultModal record={result} events={events} board={resultBoard} view={view} final={over} onClose={() => { setResult(null); if (over) setFinalOpen(true); }} />}
-      {!result && over && finalOpen && game.outcome && <GameOverModal view={view} onClose={() => setFinalOpen(false)} onLeave={() => client.leave()} onRegister={onRegister ? () => { client.leave(); onRegister(); } : undefined} />}
+      {!result && over && finalOpen && game.outcome && <GameOverModal view={view} onClose={() => setFinalOpen(false)} onLeave={() => client.leave()} onRegister={onRegister ? () => { client.leave(); onRegister(); } : undefined} onRematch={view.players.some((p) => p.bot) ? undefined : () => void client.rematch()} />}
       {modal === 'scores' && <ScoreModal view={view} onClose={() => setModal(null)} />}
       {modal === 'rules' && <RulesModal onClose={() => setModal(null)} />}
       {modal === 'quit' && (

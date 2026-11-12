@@ -313,7 +313,7 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
 }
 
 // ---------- Fin de partie ----------
-export function GameOverModal({ view, onClose, onLeave, onRegister }: { view: RoomView; onClose: () => void; onLeave: () => void; onRegister?: () => void }) {
+export function GameOverModal({ view, onClose, onLeave, onRegister, onRematch }: { view: RoomView; onClose: () => void; onLeave: () => void; onRegister?: () => void; onRematch?: () => void }) {
   const { t } = useI18n();
   const account = useAccount((s) => s.account);
   const game = view.game!;
@@ -418,7 +418,8 @@ export function GameOverModal({ view, onClose, onLeave, onRegister }: { view: Ro
       <div className={`flex flex-col gap-2 sm:flex-row sm:justify-end sticky -bottom-5 z-10 -mx-5 -mb-5 mt-6 border-t border-ivory-100/10 bg-ink-800 px-5 pb-8 pt-3 sm:static sm:mx-0 sm:mb-0 sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0`}>
         <Button variant="secondary" onClick={onClose}>
           {t('overlays.revoir_la_table')}</Button>
-        <Button onClick={onLeave}>{t('overlays.retour_a_l')}</Button>
+        <Button variant={onRematch ? 'secondary' : 'primary'} onClick={onLeave}>{t('overlays.retour_a_l')}</Button>
+        {onRematch && <Button onClick={onRematch}>{view.rematch ? t('overlays.revanche.rejoindre') : t('overlays.revanche.ouvrir')}</Button>}
       </div>
     </Modal>
   );

@@ -266,3 +266,29 @@ describe('intégration : interface complète dans le DOM, pilotée comme un util
     expect(screen.queryByRole('button', { name: 'Créer une partie' })).toBeNull();
   });
 });
+
+describe('revanche : vrais clients, vrai serveur', () => {
+  it('le premier ouvre la table de revanche, le second la rejoint, tous deux basculent dans la nouvelle salle', async () => {
+    const env = await start();
+    const h = env.make();
+    const a = env.make();
+    await h.client.createRoom({ name: 'Revanche', maxPlayers: 2, targetPoints: 1, stakeChips: 0, variant: 'CLOSED_1', nickname: 'Host' });
+    const code = h.client.state.session!.code;
+    await a.client.joinRoom(code, { nickname: 'Alice' });
+    await until(() => h.client.state.view?.players.length === 2, 'deux joueurs');
+    await h.client.startGame();
+    for (let i = 0; i < 400 && h.client.state.view?.status !== 'FINISHED'; i++) {
+      env.scheduler.advance(61_000);
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    await until(() => h.client.state.view?.status === 'FINISHED' && a.client.state.view?.status === 'FINISHED', 'partie terminée');
+    expect(await h.client.rematch()).toBe(true);
+    const next = h.client.state.session!.code;
+    expect(next).not.toBe(code);
+    await until(() => h.client.state.view?.status === 'WAITING' && h.client.state.view?.code === next, 'hôte dans la nouvelle salle');
+    await until(() => a.client.state.view?.rematch === next, 'la revanche est annoncée à Alice');
+    expect(await a.client.rematch()).toBe(true);
+    await until(() => a.client.state.view?.code === next && a.client.state.view?.players.length === 2, 'Alice a rejoint');
+    expect(h.client.state.view?.config.variant).toBe('CLOSED_1');
+  });
+});

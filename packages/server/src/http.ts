@@ -143,6 +143,7 @@ export class RealtimeManager {
     on('lobby:start', () => this.manager.startGame(code, playerId));
     on('lobby:cancel', () => this.manager.cancelRoom(code, playerId));
     on('lobby:leave', () => this.manager.leaveLobby(code, playerId));
+    on('room:rematch', () => this.manager.rematch(code, playerId));
     on('host:exclude', (payload) => {
       const p = excludeSchema.safeParse(payload);
       if (!p.success) throw new ServerError('BAD_REQUEST', 'Joueur invalide');

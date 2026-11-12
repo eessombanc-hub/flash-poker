@@ -220,13 +220,13 @@ export class GameClient {
 
   // ---------- Messages ----------
 
-  private emit(event: string, payload?: unknown): Promise<void> {
-    return new Promise((resolve, reject) => {
+  private emit<T = void>(event: string, payload?: unknown): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
       const s = this.socket;
       if (!s || !s.connected) return reject(new ApiError('OFFLINE', 'Connexion perdue. Action non envoyée.'));
       s.timeout(8000).emit(event, payload, (err: Error | null, ack: Ack) => {
         if (err) return reject(new ApiError('TIMEOUT', 'Le serveur n\u2019a pas répondu.'));
-        if (ack?.ok) resolve();
+        if (ack?.ok) resolve((ack as { data?: T }).data as T);
         else reject(new ApiError(ack?.error?.code ?? 'ERROR', ack?.error?.message ?? 'Action refusée.', ack?.error?.ruleCode));
       });
     });
@@ -264,6 +264,22 @@ export class GameClient {
     }
   }
   resync = (): Promise<boolean> => this.act(() => this.emit('state:resync'));
+  /** Revanche : ouvre (ou rejoint) la table qui reprend les réglages de la partie terminée, et y bascule. */
+  async rematch(): Promise<boolean> {
+    const view = this.state.view;
+    const me = view?.players.find((p) => p.id === view.you.playerId);
+    try {
+      const r = await this.emit<{ code: string; playerId: string; token: string }>('room:rematch');
+      this.begin({ code: r.code, token: r.token, playerId: r.playerId, nickname: me?.nickname ?? '' });
+      this.onSound('confirm');
+      return true;
+    } catch (e) {
+      this.onSound('error');
+      this.toast('error', errorText(e));
+      return false;
+    }
+  }
+
   async leaveLobby(): Promise<boolean> {
     const ok = await this.act(() => this.emit('lobby:leave'));
     if (ok) this.leave();

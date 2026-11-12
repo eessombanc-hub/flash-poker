@@ -1566,6 +1566,8 @@ export const it: Record<Key, string> = {
   'overlays.compte.texte': 'Questa partita non viene salvata perché giochi come ospite. Con un account gratuito, le prossime partite alimentano statistiche, sfide e classifiche.',
   'overlays.compte.cta': 'Crea il mio account gratuito',
   'blackjack.intro': 'Batti il mazziere avvicinandoti a 21 senza superarlo. Scegli un tavolo in base al tuo livello: le fiche sono virtuali e non hanno alcun valore monetario.',
+  'overlays.revanche.ouvrir': 'Rivincita con gli stessi giocatori',
+  'overlays.revanche.rejoindre': 'Unisciti alla rivincita',
   'tb.history': 'Le mie ultime partite',
   'tb.winsOf.one': '{w} vittoria su {n}',
   'tb.winsOf.other': '{w} vittorie su {n}',

@@ -136,6 +136,8 @@ export interface RoomView {
   players: PlayerPublic[];
   version: number;
   serverTime: number;
+  /** Code de la table de revanche, une fois ouverte par l'un des joueurs d'une partie terminée. */
+  rematch?: string | null;
   /** Échéance du minuteur en cours (horloge serveur, ms) : `at` reste exact après une reconnexion. */
   deadline: { at: number; kind: 'VARIANT' | 'INSURANCE' | 'ROUND'; key: string } | null;
   game: GameView | null;

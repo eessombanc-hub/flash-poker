@@ -124,6 +124,8 @@ interface Room {
   handles: { deadline?: Timer; warning?: Timer };
   /** Prochain tour de jeu des CPU (distinct des minuteurs de 60 s, qui ne concernent que les humains). */
   botTimer?: Timer;
+  /** Code de la table de revanche ouverte par l'un des joueurs une fois la partie terminée. */
+  rematchCode?: string;
 }
 
 const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
@@ -235,6 +237,32 @@ export class RoomManager {
     if (room.status === 'RUNNING') this.afterTransition(room, events);
     else this.broadcast(room, events);
     return { playerId: rec.id, token };
+  }
+
+  /**
+   * Revanche : le premier joueur qui la demande ouvre une nouvelle table aux mêmes réglages et en devient l'hôte ;
+   * les autres la rejoignent d'un geste (le code figure dans leur vue). Réservée aux parties terminées entre humains.
+   */
+  rematch(codeRaw: string, actorId: string): { code: string; playerId: string; token: string } {
+    const room = this.room(codeRaw);
+    const me = room.players.find((p) => p.id === actorId);
+    if (!me || me.bot) throw new ServerError('FORBIDDEN', 'Vous ne participez pas à cette partie');
+    if (room.status !== 'FINISHED') throw new ServerError('WRONG_STATE', 'La revanche n’est possible qu’une fois la partie terminée');
+    if (room.players.some((p) => p.bot)) throw new ServerError('WRONG_STATE', 'Pas de revanche en entraînement : relancez une partie depuis l’accueil');
+    const account: AccountRef | null = me.accountId ? { id: me.accountId, nickname: me.nickname, avatar: me.avatar } : null;
+    const open = room.rematchCode ? this.rooms.get(room.rematchCode) : undefined;
+    if (open && open.status === 'WAITING') {
+      const joined = this.joinRoom(open.code, { nickname: me.nickname, ...(me.avatar ? { avatar: me.avatar } : {}) }, account);
+      return { code: open.code, ...joined };
+    }
+    const c = room.config;
+    const made = this.createRoom(
+      { name: c.name, maxPlayers: c.maxPlayers, targetPoints: c.targetPoints, stakeChips: c.stakeChips, assistance: c.assistance, private: c.private ?? false, nickname: me.nickname, ...(me.avatar ? { avatar: me.avatar } : {}), ...(c.variant ? { variant: c.variant, ...(c.variant === 'V6_3' ? { teats: c.teats ?? 0, sideBets: c.sideBets ?? false } : {}) } : {}) },
+      account,
+    );
+    room.rematchCode = made.code;
+    this.broadcast(room, []);
+    return made;
   }
 
   /** Jeton → joueur. Une room inconnue et un mauvais jeton sont indiscernables. */
@@ -724,6 +752,7 @@ export class RoomManager {
       players,
       version: room.version,
       serverTime: this.deps.scheduler.now(),
+      rematch: room.rematchCode ?? null,
       deadline: room.deadlineAt !== null && room.timerKind && room.timerKey ? { at: room.deadlineAt, kind: room.timerKind, key: room.timerKey } : null,
       game: gv,
     };
