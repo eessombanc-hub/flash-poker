@@ -250,6 +250,9 @@ function AppContent() {
         onChallenges={me ? () => { setSpaceTab('defis'); setScreen('space'); } : undefined}
         onQuickStart={() => { setTrainVariant('CLOSED_1'); setGuided(true); setScreen('train'); }}
         onVariants={() => setScreen('variants')}
+        me={me}
+        onSpace={(tab) => { setSpaceTab(tab); setScreen('space'); }}
+        onRegister={() => setScreen({ auth: 'register' })}
         onBlackjack={() => setScreen('blackjack')}
         onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
         onJoin={(code) => {

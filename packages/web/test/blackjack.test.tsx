@@ -175,8 +175,8 @@ describe('Blackjack : accueil', () => {
         <Home onCreate={noop} onJoin={noop} onTrain={noop} onBlackjack={onBlackjack} />
       </ClientProvider>,
     );
-    const section = screen.getByRole('region', { name: 'Blackjack' });
-    await userEvent.setup().click(within(section).getByRole('button', { name: 'Blackjack' }));
+    const rail = screen.getByRole('navigation', { name: 'Jeux' });
+    await userEvent.setup().click(within(rail).getByRole('button', { name: 'Blackjack' }));
     expect(onBlackjack).toHaveBeenCalled();
   });
 });

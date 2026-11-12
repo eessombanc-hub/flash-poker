@@ -4,8 +4,9 @@ import { useClient } from '../lib/context';
 import { formatChips } from '../lib/format';
 import { ApiError, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
-import { HeroScene } from '../components/Scene3D';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { Banner, InfoTile, RailTile, SidePanel, type Slide } from '../components/Lobby';
+import type { SpaceTab } from './Space';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 import { SettingsBody } from '../components/SettingsBody';
 import { useI18n } from '../i18n';
@@ -14,14 +15,26 @@ import { isFirstVisit, markOnboarded } from '../lib/onboarding';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, onSpace, onRegister, me, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; onRegister?: () => void; me?: { nickname: string; avatar?: string | null } | null; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
   const [welcome, setWelcome] = useState(() => !!onQuickStart && isFirstVisit());
+
+  // Les rubriques réservées au compte mènent à « Mon espace », ou à l'inscription pour un visiteur.
+  const space = (tab: SpaceTab) => () => (me && onSpace ? onSpace(tab) : onRegister?.());
+  const showRooms = () => document.getElementById('open-rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const slides: Slide[] = [
+    { id: 'table', title: t('lob.s1.title'), text: t('lob.s1.text'), cta: t('lob.s1.cta'), onClick: onCreate, icon: <CardsIcon size={64} />, suit: '♠', bg: 'from-felt-700 via-felt-900 to-ink-900' },
+    ...(onQuickStart ? [{ id: 'guide', title: t('lob.s2.title'), text: t('lob.s2.text'), cta: t('lob.s2.cta'), onClick: onQuickStart, icon: <TrophyIcon size={64} />, suit: '♥', bg: 'from-ruby-600/60 via-ink-800 to-ink-900' }] : []),
+    ...(me && onChallenges ? [{ id: 'defis', title: t('lob.s3.title'), text: t('lob.s3.text'), cta: t('lob.s3.cta'), onClick: onChallenges, icon: <TrophyIcon size={64} />, suit: '♦', bg: 'from-gold-700/50 via-ink-800 to-ink-900' }] : []),
+    ...(onVariants ? [{ id: 'variantes', title: t('lob.s4.title'), text: t('lob.s4.text'), cta: t('lob.s4.cta'), onClick: onVariants, icon: <ChipsIcon size={64} />, suit: '♣', bg: 'from-ink-600 via-ink-800 to-ink-900' }] : []),
+  ];
+
   return (
     <div className="min-h-[calc(100dvh-3rem)]">
-      <header className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-4 sm:px-5">
+      <header className="mx-auto flex max-w-[88rem] items-center justify-between gap-2 px-4 py-4 sm:px-5">
         <p className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-xl tracking-wide text-ivory-50">
           <CardsIcon size={34} />
           {t('home.flash_poker')}</p>
@@ -33,122 +46,85 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 pb-12">
-        {/* Accroche */}
-        <section className="grid items-center gap-8 py-6 md:grid-cols-[1.1fr_1fr] md:py-10">
-          <div className="text-center md:text-left">
-            <Eyebrow>{t('home.eyebrow')}</Eyebrow>
-            <h1 className="mt-3 font-display text-4xl leading-[1.05] tracking-wide text-ivory-50 sm:text-6xl">
-              {t('home.h1a')}
-              <span className="block bg-gradient-to-r from-gold-300 via-gold-400 to-gold-600 bg-clip-text text-transparent">{t('home.h1b')}</span>
-            </h1>
-            <p className="mx-auto mt-5 max-w-xl text-base text-ivory-200/85 sm:text-lg md:mx-0">
-              {t('home.lead')}
+      <main className="mx-auto grid max-w-[88rem] gap-4 px-4 pb-12 sm:px-5 lg:grid-cols-[13.5rem_minmax(0,1fr)_19rem] lg:items-start">
+        {/* Rail des jeux : une colonne à gauche sur ordinateur, une rangée défilante sur téléphone */}
+        <nav aria-label={t('lob.rail')} className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
+          <RailTile icon={<CardsIcon size={40} />} title={t('home.create.title')} onClick={onCreate} tone="gold" suit="♠" />
+          <RailTile icon={<JoinIcon size={38} />} title={t('home.join.title')} onClick={() => onJoin()} tone="felt" suit="♥" />
+          <RailTile icon={<TrophyIcon size={38} />} title={t('home.solo.title')} onClick={onTrain} tone="ruby" suit="♦" />
+          {onVariants && <RailTile icon={<ChipsIcon size={38} />} title={t('home.variants.title')} onClick={onVariants} tone="ink" suit="♣" />}
+          {onBlackjack && <RailTile icon={<CoinIcon size={38} />} title={t('home.blackjack')} onClick={onBlackjack} tone="sea" suit="♠" />}
+          {onTableau && <RailTile icon={<CardsIcon size={38} />} title={t('tb.variant.classic')} onClick={() => onTableau('classic')} tone="felt" suit="♦" />}
+          {onTableau && <RailTile icon={<CardsIcon size={38} />} title={t('tb.variant.hand5')} onClick={() => onTableau('hand5')} tone="ink" suit="♥" />}
+          <RailTile icon={<RulesIcon size={38} />} title={t('home.rules.title')} onClick={() => setRules(true)} tone="ink" suit="♣" />
+        </nav>
+
+        <div className="min-w-0 space-y-6">
+          <h1 className="sr-only">{t('home.h1a')} {t('home.h1b')}</h1>
+          {notice && (
+            <p role="alert" className="rounded-lg border border-amber-400/40 bg-amber-950/60 px-4 py-2.5 text-sm text-amber-100">
+              {notice}
             </p>
-            {notice && (
-              <p role="alert" className="mt-6 rounded-lg border border-amber-400/40 bg-amber-950/60 px-4 py-2.5 text-sm text-amber-100">
-                {notice}
-              </p>
-            )}
-          </div>
-          <HeroScene />
-        </section>
+          )}
+          {welcome && onQuickStart && (
+            <section aria-label={t('ob.title')} className="flex flex-col gap-4 rounded-2xl border border-gold-400/60 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Eyebrow>{t('ob.eyebrow')}</Eyebrow>
+                <h2 className="mt-1 font-display text-2xl text-ivory-50">{t('ob.title')}</h2>
+                <p className="mt-1 max-w-xl text-sm text-ivory-200/85">{t('ob.text')}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
+                <Button onClick={onQuickStart}>{t('ob.start')}</Button>
+              </div>
+            </section>
+          )}
 
-        {onChallenges && <DailyStrip onOpen={onChallenges} />}
+          <Banner slides={slides} />
 
-        {welcome && onQuickStart && (
-          <section aria-label={t('ob.title')} className="mb-3 flex flex-col gap-4 rounded-2xl border border-gold-400/60 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <Eyebrow>{t('ob.eyebrow')}</Eyebrow>
-              <h2 className="mt-1 font-display text-2xl text-ivory-50">{t('ob.title')}</h2>
-              <p className="mt-1 max-w-xl text-sm text-ivory-200/85">{t('ob.text')}</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
-              <Button onClick={onQuickStart}>{t('ob.start')}</Button>
+          <section aria-label={t('lob.events')}>
+            <h2 className="mb-2 font-display text-xl text-ivory-50">{t('lob.events')}</h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <InfoTile title={t('lob.ev.defis')} onClick={space('defis')} icon={<TrophyIcon size={34} />} tone="gold" />
+              <InfoTile title={t('lob.ev.friends')} onClick={space('favoris')} icon={<JoinIcon size={34} />} />
+              <InfoTile title={t('lob.ev.invite')} onClick={space('inviter')} icon={<ChipsIcon size={34} />} />
+              <InfoTile title={t('lob.ev.open')} onClick={showRooms} icon={<CardsIcon size={34} />} />
             </div>
           </section>
-        )}
 
-        {/* Actions principales : « Créer » domine, les autres s'alignent derrière */}
-        <section aria-label={t('home.start')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <ActionTile icon={<CardsIcon size={64} />} title={t('home.create.title')} text={t('home.create.text')} onClick={onCreate} primary suit="♠" className="lg:col-span-2" />
-          <ActionTile icon={<JoinIcon size={58} />} title={t('home.join.title')} text={t('home.join.text')} onClick={() => onJoin()} suit="♥" />
-          <ActionTile icon={<TrophyIcon size={58} />} title={t('home.solo.title')} text={t('home.solo.text')} onClick={onTrain} suit="♦" />
-        </section>
-
-        {/* Variantes et mémo des règles : fiches, règles et progression personnelle de chaque jeu */}
-        <section aria-label={t('vi.title')} className={`mt-3 grid gap-3 ${onVariants ? 'sm:grid-cols-2' : ''}`}>
-          {onVariants && <ActionTile icon={<ChipsIcon size={52} />} title={t('home.variants.title')} text={t('home.variants.text')} onClick={onVariants} suit="♣" compact />}
-          <ActionTile icon={<RulesIcon size={52} />} title={t('home.rules.title')} text={t('home.rules.text')} onClick={() => setRules(true)} suit="♠" compact />
-        </section>
-
-        {/* Blackjack : rubrique à part, distincte des variantes de poker */}
-        {onBlackjack && (
-          <section aria-label={t('home.blackjack')} className="mt-4">
-            <div className="relative flex flex-col gap-3 overflow-hidden rounded-3xl border border-gold-500/40 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <span aria-hidden="true"><CoinIcon size={58} /></span>
-                <div>
-                  <Eyebrow>{t('home.bj.eyebrow')}</Eyebrow>
-                  <h2 className="font-display text-2xl text-ivory-50">
-                    <button type="button" onClick={onBlackjack} className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none" aria-describedby="bj-tile-d">
-                      {t('home.blackjack')}</button>
-                  </h2>
-                  <p id="bj-tile-d" className="mt-0.5 max-w-xl text-sm text-ivory-200/85">
-                    {t('home.bj.text')}
-                  </p>
-                </div>
-              </div>
-              <span className="self-start rounded-full border border-gold-400/60 px-4 py-2 text-sm font-semibold text-gold-300 sm:self-center" aria-hidden="true">
-                {t('home.play')}
-              </span>
+          <section aria-label={t('lob.session')}>
+            <h2 className="mb-2 font-display text-xl text-ivory-50">{t('lob.session')}</h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <InfoTile title={t('space.tab.historique')} onClick={space('historique')} icon={<RulesIcon size={30} />} />
+              <InfoTile title={t('space.tab.statistiques')} onClick={space('statistiques')} icon={<CoinIcon size={30} />} />
+              <InfoTile title={t('space.tab.manches')} onClick={space('manches')} icon={<CardsIcon size={30} />} />
+              <InfoTile title={t('space.tab.bankroll')} onClick={space('bankroll')} icon={<ChipsIcon size={30} />} />
             </div>
           </section>
-        )}
 
-        {/* Le Tableau et le Tableau 5 cartes : jeux à part, au même rang que le Blackjack, contre l'ordinateur ou un ami */}
-        {onTableau && (
-          <section aria-label={t('tb.title')} className="mt-4 grid gap-3 sm:grid-cols-2">
-            {([
-              ['classic', t('tb.variant.classic'), t('home.tb.classic.text')],
-              ['hand5', t('tb.variant.hand5'), t('home.tb.hand5.text')],
-            ] as const).map(([id, title, text]) => (
-              <div key={id} className="relative flex items-center gap-4 overflow-hidden rounded-3xl border border-gold-400/50 bg-gradient-to-r from-ink-800 via-felt-900 to-felt-800 p-5 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-gold-400">
-                <span aria-hidden="true"><CardsIcon size={52} /></span>
-                <div>
-                  <Eyebrow>{t('home.tb.eyebrow')}</Eyebrow>
-                  <h2 className="font-display text-2xl text-ivory-50">
-                    <button type="button" onClick={() => onTableau(id)} className="text-left after:absolute after:inset-0 after:content-[''] focus:outline-none" aria-describedby={`tb-${id}-d`}>
-                      {title}
-                    </button>
-                  </h2>
-                  <p id={`tb-${id}-d`} className="mt-0.5 text-sm text-ivory-200/85">
-                    {text}
-                  </p>
-                </div>
-              </div>
+          <ul className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4" aria-label={t('home.stats.aria')}>
+            {[
+              [t('home.stat1.big'), t('home.stat1.small')],
+              [t('home.stat2.big'), t('home.stat2.small')],
+              [t('home.stat3.big'), t('home.stat3.small')],
+              [t('home.stat4.big'), t('home.stat4.small')],
+            ].map(([big, small]) => (
+              <li key={big} className="rounded-2xl border border-ivory-100/10 bg-ink-800/60 px-4 py-3 text-center">
+                <span className="block font-display text-2xl text-gold-300">{big}</span>
+                <span className="text-xs text-ivory-200/75">{small}</span>
+              </li>
             ))}
-          </section>
-        )}
+          </ul>
 
-        {/* Atouts */}
-        <ul className="mt-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4" aria-label={t('home.stats.aria')}>
-          {[
-            [t('home.stat1.big'), t('home.stat1.small')],
-            [t('home.stat2.big'), t('home.stat2.small')],
-            [t('home.stat3.big'), t('home.stat3.small')],
-            [t('home.stat4.big'), t('home.stat4.small')],
-          ].map(([big, small]) => (
-            <li key={big} className="rounded-2xl border border-ivory-100/10 bg-ink-800/60 px-4 py-3 text-center">
-              <span className="block font-display text-2xl text-gold-300">{big}</span>
-              <span className="text-xs text-ivory-200/75">{small}</span>
-            </li>
-          ))}
-        </ul>
+          <div id="open-rooms" className="scroll-mt-4">
+            <OpenRooms onSelect={onJoin} />
+          </div>
+          <p className="pt-4 text-center text-xs text-ivory-300/60">{t('home.footer')}</p>
+        </div>
 
-        <OpenRooms onSelect={onJoin} />
-        <p className="mt-10 text-center text-xs text-ivory-300/60">{t('home.footer')}</p>
+        <SidePanel me={me} onProfile={me && onSpace ? () => onSpace('profil') : undefined} onRegister={onRegister} onJoin={(c) => onJoin(c)}>
+          {me && onChallenges && <DailyStrip onOpen={onChallenges} />}
+        </SidePanel>
       </main>
       {rules && <RulesModal onClose={() => setRules(false)} />}
       {settings && (
@@ -162,35 +138,6 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           </div>
         </Modal>
       )}
-    </div>
-  );
-}
-
-/**
- * Grande tuile d'action de l'accueil : icône 3D, titre, une phrase d'explication. Toute la tuile est cliquable,
- * mais le bouton ne contient que le titre (son nom accessible est exactement le texte qu'il affiche) ; la phrase
- * d'explication lui est rattachée comme description.
- */
-function ActionTile({ icon, title, text, onClick, primary = false, suit, compact = false, className = '' }: { icon: ReactNode; title: string; text: string; onClick: () => void; primary?: boolean; suit?: string; compact?: boolean; className?: string }) {
-  const id = useId();
-  return (
-    <div
-      className={`group relative flex items-center gap-4 overflow-hidden rounded-2xl border p-4 transition hover:-translate-y-0.5 ${className} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-400 motion-reduce:transform-none ${compact ? '' : 'sm:flex-col sm:items-start sm:p-5'} ${
-        primary
-          ? 'border-gold-400/70 bg-gradient-to-br from-gold-500/25 via-ink-800/90 to-ink-900 shadow-gold'
-          : 'border-ivory-100/12 bg-gradient-to-br from-ink-700/80 to-ink-900/90 hover:border-ivory-100/30'
-      }`}
-    >
-      {suit && (
-        <span aria-hidden="true" className={`pointer-events-none absolute -bottom-6 -right-2 select-none font-display leading-none ${suit === '♥' || suit === '♦' ? 'text-ruby-500/[0.14]' : 'text-ivory-100/[0.06]'} ${primary ? 'text-[9rem]' : 'text-[6.5rem]'}`}>{suit}</span>
-      )}
-      <span className="relative transition group-hover:scale-105 motion-reduce:transform-none" aria-hidden="true">{icon}</span>
-      <span className="relative min-w-0">
-        <button type="button" onClick={onClick} aria-describedby={`${id}-d`} className={`block text-left font-display ${primary ? 'text-2xl' : 'text-xl'} text-ivory-50 focus:outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']`}>
-          {title}
-        </button>
-        <span id={`${id}-d`} className="mt-1 block text-sm text-ivory-200/80">{text}</span>
-      </span>
     </div>
   );
 }

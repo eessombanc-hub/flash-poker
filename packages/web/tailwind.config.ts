@@ -30,6 +30,7 @@ export default {
         panel: '0 18px 50px rgba(0,0,0,.45)',
       },
       keyframes: {
+        fadein: { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'none' } },
         pulseRing: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.55' } },
         // Halo doré qui respire autour des cartes ou des lignes gagnantes.
         winGlow: {
@@ -38,6 +39,7 @@ export default {
         },
       },
       animation: {
+        fadein: 'fadein .5s ease-out',
         pulseRing: 'pulseRing 1s ease-in-out infinite',
         winGlow: 'winGlow 1.8s ease-in-out 3',
       },

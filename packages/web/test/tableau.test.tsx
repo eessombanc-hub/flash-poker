@@ -92,9 +92,9 @@ describe('Tableau : accès depuis les menus', () => {
     expect(onTableau).toHaveBeenLastCalledWith('classic');
     await user.click(screen.getByRole('button', { name: 'Le tableau 5 cartes' }));
     expect(onTableau).toHaveBeenLastCalledWith('hand5');
-    // rangées sous le Blackjack, comme un jeu à part (et non parmi les variantes de poker)
-    const bj = screen.getByRole('region', { name: 'Blackjack' });
-    const tb = screen.getByRole('region', { name: 'Le Tableau' });
+    // dans le rail des jeux, à la suite du Blackjack (jeux à part, hors variantes de poker)
+    const bj = screen.getByRole('button', { name: 'Blackjack' });
+    const tb = screen.getByRole('button', { name: 'Tableau' });
     expect(bj.compareDocumentPosition(tb) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     unmount();
     const again = vi.fn();
