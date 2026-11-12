@@ -289,7 +289,7 @@ describe('comptes : routes HTTP et socket de présence', () => {
     const { token } = reg.json() as { token: string };
     expect((await inj('GET', '/me')).statusCode).toBe(401);
     expect((await inj('GET', '/me', token)).json()).toMatchObject({ nickname: 'Ana', avatar: 'renard' });
-    expect((await inj('GET', '/auth/config')).json()).toEqual({ passwordRecovery: true });
+    expect((await inj('GET', '/auth/config')).json()).toEqual({ passwordRecovery: true, recoveryCode: true });
 
     const room = (await inj('POST', '/rooms', token, { name: 'T', maxPlayers: 3, targetPoints: 1, stakeChips: 0, nickname: 'Autre' })).json() as { code: string; playerId: string };
     expect(manager.view(room.code, room.playerId).players[0]).toMatchObject({ nickname: 'Ana', avatar: 'renard', registered: true });

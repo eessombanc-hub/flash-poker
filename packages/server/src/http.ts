@@ -17,6 +17,16 @@ import type { AccountService } from './accounts/service';
 import type { RoomManager } from './roomManager';
 import { renderIndex } from './sharePreview';
 
+/** `CORS_ORIGIN` peut lister plusieurs origines séparées par des virgules ; espaces et barres finales sont ignorés. */
+export function parseOrigins(raw: string | undefined): string[] {
+  return (raw ?? '').split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
+}
+/** Origine listée, ou sa variante avec / sans « www. » (même site, deux adresses). */
+export function originAllowed(list: string[], origin: string): boolean {
+  const flip = (o: string): string => (/^https?:\/\/www\./.test(o) ? o.replace('//www.', '//') : o.replace('//', '//www.'));
+  return list.some((l) => l === origin || flip(l) === origin);
+}
+
 export interface ServerOptions {
   manager: RoomManager;
   /** Horloge (la même que celle du RoomManager, pour des tests déterministes). */
@@ -173,14 +183,18 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   const now = opts.now ?? Date.now;
   const http = new RateLimiter(opts.httpRateLimit?.max ?? 30, opts.httpRateLimit?.windowMs ?? 60_000, now);
 
-  const headers = securityHeaders(opts.corsOrigin ? { connectExtra: opts.corsOrigin } : {});
+  const origins = parseOrigins(opts.corsOrigin);
+  const headers = securityHeaders(origins.length ? { connectExtra: origins.join(' ') } : {});
   app.addHook('onSend', async (_req, reply) => {
     for (const [k, v] of Object.entries(headers)) reply.header(k, v);
   });
 
-  if (opts.corsOrigin) {
+  if (origins.length) {
     app.addHook('onRequest', async (req, reply) => {
-      reply.header('Access-Control-Allow-Origin', opts.corsOrigin!);
+      // L'origine autorisée est reprise telle que le navigateur l'a envoyée (liste, et variante avec ou sans « www. »).
+      const origin = req.headers.origin;
+      if (origin && originAllowed(origins, origin)) reply.header('Access-Control-Allow-Origin', origin);
+      reply.header('Vary', 'Origin');
       reply.header('Access-Control-Allow-Headers', 'content-type, authorization, x-bj-guest');
       reply.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
       if (req.method === 'OPTIONS') return reply.status(204).send();
@@ -271,7 +285,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
 
   const io = new IOServer(app.server, {
     maxHttpBufferSize: 10_000,
-    cors: opts.corsOrigin ? { origin: opts.corsOrigin } : undefined,
+    cors: origins.length ? { origin: (o: string | undefined, cb: (e: Error | null, ok?: boolean) => void) => cb(null, !o || originAllowed(origins, o)) } : undefined,
   });
   // Plafond de connexions temps réel simultanées par adresse (tous espaces de noms confondus).
   const perIp = new Map<string, number>();

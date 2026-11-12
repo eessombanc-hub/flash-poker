@@ -5,8 +5,9 @@ import type { AccountPublic } from '../lib/types';
 import { useAccount, useAccountClient } from '../lib/context';
 import { currentI18n, useI18n } from '../i18n';
 import { errorText } from '../lib/tbText';
+import { RecoveryCodeBox } from '../components/RecoveryCode';
 
-export type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
+export type AuthMode = 'login' | 'register' | 'forgot' | 'reset' | 'recover';
 
 const NICK_RE = /^[\p{L}\p{N} _.'-]{2,20}$/u;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -56,6 +57,10 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [inviter, setInviter] = useState<AccountPublic | null>(null);
+  const [code, setCode] = useState('');
+  const [issued, setIssued] = useState<string | null>(null); // code de secours à montrer avant de poursuivre
+  const [saved, setSaved] = useState(false);
+  const [slow, setSlow] = useState(false); // l'hébergement gratuit met jusqu'à une minute à se réveiller
 
   useEffect(() => {
     if (!account || !invite) return;
@@ -70,7 +75,9 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
     setMode(m);
     setError(null);
     setSent(false);
+    setPassword('');
   };
+  const codeDigits = code.replace(/[^A-Za-z0-9]/g, '').length;
 
   const errors = {
     nickname: NICK_RE.test(nickname.trim()) ? '' : t('auth.pseudo_de_2'),
@@ -78,17 +85,33 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
     password: password.length >= 8 ? '' : t('auth.au_moins_8'),
   };
   const invalid =
-    mode === 'login' ? !login.trim() || !password : mode === 'register' ? Boolean(errors.nickname || errors.email || errors.password) : mode === 'forgot' ? Boolean(errors.email) : Boolean(errors.password);
+    mode === 'login' ? !login.trim() || !password : mode === 'register' ? Boolean(errors.nickname || errors.email || errors.password) : mode === 'forgot' ? Boolean(errors.email) : mode === 'recover' ? !login.trim() || codeDigits < 12 || Boolean(errors.password) : Boolean(errors.password);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!account || invalid || busy) return;
     setBusy(true);
     setError(null);
+    const wake = setTimeout(() => setSlow(true), 4000);
     try {
       if (mode === 'login') await account.login(login.trim(), password);
-      else if (mode === 'register') await account.register({ nickname: nickname.trim(), email: email.trim(), password, avatar, ...(invite ? { invite } : {}) });
-      else if (mode === 'reset') await account.reset(resetToken ?? '', password);
+      else if (mode === 'register') {
+        await account.register({ nickname: nickname.trim(), email: email.trim(), password, avatar, ...(invite ? { invite } : {}) });
+        const c = account.takeRecoveryCode();
+        if (c) {
+          setIssued(c);
+          setBusy(false);
+          return;
+        }
+      } else if (mode === 'recover') {
+        await account.recover(login.trim(), code.trim(), password);
+        const c = account.takeRecoveryCode();
+        if (c) {
+          setIssued(c);
+          setBusy(false);
+          return;
+        }
+      } else if (mode === 'reset') await account.reset(resetToken ?? '', password);
       else {
         await account.forgot(email.trim());
         setSent(true);
@@ -99,6 +122,9 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
     } catch (err) {
       setError(errorText(currentI18n(), err, t('auth.une_erreur_inattendue')));
       setBusy(false);
+    } finally {
+      clearTimeout(wake);
+      setSlow(false);
     }
   }
 
@@ -107,7 +133,9 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
     register: [t('auth.nouveau_joueur'), t('auth.creer_un_compte')],
     forgot: [t('auth.mot_de_passe2'), t('auth.recevoir_un_lien')],
     reset: [t('auth.securite'), t('auth.nouveau_mot_de')],
+    recover: [t('auth.securite'), t('rec.title')],
   };
+  const heading: [string, string] = issued ? [t('rec.kicker'), t('rec.issued_title')] : titles[mode];
 
   return (
     <main className="mx-auto max-w-md px-4 py-8">
@@ -117,8 +145,8 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
         <div className="mb-6 flex items-center gap-4">
           <ProfileIcon size={56} />
           <div>
-            <Eyebrow>{titles[mode][0]}</Eyebrow>
-            <Title className="mt-1 text-3xl">{titles[mode][1]}</Title>
+            <Eyebrow>{heading[0]}</Eyebrow>
+            <Title className="mt-1 text-3xl">{heading[1]}</Title>
           </div>
         </div>
 
@@ -129,7 +157,20 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
               <strong className="text-gold-200">{inviter.nickname}</strong>  {t('auth.vous_invite_a')}</p>
           </div>
         )}
-        {mode === 'forgot' && sent ? (
+        {issued ? (
+          <div className="space-y-4" role="status">
+            <p className="text-ivory-100">{t('rec.issued_intro')}</p>
+            <RecoveryCodeBox code={issued} />
+            <p className="text-sm text-ivory-300/80">{t('rec.issued_warn')}</p>
+            <label className="flex items-start gap-3 text-sm text-ivory-100">
+              <input type="checkbox" className="mt-1 h-4 w-4 accent-gold-400" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
+              {t('rec.saved')}
+            </label>
+            <Button className="w-full py-3.5 text-base" disabled={!saved} onClick={onDone}>
+              {t('rec.continue')}
+            </Button>
+          </div>
+        ) : mode === 'forgot' && sent ? (
           <div className="space-y-4" role="status">
             <p className="text-ivory-100">{t('auth.si_un_compte', { trim: email.trim() })}</p>
             <p className="text-sm text-ivory-300/80">{t('auth.pensez_a_regarder')}</p>
@@ -138,7 +179,8 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-5" noValidate>
-            {mode === 'login' && (
+            {mode === 'recover' && <p className="text-sm text-ivory-200/80">{t('rec.intro')}</p>}
+            {(mode === 'login' || mode === 'recover') && (
               <Field label={t('auth.pseudo_ou_adresse')} htmlFor="login">
                 <input id="login" className={inputClass} value={login} maxLength={254} onChange={(e) => setLogin(e.target.value)} autoComplete="username" />
               </Field>
@@ -158,8 +200,14 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
                 <input id="email" type="email" inputMode="email" className={inputClass} value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
               </Field>
             )}
+            {mode === 'recover' && (
+              <Field label={t('rec.code_label')} htmlFor="code" hint={t('rec.code_hint')}>
+                <input id="code" className={`${inputClass} font-mono uppercase tracking-widest`} value={code} maxLength={40} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="XXXX-XXXX-XXXX" />
+              </Field>
+            )}
+            {mode === 'forgot' && <p className="text-sm text-ivory-200/80">{t('rec.mail_intro')}</p>}
             {mode !== 'forgot' && (
-              <Field label={mode === 'reset' ? t('auth.nouveau_mot_de') : t('auth.mot_de_passe3')} htmlFor="password" hint={mode === 'login' ? undefined : t('auth.au_moins_8')} error={mode === 'login' || password === '' ? '' : errors.password}>
+              <Field label={mode === 'reset' || mode === 'recover' ? t('auth.nouveau_mot_de') : t('auth.mot_de_passe3')} htmlFor="password" hint={mode === 'login' ? undefined : t('auth.au_moins_8')} error={mode === 'login' || password === '' ? '' : errors.password}>
                 <PasswordInput id="password" value={password} onChange={setPassword} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
               </Field>
             )}
@@ -169,8 +217,9 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
               </Field>
             )}
             {error && <ErrorBox>{error}</ErrorBox>}
+            {busy && slow && <p role="status" className="text-sm text-ivory-300/80">{t('auth.wake')}</p>}
             <Button type="submit" disabled={invalid || busy} className="w-full py-3.5 text-base">
-              {busy ? t('auth.un_instant') : mode === 'login' ? t('auth.se_connecter') : mode === 'register' ? t('auth.creer_mon_compte') : mode === 'forgot' ? t('auth.envoyer_le_lien') : t('auth.enregistrer_et_me')}
+              {busy ? t('auth.un_instant') : mode === 'login' ? t('auth.se_connecter') : mode === 'register' ? t('auth.creer_mon_compte') : mode === 'forgot' ? t('auth.envoyer_le_lien') : mode === 'recover' ? t('rec.submit') : t('auth.enregistrer_et_me')}
             </Button>
           </form>
         )}
@@ -183,15 +232,24 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
                 <button type="button" className="font-semibold text-gold-300 underline-offset-4 hover:underline" onClick={() => switchTo('register')}>
                   {t('auth.creer_un_compte')}</button>
               </p>
-              {recovery ? (
-                <button type="button" className="text-ivory-300/80 underline-offset-4 hover:underline" onClick={() => switchTo('forgot')}>
-                  {t('auth.mot_de_passe')}</button>
-              ) : (
-                <p className="text-xs text-ivory-300/60">{t('auth.la_recuperation_du')}</p>
-              )}
+              <button type="button" className="text-ivory-300/80 underline-offset-4 hover:underline" onClick={() => switchTo(recovery ? 'forgot' : 'recover')}>
+                {t('auth.mot_de_passe')}</button>
             </>
           )}
-          {mode !== 'login' && (
+          {mode === 'forgot' && (
+            <button type="button" className="text-ivory-300/80 underline-offset-4 hover:underline" onClick={() => switchTo('recover')}>
+              {t('rec.use_code')}</button>
+          )}
+          {mode === 'recover' && (
+            <>
+              {recovery && (
+                <button type="button" className="block w-full text-ivory-300/80 underline-offset-4 hover:underline" onClick={() => switchTo('forgot')}>
+                  {t('rec.use_mail')}</button>
+              )}
+              <p className="text-xs text-ivory-300/60">{t('rec.no_code')}</p>
+            </>
+          )}
+          {mode !== 'login' && !issued && (
             <p className="text-ivory-200/80">
               {t('auth.deja_inscrit')}{' '}
               <button type="button" className="font-semibold text-gold-300 underline-offset-4 hover:underline" onClick={() => switchTo('login')}>

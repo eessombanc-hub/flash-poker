@@ -45,7 +45,7 @@ la dernière version, avec les corrections de la phase 8. Vérifiez sur la page 
 
 ## Activer les e-mails des comptes joueurs
 
-La récupération du mot de passe fonctionne ainsi : le joueur saisit son adresse, reçoit un lien valable une heure et à usage unique, puis choisit un nouveau mot de passe. Toutes ses sessions ouvertes sont alors fermées. Sans service d’envoi, le lien « Mot de passe oublié ? » est remplacé par un message d’indisponibilité, et les favoris ne sont signalés que dans l’application.
+La récupération du mot de passe fonctionne ainsi : le joueur saisit son adresse, reçoit un lien valable une heure et à usage unique, puis choisit un nouveau mot de passe. Toutes ses sessions ouvertes sont alors fermées. Sans service d’envoi, le lien « Mot de passe oublié ? » reste affiché : il mène au **code de secours**. Ce code de 12 caractères est montré une seule fois à la création du compte ; il permet de choisir un nouveau mot de passe sans e-mail, il est à usage unique (un nouveau est délivré aussitôt) et ferme les sessions ouvertes. Un compte créé avant cette fonction peut en générer un dans « Mon espace », en saisissant son mot de passe. Les favoris ne sont alors signalés que dans l’application.
 
 **Sur le plan gratuit de Render, l’envoi classique (SMTP) est bloqué** : Render interdit les ports 25, 465 et 587 aux services gratuits. Le jeu envoie donc ses e-mails par l’API HTTPS de **Brevo** (gratuit jusqu’à 300 e-mails par jour), qui n’est pas concernée.
 
@@ -61,7 +61,7 @@ La récupération du mot de passe fonctionne ainsi : le joueur saisit son adress
 | `MAIL_FROM` | `Flash Poker <no-reply@flash-poker.fr>` | Expéditeur, sur le domaine vérifié à l’étape 3 |
 | `APP_URL` | `https://flash-poker.fr` | Adresse placée dans les liens des e-mails |
 
-6. Au démarrage, le journal Render affiche « E-mails activés (Brevo) ». Sur le site, le lien « Mot de passe oublié ? » apparaît sur l’écran de connexion. Faites un essai avec votre propre adresse, et regardez les courriers indésirables.
+6. Au démarrage, le journal Render affiche « E-mails activés (Brevo) ». Sur l’écran « Mot de passe oublié ? », la réception d’un lien par e-mail s’ajoute alors au code de secours. Faites un essai avec votre propre adresse, et regardez les courriers indésirables.
 
 Les services Resend (`RESEND_API_KEY`) et SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) restent pris en charge, mais le SMTP ne fonctionne que sur un hébergement qui ne bloque pas ses ports (plan payant de Render, VPS).
 
@@ -84,3 +84,8 @@ Voir `SAUVEGARDE_GRATUITE.md` : sauvegarde chiffrée dans un dépôt GitHub priv
 | La page met une minute à s'ouvrir | Réveil après la mise en veille du plan gratuit : normal. |
 | « Connexion à la table… » qui dure | Rechargez ; si cela persiste, vérifiez que le statut du service est « Live ». |
 | Le nom `flash-poker` est déjà pris | Render ajoute un suffixe à l'adresse : sans conséquence. |
+
+
+## Plusieurs adresses pour le site (CORS)
+
+`CORS_ORIGIN` accepte une liste séparée par des virgules, par exemple `https://flash-poker.fr,https://flash-poker.vercel.app`. La variante avec ou sans « www. » de chaque adresse listée est acceptée automatiquement. Si un joueur voit « Impossible de joindre le serveur » alors que le serveur répond, l’adresse du site qu’il utilise ne figure vraisemblablement pas dans cette liste.

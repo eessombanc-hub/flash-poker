@@ -160,6 +160,11 @@ export class AccountDb {
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         expires_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS recovery_codes (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        code_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
         ended_at INTEGER NOT NULL,

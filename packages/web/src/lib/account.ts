@@ -126,8 +126,32 @@ export class AccountClient {
     this.store.setState({ token: null, account: null });
   }
 
+  /** Code de secours délivré par la dernière inscription ou récupération : affiché une fois, puis oublié. */
+  private issuedCode: string | null = null;
+  takeRecoveryCode(): string | null {
+    const c = this.issuedCode;
+    this.issuedCode = null;
+    return c;
+  }
+
   register(input: { nickname: string; email: string; password: string; avatar?: string; invite?: string }): Promise<AccountPrivate> {
-    return this.request<{ token: string; account: AccountPrivate }>('POST', '/auth/register', input).then((r) => this.signedIn(r));
+    return this.request<{ token: string; account: AccountPrivate; recoveryCode?: string }>('POST', '/auth/register', input).then((r) => {
+      this.issuedCode = r.recoveryCode ?? null;
+      return this.signedIn(r);
+    });
+  }
+  /** Nouveau mot de passe sans e-mail, grâce au code de secours ; un nouveau code est délivré. */
+  recover(login: string, code: string, password: string): Promise<AccountPrivate> {
+    return this.request<{ token: string; account: AccountPrivate; recoveryCode?: string }>('POST', '/auth/recover', { login, code, password }).then((r) => {
+      this.issuedCode = r.recoveryCode ?? null;
+      return this.signedIn(r);
+    });
+  }
+  hasRecoveryCode(): Promise<boolean> {
+    return this.request<{ exists: boolean }>('GET', '/me/recovery-code').then((r) => r.exists);
+  }
+  newRecoveryCode(password: string): Promise<string> {
+    return this.request<{ recoveryCode: string }>('POST', '/me/recovery-code', { password }).then((r) => r.recoveryCode);
   }
   login(login: string, password: string): Promise<AccountPrivate> {
     return this.request<{ token: string; account: AccountPrivate }>('POST', '/auth/login', { login, password }).then((r) => this.signedIn(r));

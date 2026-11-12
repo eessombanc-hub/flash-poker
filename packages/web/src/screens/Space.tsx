@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { BellIcon, ChipsIcon, JoinIcon, ProfileIcon, StarIcon, StatsIcon, TrophyIcon } from '../components/Icons3D';
+import { RecoveryCodeBox } from '../components/RecoveryCode';
 import { AvatarUpload } from '../components/AvatarUpload';
 import { Avatar, AvatarPicker, Badge, Button, Eyebrow, Field, inputClass, Panel, Segmented } from '../components/ui';
 import { ApiError } from '../lib/api';
@@ -149,6 +150,23 @@ function ProfileTab() {
   const [mailState, setMailState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [pwd, setPwd] = useState({ current: '', next: '' });
   const [pwdState, setPwdState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const [rec, setRec] = useState<{ password: string; code: string | null; exists: boolean | null; error: string | null }>({ password: '', code: null, exists: null, error: null });
+  useEffect(() => {
+    let alive = true;
+    account.hasRecoveryCode().then((exists) => alive && setRec((r) => ({ ...r, exists })), () => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [account]);
+  async function newCode(e: FormEvent) {
+    e.preventDefault();
+    try {
+      const code = await account.newRecoveryCode(rec.password);
+      setRec({ password: '', code, exists: true, error: null });
+    } catch (err) {
+      setRec((r) => ({ ...r, error: message(err) }));
+    }
+  }
   const [del, setDel] = useState({ open: false, password: '' });
   const [dataState, setDataState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
@@ -267,6 +285,29 @@ function ProfileTab() {
         {pwdState && <Notice tone={pwdState.tone}>{pwdState.text}</Notice>}
         <Button type="submit" variant="secondary" disabled={!pwd.current || pwd.next.length < 8}>
           {t('space.changer_le_mot')}</Button>
+      </form>
+
+      <form onSubmit={newCode} className="space-y-4 border-t border-ivory-100/10 pt-6" aria-labelledby="sp-rec">
+        <H3>{t('rec.space_title')}</H3>
+        <p id="sp-rec" className="text-sm text-ivory-200/80">
+          {rec.exists === false ? t('rec.space_none') : t('rec.space_intro')}
+        </p>
+        {rec.code ? (
+          <div className="space-y-3" role="status">
+            <RecoveryCodeBox code={rec.code} />
+            <p className="text-sm text-ivory-300/80">{t('rec.issued_warn')}</p>
+          </div>
+        ) : (
+          <>
+            <Field label={t('space.mot_de_passe3')} htmlFor="sp-rec-pwd">
+              <input id="sp-rec-pwd" type="password" className={inputClass} value={rec.password} onChange={(e) => setRec({ ...rec, password: e.target.value, error: null })} autoComplete="current-password" />
+            </Field>
+            {rec.error && <Notice tone="error">{rec.error}</Notice>}
+            <Button type="submit" variant="secondary" disabled={!rec.password}>
+              {rec.exists === false ? t('rec.space_make') : t('rec.space_renew')}
+            </Button>
+          </>
+        )}
       </form>
 
       <section className="space-y-4 border-t border-ivory-100/10 pt-6" aria-labelledby="sp-data">

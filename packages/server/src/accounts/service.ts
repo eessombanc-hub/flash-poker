@@ -29,6 +29,16 @@ const password = z
   .refine((p) => !COMMON_PASSWORDS.has(p.toLowerCase()) && new Set(p).size > 2, 'Ce mot de passe est trop courant. Choisissez-en un autre');
 const avatar = z.string().regex(/^[a-z0-9_-]{1,32}$/).nullable().optional();
 
+// Code de secours : 12 caractères sans ambiguïté (ni 0/O, ni 1/I/L), soit environ 59 bits. Affiché une seule fois ;
+// seule son empreinte scrypt est conservée.
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newRecoveryCode(): string {
+  const bytes = randomBytes(12);
+  const chars = Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]!);
+  return [chars.slice(0, 4), chars.slice(4, 8), chars.slice(8, 12)].map((g) => g.join('')).join('-');
+}
+const normalizeCode = (raw: string): string => raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
 export const registerSchema = z.object({ nickname, email, password, avatar, invite: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/).optional() });
 export const inviteEmailSchema = z.object({ email });
 export const loginSchema = z.object({ login: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) });
@@ -37,6 +47,11 @@ export const emailChangeSchema = z.object({ email, password: z.string().min(1).m
 export const passwordChangeSchema = z.object({ current: z.string().min(1).max(128), next: password });
 export const forgotSchema = z.object({ email });
 export const deleteSchema = z.object({ password: z.string().min(1).max(128) });
+export const recoverySchema = z.object({
+  login: z.string().trim().min(1).max(254),
+  code: z.string().min(8).max(40),
+  password,
+});
 export const resetSchema = z.object({ token: z.string().min(20).max(100), password });
 
 function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
@@ -89,7 +104,7 @@ export class AccountService {
 
   // ---------- Inscription, connexion, sessions ----------
 
-  async register(input: unknown): Promise<{ token: string; account: AccountPrivate }> {
+  async register(input: unknown): Promise<{ token: string; account: AccountPrivate; recoveryCode: string }> {
     const data = parse(registerSchema, input);
     if (this.findBy('nickname', data.nickname)) throw new ServerError('NICKNAME_TAKEN', 'Ce pseudo est déjà utilisé par un autre compte');
     if (this.findBy('email', data.email)) throw new ServerError('EMAIL_TAKEN', 'Un compte existe déjà avec cette adresse e-mail');
@@ -98,7 +113,7 @@ export class AccountService {
       .prepare('INSERT INTO users (id, nickname, email, pass_hash, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(id, data.nickname, data.email, await hashPassword(data.password), data.avatar && AVATAR_IMAGE_ID.test(data.avatar) ? null : (data.avatar ?? null), this.now());
     if (data.invite) this.acceptInvite(data.invite, id, data.email);
-    return { token: this.openSession(id), account: this.account(id)! };
+    return { token: this.openSession(id), account: this.account(id)!, recoveryCode: await this.issueRecoveryCode(id) };
   }
 
   async login(input: unknown): Promise<{ token: string; account: AccountPrivate }> {
@@ -267,6 +282,44 @@ export class AccountService {
   }
 
   // ---------- Mot de passe oublié ----------
+
+  /** Crée (ou remplace) le code de secours du compte et le renvoie en clair, une seule fois. */
+  private async issueRecoveryCode(userId: string): Promise<string> {
+    const code = newRecoveryCode();
+    this.db
+      .prepare('INSERT INTO recovery_codes (user_id, code_hash, created_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET code_hash = excluded.code_hash, created_at = excluded.created_at')
+      .run(userId, await hashPassword(normalizeCode(code)), this.now());
+    return code;
+  }
+
+  /** Nouveau code de secours, sur présentation du mot de passe : l'ancien cesse aussitôt de fonctionner. */
+  async regenerateRecoveryCode(userId: string, input: unknown): Promise<{ recoveryCode: string }> {
+    const { password: pwd } = parse(deleteSchema, input);
+    await this.checkPassword(userId, pwd);
+    return { recoveryCode: await this.issueRecoveryCode(userId) };
+  }
+
+  /** Le compte a-t-il un code de secours ? (les comptes créés avant cette fonction n'en ont pas) */
+  hasRecoveryCode(userId: string): boolean {
+    return !!this.db.prepare('SELECT 1 FROM recovery_codes WHERE user_id = ?').get(userId);
+  }
+
+  /**
+   * Nouveau mot de passe sans e-mail, sur présentation du code de secours. Même réponse que le compte existe ou non ;
+   * le code est à usage unique (un nouveau est délivré), et toutes les autres sessions sont fermées.
+   */
+  async resetWithCode(input: unknown): Promise<{ token: string; account: AccountPrivate; recoveryCode: string }> {
+    const data = parse(recoverySchema, input);
+    const row = this.findBy(data.login.includes('@') ? 'email' : 'nickname', data.login);
+    const stored = row ? (this.db.prepare('SELECT code_hash FROM recovery_codes WHERE user_id = ?').get(row.id as string) as Row | undefined) : undefined;
+    const ok = await verifyPassword(normalizeCode(data.code), (stored?.code_hash as string | undefined) ?? DUMMY_HASH);
+    if (!row || !stored || !ok) throw new ServerError('UNAUTHORIZED', 'Compte ou code de secours incorrect');
+    const userId = row.id as string;
+    this.db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?').run(await hashPassword(data.password), userId);
+    this.db.prepare('DELETE FROM resets WHERE user_id = ?').run(userId);
+    this.db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+    return { token: this.openSession(userId), account: this.account(userId)!, recoveryCode: await this.issueRecoveryCode(userId) };
+  }
 
   /** Toujours la même réponse, que l'adresse corresponde à un compte ou non (aucune adresse n'est révélée). */
   async forgot(input: unknown): Promise<void> {

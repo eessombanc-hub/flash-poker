@@ -43,7 +43,7 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
   };
 
   // ---------- Connexion ----------
-  app.get('/auth/config', async () => ({ passwordRecovery: accounts.mailEnabled }));
+  app.get('/auth/config', async () => ({ passwordRecovery: accounts.mailEnabled, recoveryCode: true }));
   app.post('/auth/register', async (req, reply) => {
     guard('register', req.ip);
     return reply.status(201).send(await accounts.register(req.body));
@@ -70,6 +70,21 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
     guard('forgot', req.ip);
     await accounts.forgot(req.body);
     return { ok: true };
+  });
+  // Récupération sans e-mail : limite par adresse, puis par compte visé (les échecs seuls comptent).
+  const failedCodes = new RateLimiter(5, 60 * 60_000, now);
+  app.post('/auth/recover', async (req) => {
+    guard('recover', req.ip);
+    const who = String((req.body as { login?: unknown } | null)?.login ?? '').trim().toLowerCase().slice(0, 254);
+    if (who && !failedCodes.allows(who)) throw new ServerError('RATE_LIMITED', 'Trop d’essais sur ce compte, réessayez dans une heure');
+    try {
+      const r = await accounts.resetWithCode(req.body);
+      failedCodes.clear(who);
+      return r;
+    } catch (e) {
+      if (who && e instanceof ServerError && e.code === 'UNAUTHORIZED') failedCodes.hit(who);
+      throw e;
+    }
   });
   app.post('/auth/reset', async (req) => {
     guard('reset', req.ip);
@@ -105,6 +120,12 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
     const account = me(req);
     guard('email', req.ip);
     return accounts.changeEmail(account.id, req.body);
+  });
+  app.get('/me/recovery-code', async (req) => ({ exists: accounts.hasRecoveryCode(me(req).id) }));
+  app.post('/me/recovery-code', async (req) => {
+    const account = me(req);
+    guard('password', req.ip);
+    return accounts.regenerateRecoveryCode(account.id, req.body);
   });
   app.post('/me/password', async (req) => {
     const account = me(req);

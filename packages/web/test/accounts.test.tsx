@@ -75,6 +75,8 @@ describe('comptes joueurs dans l’interface', () => {
     await user.type(screen.getByLabelText('Adresse e-mail'), 'emeric@exemple.fr');
     await user.type(screen.getByLabelText('Mot de passe'), 'tapis-vert-42');
     await user.click(screen.getByRole('button', { name: 'Créer mon compte' }));
+    await user.click(await screen.findByRole('checkbox', { name: /J’ai conservé mon code de secours/ }));
+    await user.click(screen.getByRole('button', { name: 'Continuer' }));
     expect(await screen.findByRole('button', { name: /Emeric/ })).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: /Créer une partie/ }));
@@ -84,6 +86,37 @@ describe('comptes joueurs dans l’interface', () => {
     await user.click(screen.getByRole('button', { name: 'Créer la table' }));
     await until(() => p.client.state.view?.players[0]?.nickname === 'Emeric', 'pseudo du compte');
     expect(p.client.state.view!.players[0]!.registered).toBe(true);
+  });
+
+  it('mot de passe oublié : lien toujours visible, code de secours affiché à l’inscription puis utilisé pour se reconnecter', async () => {
+    const env = await start();
+    const p = env.make();
+    const user = userEvent.setup();
+    renderApp(p);
+    await user.click(await screen.findByRole('button', { name: /Se connecter/ }));
+    await user.click(await screen.findByRole('button', { name: 'Créer un compte' }));
+    await user.type(screen.getByLabelText('Pseudo'), 'Lea');
+    await user.type(screen.getByLabelText('Adresse e-mail'), 'lea@x.fr');
+    await user.type(screen.getByLabelText('Mot de passe'), 'tapis-vert-42');
+    await user.click(screen.getByRole('button', { name: 'Créer mon compte' }));
+    const code = (await screen.findByTestId('recovery-code')).textContent ?? '';
+    expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    expect((screen.getByRole('button', { name: 'Continuer' }) as HTMLButtonElement).disabled).toBe(true); // il faut confirmer l'avoir conservé
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continuer' }));
+    await user.click(await screen.findByRole('button', { name: /Lea/ }));
+    await user.click(await screen.findByRole('button', { name: /Se déconnecter/ }));
+
+    await user.click(await screen.findByRole('button', { name: /Se connecter/ }));
+    await user.click(await screen.findByRole('button', { name: /Mot de passe oublié/ }));
+    await user.click(await screen.findByRole('button', { name: 'J’ai un code de secours' })); // ici l'e-mail est aussi disponible
+    await user.type(screen.getByLabelText(/Pseudo ou adresse/), 'lea');
+    await user.type(screen.getByLabelText('Code de secours'), code.toLowerCase());
+    await user.type(screen.getByLabelText('Nouveau mot de passe'), 'nouveau-mdp-77');
+    await user.click(screen.getByRole('button', { name: 'Changer mon mot de passe' }));
+    expect(await screen.findByTestId('recovery-code')).toBeTruthy();
+    expect(screen.getByTestId('recovery-code').textContent).not.toBe(code); // code à usage unique, renouvelé
+    expect(p.account.token).toBeTruthy();
   });
 
   it('lien d’invitation : écran d’inscription avec l’invitant, puis favoris réciproques', async () => {
@@ -101,6 +134,8 @@ describe('comptes joueurs dans l’interface', () => {
     await user.type(screen.getByLabelText('Adresse e-mail'), 'zoe@x.fr');
     await user.type(screen.getByLabelText('Mot de passe'), 'tapis-vert-42');
     await user.click(screen.getByRole('button', { name: 'Créer mon compte' }));
+    await user.click(await screen.findByRole('checkbox', { name: /J’ai conservé mon code de secours/ }));
+    await user.click(screen.getByRole('button', { name: 'Continuer' }));
     expect(await screen.findByRole('button', { name: /Zoe/ })).toBeTruthy();
     expect((await zoe.account.favorites()).map((f) => f.nickname)).toEqual(['Ana']);
     expect((await ana.account.invites()).joined.map((u) => u.nickname)).toEqual(['Zoe']);

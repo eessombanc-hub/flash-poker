@@ -1,6 +1,8 @@
 // Généré : messages français du serveur et du moteur, rattachés à leur clé de traduction.
 // Le serveur renvoie du français ; hors français, le client retrouve le message ici.
 export const SERVER_MESSAGES: ReadonlyArray<readonly [RegExp, string, readonly string[]]> = [
+  [/^Compte\ ou\ code\ de\ secours\ incorrect$/, 'srv.rec1', []],
+  [/^Trop\ d’essais\ sur\ ce\ compte,\ réessayez\ dans\ une\ heure$/, 'srv.rec2', []],
   [/^Trop\ de\ tentatives,\ réessayez\ dans\ quelques\ minutes$/, 'srv.m001', []],
   [/^Connectez\-vous\ pour\ accéder\ à\ votre\ espace$/, 'srv.m002', []],
   [/^Trop\ de\ requêtes,\ ralentissez$/, 'srv.m003', []],
