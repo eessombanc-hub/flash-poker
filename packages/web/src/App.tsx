@@ -213,7 +213,7 @@ function AppContent() {
         </main>
       );
     } else if (view.status === 'WAITING' || view.status === 'CANCELLED') content = <Lobby />;
-    else content = <Table />;
+    else content = <Table onRegister={() => setScreen({ auth: 'register' })} />;
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} />;

@@ -300,7 +300,7 @@ function Banner({ children, tone = 'gold' }: { children: ReactNode; tone?: 'gold
 }
 
 // ---------- Écran de jeu ----------
-export function Table() {
+export function Table({ onRegister }: { onRegister?: () => void } = {}) {
   const { t, tp } = useI18n();
   const client = useClient();
   const { view, game, me } = useTable();
@@ -364,7 +364,7 @@ export function Table() {
       </div>
 
       {result && <RoundResultModal record={result} events={events} board={resultBoard} view={view} final={over} onClose={() => { setResult(null); if (over) setFinalOpen(true); }} />}
-      {!result && over && finalOpen && game.outcome && <GameOverModal view={view} onClose={() => setFinalOpen(false)} onLeave={() => client.leave()} />}
+      {!result && over && finalOpen && game.outcome && <GameOverModal view={view} onClose={() => setFinalOpen(false)} onLeave={() => client.leave()} onRegister={onRegister ? () => { client.leave(); onRegister(); } : undefined} />}
       {modal === 'scores' && <ScoreModal view={view} onClose={() => setModal(null)} />}
       {modal === 'rules' && <RulesModal onClose={() => setModal(null)} />}
       {modal === 'quit' && (

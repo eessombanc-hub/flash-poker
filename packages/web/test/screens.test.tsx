@@ -229,6 +229,18 @@ describe('fin de partie', () => {
   });
   const over = (o: GameOutcome) => roomView({ status: 'FINISHED' }, game({ phase: 'GAME_OVER', round: null, outcome: o }));
 
+  it('invité : une invitation à créer un compte mène à l’inscription ; absente sans action fournie', async () => {
+    const user = userEvent.setup();
+    const onRegister = vi.fn();
+    const first = renderWith(<GameOverModal view={over(outcome())} onClose={() => undefined} onLeave={() => undefined} onRegister={onRegister} />, over(outcome()));
+    expect(screen.getByTestId('guest-invite')).toHaveTextContent('Cette partie n’est pas enregistrée');
+    await user.click(screen.getByRole('button', { name: 'Créer mon compte gratuit' }));
+    expect(onRegister).toHaveBeenCalledTimes(1);
+    first.unmount();
+    renderWith(<GameOverModal view={over(outcome())} onClose={() => undefined} onLeave={() => undefined} />, over(outcome()));
+    expect(screen.queryByTestId('guest-invite')).toBeNull();
+  });
+
   it('vainqueur, classement et répartition de la cagnotte (mise, gain, solde)', () => {
     renderWith(<GameOverModal view={over(outcome())} onClose={() => undefined} onLeave={() => undefined} />, over(outcome()));
     expect(screen.getByRole('heading', { name: 'Victoire d’Emeric' })).toBeInTheDocument();

@@ -11,6 +11,7 @@ import type { FeedItem } from '../lib/client';
 import { deNom, formatChips, formatSignedChips, pointsLabel, STARTING_CHIPS } from '../lib/format';
 import { categoryLabel, describeRank, INSURANCE_LABELS, variantName, VICTORY_LABELS, winningCards, winningCombination } from '../lib/labels';
 import { nick } from '../lib/selectors';
+import { useAccount } from '../lib/context';
 import { useSettings } from '../lib/settings';
 import type { LineResult, RoomView, RoundEvent, RoundRecord, TiebreakOutcome } from '../lib/types';
 import { LinesRecap } from '../panels/Line63Panel';
@@ -312,8 +313,9 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
 }
 
 // ---------- Fin de partie ----------
-export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onClose: () => void; onLeave: () => void }) {
+export function GameOverModal({ view, onClose, onLeave, onRegister }: { view: RoomView; onClose: () => void; onLeave: () => void; onRegister?: () => void }) {
   const { t } = useI18n();
+  const account = useAccount((s) => s.account);
   const game = view.game!;
   const o = game.outcome!;
   const insured = o.insurance ? o.insurance.players : null;
@@ -404,6 +406,14 @@ export function GameOverModal({ view, onClose, onLeave }: { view: RoomView; onCl
         </tfoot>
       </table>
       <RoundsRecap history={game.history} view={view} />
+
+      {!account && onRegister && (
+        <section className="mt-6 rounded-xl border border-gold-500/40 bg-gold-500/5 p-4" aria-label={t('overlays.compte.titre')} data-testid="guest-invite">
+          <h3 className="font-display text-xl text-ivory-50">{t('overlays.compte.titre')}</h3>
+          <p className="mt-1 text-sm text-ivory-100/90">{t('overlays.compte.texte')}</p>
+          <Button className="mt-3" onClick={onRegister}>{t('overlays.compte.cta')}</Button>
+        </section>
+      )}
 
       <div className={`flex flex-col gap-2 sm:flex-row sm:justify-end sticky -bottom-5 z-10 -mx-5 -mb-5 mt-6 border-t border-ivory-100/10 bg-ink-800 px-5 pb-8 pt-3 sm:static sm:mx-0 sm:mb-0 sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0`}>
         <Button variant="secondary" onClick={onClose}>
