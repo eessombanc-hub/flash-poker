@@ -1,7 +1,8 @@
 import { Eyebrow, Panel, Button } from '../components/ui';
 import { CardsIcon, CoinIcon } from '../components/Icons3D';
-import { VARIANTS } from '../lib/labels';
+import { VariantGlyph } from '../components/VariantGlyph';
 import type { VariantId } from '../lib/types';
+import { VARIANTS } from '../lib/labels';
 import { useI18n } from '../i18n';
 
 /** Menu « Jouer en solo » : chaque variante de poker contre le CPU, ou le Blackjack face au croupier. */
@@ -23,7 +24,7 @@ export function Solo({ onBack, onPick, onBlackjack, onTableau }: { onBack: () =>
         </li>
         {VARIANTS.map((v) => (
           <li key={v.id}>
-            <Tile title={v.name} tag={v.tagline} text={v.description} onClick={() => onPick(v.id)} />
+            <Tile title={v.name} tag={v.tagline} text={v.description} onClick={() => onPick(v.id)} glyph={v.id} />
           </li>
         ))}
       </ul>
@@ -54,18 +55,18 @@ export function Solo({ onBack, onPick, onBlackjack, onTableau }: { onBack: () =>
   );
 }
 
-function Tile({ title, tag, text, onClick, primary = false }: { title: string; tag?: string; text: string; onClick: () => void; primary?: boolean }) {
+function Tile({ title, tag, text, onClick, primary = false, glyph }: { title: string; tag?: string; text: string; onClick: () => void; primary?: boolean; glyph?: VariantId }) {
   return (
     <div className={`group relative flex h-full gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-gold-400 motion-reduce:transform-none ${primary ? 'border-gold-400/70 bg-gradient-to-br from-gold-500/25 via-ink-800/90 to-ink-900 shadow-gold' : 'border-ivory-100/12 bg-gradient-to-br from-ink-700/80 to-ink-900/90 hover:border-ivory-100/30'}`}>
       <span aria-hidden="true" className="mt-0.5">
-        <CardsIcon size={40} />
+        {glyph ? <VariantGlyph id={glyph} size={52} /> : <CardsIcon size={40} />}
       </span>
       <span className="min-w-0">
         <button type="button" onClick={onClick} className="block text-left font-display text-lg text-ivory-50 after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus:outline-none">
           {title}
         </button>
         {tag && <span className="block text-xs text-gold-300">{tag}</span>}
-        <span className="mt-1 block text-sm text-ivory-200/80">{text}</span>
+        <span className="mt-1 block line-clamp-4 text-sm text-ivory-200/80">{text}</span>
       </span>
     </div>
   );
