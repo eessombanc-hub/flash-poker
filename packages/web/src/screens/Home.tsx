@@ -4,6 +4,7 @@ import { useClient } from '../lib/context';
 import { formatChips } from '../lib/format';
 import { ApiError, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
+import { BrandMark } from '../components/BrandMark';
 import { Banner, InfoTile, RailTile, SidePanel, type Slide } from '../components/Lobby';
 import type { SpaceTab } from './Space';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -35,9 +36,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
   return (
     <div className="min-h-[calc(100dvh-3rem)]">
       <header className="mx-auto flex max-w-[88rem] items-center justify-between gap-2 px-4 py-4 sm:px-5">
-        <p className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-xl tracking-wide text-ivory-50">
-          <CardsIcon size={34} />
-          {t('home.flash_poker')}</p>
+        <BrandMark />
         <div className="flex items-center gap-0 sm:gap-1">
           <Button variant="ghost" className="whitespace-nowrap px-2 sm:px-3" onClick={() => setSettings(true)}>
             {t('common.settings')}

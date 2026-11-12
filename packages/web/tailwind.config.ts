@@ -30,6 +30,8 @@ export default {
         panel: '0 18px 50px rgba(0,0,0,.45)',
       },
       keyframes: {
+        twinkle: { '0%,100%': { opacity: '0', transform: 'scale(.4) rotate(0deg)' }, '50%': { opacity: '1', transform: 'scale(1) rotate(45deg)' } },
+        brandshine: { '0%,60%': { backgroundPosition: '100% 0' }, '100%': { backgroundPosition: '-60% 0' } },
         fadein: { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'none' } },
         pulseRing: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.55' } },
         // Halo doré qui respire autour des cartes ou des lignes gagnantes.
@@ -39,6 +41,7 @@ export default {
         },
       },
       animation: {
+        brandshine: 'brandshine 6s ease-in-out infinite',
         fadein: 'fadein .5s ease-out',
         pulseRing: 'pulseRing 1s ease-in-out infinite',
         winGlow: 'winGlow 1.8s ease-in-out 3',
