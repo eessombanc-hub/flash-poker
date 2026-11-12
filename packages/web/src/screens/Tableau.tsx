@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { PlayingCard } from '../components/Card';
 import { CoinRain, SpinTrophy } from '../components/Scene3D';
 import { LeagueBadge, ProgressPanel } from '../components/tableau/Progress';
@@ -7,6 +7,7 @@ import { Avatar, Badge, Button, CountdownRing, Eyebrow, Modal, Panel, Segmented,
 import type { AccountClient } from '../lib/account';
 import { useAccount, useAccountClient } from '../lib/context';
 import { useSettings } from '../lib/settings';
+import { FELT_OPTIONS } from '../lib/theme';
 import { useSound } from '../lib/sound';
 import { FitToScreen } from '../components/FitToScreen';
 import { VictoryTitle, WinnerSpotlight } from '../components/Winner';
@@ -579,7 +580,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
       </div>
 
       {/* Bande centrale (à droite des deux plateaux sur grand écran) */}
-      <div className="rounded-2xl border border-gold-500/25 bg-felt-900/70 p-3 max-lg:p-1.5 lg:col-start-2 lg:row-span-3 lg:row-start-1">
+      <div className="mat p-3 max-lg:p-1.5 lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <div className={!finished && (dto.verdicts ?? []).every((v) => v == null) ? 'max-lg:hidden' : ''}>
           <VerdictRow verdicts={dto.verdicts} you={you} final={finished} />
         </div>
@@ -732,11 +733,14 @@ function PlayerBar({ name, avatar, badge, remaining, score, active }: { name: st
 
 function Board({ dto, seat, side, look, owner, selectable, pending, onPick }: { dto: TbGameDto; seat: 0 | 1; side: 'mine' | 'theirs'; look: { fourColor: boolean; back: 'losange' | 'rayures' | 'etoile' }; owner: string; selectable: boolean; pending: number | null; onPick: (c: number) => void }) {
   const i18n = useI18n();
+  const { feltColor } = useSettings();
+  const felt = FELT_OPTIONS.find((f) => f.id === feltColor) ?? FELT_OPTIONS[0]!;
+  const feltVars = { '--felt-a': felt.a, '--felt-b': felt.b, '--felt-c': felt.c } as CSSProperties;
   const view = dto.view!;
   const cols = view.columns[seat]!;
   const finished = dto.status === 'finished';
   return (
-    <div className="grid grid-cols-5 gap-1 sm:gap-2" data-testid={`tb-board-${side}`}>
+    <div className="mat grid grid-cols-5 gap-1 p-2 sm:gap-2 sm:p-3 max-lg:p-1.5" style={feltVars} data-testid={`tb-board-${side}`}>
       {cols.map((cards, i) => (
         <ColumnStack
           key={i}

@@ -40,32 +40,68 @@ function Suit({ suit, color }: { suit: Suit; color: string }) {
   );
 }
 
-function Face({ code, fourColor }: { code: string; fourColor: boolean }) {
+// Disposition des symboles des cartes 2 à 10 (colonnes gauche / centre / droite, lignes de haut en bas).
+// Les symboles de la moitié basse sont retournés, comme sur un jeu réel.
+const PIP_X = { L: 36, C: 50, R: 64 } as const;
+const PIPS: Record<number, [keyof typeof PIP_X, number][]> = {
+  2: [['C', 46], ['C', 94]],
+  3: [['C', 46], ['C', 70], ['C', 94]],
+  4: [['L', 46], ['R', 46], ['L', 94], ['R', 94]],
+  5: [['L', 46], ['R', 46], ['C', 70], ['L', 94], ['R', 94]],
+  6: [['L', 46], ['R', 46], ['L', 70], ['R', 70], ['L', 94], ['R', 94]],
+  7: [['L', 46], ['R', 46], ['C', 58], ['L', 70], ['R', 70], ['L', 94], ['R', 94]],
+  8: [['L', 46], ['R', 46], ['C', 58], ['L', 70], ['R', 70], ['C', 82], ['L', 94], ['R', 94]],
+  9: [['L', 46], ['R', 46], ['L', 62], ['R', 62], ['C', 70], ['L', 78], ['R', 78], ['L', 94], ['R', 94]],
+  10: [['L', 46], ['R', 46], ['C', 54], ['L', 62], ['R', 62], ['L', 78], ['R', 78], ['C', 86], ['L', 94], ['R', 94]],
+};
+
+function Face({ code, fourColor, id }: { code: string; fourColor: boolean; id: string }) {
   const c = parseCode(code);
   const color = suitColor(c.suit, fourColor);
-  const big = c.rank >= 11 && c.rank <= 13; // J Q K : lettre ornementale au centre
+  const court = c.rank >= 11 && c.rank <= 13; // J Q K : lettre ornementale dans un cadre
+  const ace = c.rank === 14 || c.label === 'A';
+  const pips = PIPS[c.rank];
+  const pip = (x: number, y: number, k: string, size = 0.18) => (
+    <g key={k} transform={`translate(${x} ${y}) ${y > 70 ? 'rotate(180)' : ''} scale(${size}) translate(-50 -50)`}>
+      <Suit suit={c.suit} color={color} />
+    </g>
+  );
   return (
     <>
-      <rect x="1" y="1" width="98" height="138" rx="9" fill="#fbf8f1" stroke="#cfc6b1" strokeWidth="1.2" />
+      <defs>
+        <linearGradient id={`${id}-paper`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fffdf8" />
+          <stop offset="1" stopColor="#f1e9d6" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width="98" height="138" rx="9" fill={`url(#${id}-paper)`} stroke="#cfc6b1" strokeWidth="1.2" />
+      <rect x="4" y="4" width="92" height="132" rx="6.5" fill="none" stroke={color} strokeOpacity=".14" strokeWidth=".8" />
       {[false, true].map((flipped) => (
         <g key={String(flipped)} transform={flipped ? 'rotate(180 50 70)' : undefined}>
-          <text x="11" y="27" fontSize={c.label === '10' ? 21 : 25} fontWeight="700" fill={color} fontFamily="Georgia, 'Times New Roman', serif" textAnchor="start">
+          <text x="10" y="25" fontSize={c.label === '10' ? 20 : 24} fontWeight="700" fill={color} fontFamily="Georgia, 'Times New Roman', serif" textAnchor="start" letterSpacing={c.label === '10' ? '-1' : '0'}>
             {c.label}
           </text>
-          <g transform="translate(6 33) scale(.2)">
+          <g transform="translate(7 30) scale(.19)">
             <Suit suit={c.suit} color={color} />
           </g>
         </g>
       ))}
-      {big ? (
+      {court ? (
         <>
-          <text x="50" y="86" fontSize="54" fontWeight="700" fill={color} fontFamily="Georgia, 'Times New Roman', serif" textAnchor="middle">
+          <rect x="25" y="34" width="50" height="72" rx="4" fill={color} fillOpacity=".06" stroke={color} strokeOpacity=".55" strokeWidth="1" />
+          <rect x="28" y="37" width="44" height="66" rx="2.5" fill="none" stroke="#c9a25a" strokeOpacity=".7" strokeWidth=".8" />
+          <g transform="translate(50 49) scale(.17) translate(-50 -50)"><Suit suit={c.suit} color={color} /></g>
+          <text x="50" y="84" fontSize="40" fontWeight="700" fill={color} fontFamily="Georgia, 'Times New Roman', serif" textAnchor="middle">
             {c.label}
           </text>
-          <g transform="translate(37 94) scale(.26)">
-            <Suit suit={c.suit} color={color} />
-          </g>
+          <g transform="translate(50 91) rotate(180) scale(.17) translate(-50 -50)"><Suit suit={c.suit} color={color} /></g>
         </>
+      ) : ace ? (
+        <g transform="translate(50 70) scale(.58) translate(-50 -50)">
+          <Suit suit={c.suit} color={color} />
+        </g>
+      ) : pips ? (
+        pips.map(([col, y], i) => pip(PIP_X[col], y, String(i)))
       ) : (
         <g transform="translate(24 44) scale(.52)">
           <Suit suit={c.suit} color={color} />
@@ -113,6 +149,12 @@ function Back({ id, back = 'losange' }: { id: string; back?: CardBackId }) {
       </defs>
       <rect x="1" y="1" width="98" height="138" rx="9" fill={BACK_BORDER[back]} stroke="#c9a25a" strokeWidth="1.6" />
       <rect x="8" y="8" width="84" height="124" rx="5" fill={`url(#${id})`} stroke="#c9a25a" strokeWidth=".8" opacity=".95" />
+      <rect x="13" y="13" width="74" height="114" rx="3" fill="none" stroke="#c9a25a" strokeOpacity=".55" strokeWidth=".6" />
+      <g transform="translate(50 70)">
+        <ellipse rx="17" ry="22" fill={BACK_BORDER[back]} stroke="#c9a25a" strokeWidth="1.2" />
+        <ellipse rx="13" ry="18" fill="none" stroke="#c9a25a" strokeOpacity=".6" strokeWidth=".6" />
+        <path d="M3 -13 L-7 2 H-1 L-3 13 L7 -2 H1 Z" fill="#e6c27a" />
+      </g>
     </>
   );
 }
@@ -173,7 +215,7 @@ export function PlayingCard({ code, size = 'md', selected = false, disabled = fa
   // lu deux fois, et le texte dessiné « K ♦ » ne correspondrait pas au nom « Roi de carreau »).
   const inner = (
     <svg viewBox="0 0 100 140" className="block h-auto w-full" {...(onClick ? { 'aria-hidden': true, focusable: false } : { role: 'img', 'aria-label': hint ? `${label}, ${hint}` : label })}>
-      {code ? <Face code={code} fourColor={fourColor} /> : <Back id={`back-${uid}`} back={back} />}
+      {code ? <Face code={code} fourColor={fourColor} id={`face-${uid}`} /> : <Back id={`back-${uid}`} back={back} />}
     </svg>
   );
   // Carte atténuée : voile sombre opaque plutôt que transparence, pour que les cartes superposées ne se voient pas à travers.
