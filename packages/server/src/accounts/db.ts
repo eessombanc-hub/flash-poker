@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname } from 'node:path';
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite';
+import { backfillRankLog } from './rankings';
 
 // Même accès à `node:sqlite` que `store.ts` (voir l'explication là-bas).
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
@@ -165,6 +166,17 @@ export class AccountDb {
         code_hash TEXT NOT NULL,
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS rank_log (
+        user_id TEXT NOT NULL,
+        game TEXT NOT NULL,
+        ref TEXT NOT NULL,
+        ended_at INTEGER NOT NULL,
+        played INTEGER NOT NULL,
+        won INTEGER NOT NULL,
+        score INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, game, ref)
+      );
+      CREATE INDEX IF NOT EXISTS rank_log_by_game ON rank_log (game, ended_at);
       CREATE TABLE IF NOT EXISTS games (
         id TEXT PRIMARY KEY,
         ended_at INTEGER NOT NULL,
@@ -221,6 +233,7 @@ export class AccountDb {
       );
     `);
     this.migrateBlackjack();
+    backfillRankLog(this.db);
   }
 
   close(): void {

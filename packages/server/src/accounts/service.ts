@@ -8,6 +8,7 @@ import { mail, type Mailer } from './mailer';
 import { DUMMY_HASH, hashPassword, needsRehash, newToken, tokenHash, verifyPassword } from './password';
 import { maskEmail } from '../netSecurity';
 import { RateLimiter } from '../rateLimiter';
+import { computeRanking, logRank, pokerEntries, RANK_GAMES, RANK_PERIODS, type Ranking } from './rankings';
 import { variantProgress, type RoundFact } from './progress';
 import { computeEngagement, type Engagement } from './engagement';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LeaderboardRow, VariantStats } from './types';
@@ -47,6 +48,7 @@ export const emailChangeSchema = z.object({ email, password: z.string().min(1).m
 export const passwordChangeSchema = z.object({ current: z.string().min(1).max(128), next: password });
 export const forgotSchema = z.object({ email });
 export const deleteSchema = z.object({ password: z.string().min(1).max(128) });
+export const rankingQuerySchema = z.object({ game: z.enum(RANK_GAMES).default('poker'), period: z.enum(RANK_PERIODS).default('week') });
 export const recoverySchema = z.object({
   login: z.string().trim().min(1).max(254),
   code: z.string().min(8).max(40),
@@ -236,7 +238,7 @@ export class AccountService {
   // ---------- Données personnelles : export et suppression ----------
 
   /** Tables du Blackjack et du Tableau dont les lignes portent `user_id` (hors partie en cours, qui n'a pas d'intérêt à l'export). */
-  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue'] as const;
+  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log'] as const;
 
   /** Copie de toutes les données rattachées au compte, pour son titulaire (droit d'accès et de portabilité). */
   exportData(userId: string): Record<string, unknown> {
@@ -379,6 +381,7 @@ export class AccountService {
       this.db
         .prepare('INSERT OR IGNORE INTO user_games (user_id, game_id, player_id, net_cents, won, ended_at) VALUES (?, ?, ?, ?, ?, ?)')
         .run(m.accountId!, id, m.playerId, net, g.outcome.winner === m.playerId ? 1 : 0, g.endedAt);
+      for (const e of pokerEntries(g, id, m.accountId!, m.playerId, g.outcome.winner === m.playerId)) logRank(this.db, e);
     }
   }
 
@@ -432,6 +435,12 @@ export class AccountService {
       .map(([variant, s]) => ({ variant, played: s.played, won: s.won, points: s.points, ...variantProgress(s.facts) }))
       .sort((a, b) => b.played - a.played);
     return { variants, games: mine.length, gamesWon: mine.filter((g) => g.won).length };
+  }
+
+  /** Classement d'un jeu sur la semaine en cours, le mois en cours ou depuis toujours (heure de Paris). */
+  rankings(userId: string, input: unknown): Ranking {
+    const q = parse(rankingQuerySchema, input);
+    return computeRanking(this.db, userId, q.game, q.period, this.now());
   }
 
   /** Défis du jour, série de jours et trophées, calculés à la lecture. */

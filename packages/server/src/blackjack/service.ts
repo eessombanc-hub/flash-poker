@@ -6,6 +6,7 @@ import {
 import { randomBytes } from 'node:crypto';
 import type { AccountDb } from '../accounts/db';
 import { ServerError } from '../errors';
+import { logRank } from '../accounts/rankings';
 import type { BjAchievement, BjActive, BjChallenge, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjProfile, BjResult } from './types';
 
 type Row = Record<string, unknown>;
@@ -345,12 +346,13 @@ export class BlackjackService {
       )
       .run(chips, xp, stats.rounds, stats.hands, stats.hands_won, stats.hands_lost, stats.hands_pushed, stats.blackjacks, stats.doubles_won, stats.splits_won, stats.net_chips, stats.streak, bestStreak, maxChips, userId);
 
-    this.db
+    const logged = this.db
       .prepare('INSERT INTO bj_history (user_id, ended_at, table_id, bet, net, wagered, seed, commitment, rules, actions, summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
       .run(
         userId, this.now(), a.table_id as string, a.bet as number, round.net, round.wagered, a.seed as string, a.commitment as string, a.rules as string, a.actions as string,
         JSON.stringify({ dealer: round.dealer, hands: round.hands.map((h) => ({ cards: h.cards, bet: h.bet, result: h.result, net: h.net })) }),
       );
+    logRank(this.db, { userId, game: 'blackjack', ref: `bj:${logged.lastInsertRowid}`, endedAt: this.now(), played: 1, won: round.net > 0 ? 1 : 0, score: round.net });
     this.db.prepare('DELETE FROM bj_active WHERE user_id = ?').run(userId);
 
     return {

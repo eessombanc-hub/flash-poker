@@ -121,6 +121,7 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
     guard('email', req.ip);
     return accounts.changeEmail(account.id, req.body);
   });
+  app.get('/me/rankings', async (req) => accounts.rankings(me(req).id, req.query));
   app.get('/me/recovery-code', async (req) => ({ exists: accounts.hasRecoveryCode(me(req).id) }));
   app.post('/me/recovery-code', async (req) => {
     const account = me(req);

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { logRank, type RankGame } from '../accounts/rankings';
 import {
   tbClampRating, tbDailyChallenges, tbDayKey, tbEloDelta, tbIsRated, tbLeagueOf, TB_CHALLENGE_XP, TB_CPU_RATING, TB_PLACEMENT_GAMES, TB_START_RATING,
   type TableauVariant, type TbGameFacts, type TbLeagueStanding,
@@ -98,6 +100,7 @@ export class TableauStats {
       rating, Math.max(num('peak'), rating), wins, losses, draws, streak, Math.max(num('best_streak'), streak), f.straightFlushWin && f.outcome === 'win' ? 1 : 0,
       f.columnsWon, f.columnsPlayed, tbIsRated(f.mode) ? 1 : 0, tbIsRated(f.mode) && f.outcome === 'win' && !f.forfeit ? 1 : 0, userId, f.variant,
     );
+    if (tbIsRated(f.mode)) logRank(this.db, { userId, game: `tableau:${f.variant}` as RankGame, ref: `tb:${this.now()}:${randomUUID()}`, endedAt: this.now(), played: 1, won: f.outcome === 'win' ? 1 : 0 });
     this.progress(userId, f);
     return change;
   }

@@ -129,3 +129,4 @@ export interface LeaderboardRow extends AccountPublic {
   games: number;
   you: boolean;
 }
+export type { RankGame, RankPeriod, RankRow, Ranking } from './rankings';

@@ -8,7 +8,7 @@ import { BrandMark } from '../components/BrandMark';
 import { Banner, InfoTile, RailTile, SidePanel, type Slide } from '../components/Lobby';
 import type { SpaceTab } from './Space';
 import { useEffect, useState, type ReactNode } from 'react';
-import { CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
+import { StatsIcon, CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 import { SettingsBody } from '../components/SettingsBody';
 import { useI18n } from '../i18n';
 import { DailyStrip } from '../components/Engagement';
@@ -24,7 +24,6 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
 
   // Les rubriques réservées au compte mènent à « Mon espace », ou à l'inscription pour un visiteur.
   const space = (tab: SpaceTab) => () => (me && onSpace ? onSpace(tab) : onRegister?.());
-  const showRooms = () => document.getElementById('open-rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const slides: Slide[] = [
     { id: 'table', title: t('lob.s1.title'), text: t('lob.s1.text'), cta: t('lob.s1.cta'), onClick: onCreate, icon: <CardsIcon size={64} />, suit: '♠', bg: 'from-felt-700 via-felt-900 to-ink-900' },
@@ -87,7 +86,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
               <InfoTile title={t('lob.ev.defis')} onClick={space('defis')} icon={<TrophyIcon size={34} />} tone="gold" />
               <InfoTile title={t('lob.ev.friends')} onClick={space('favoris')} icon={<JoinIcon size={34} />} />
               <InfoTile title={t('lob.ev.invite')} onClick={space('inviter')} icon={<ChipsIcon size={34} />} />
-              <InfoTile title={t('lob.ev.open')} onClick={showRooms} icon={<CardsIcon size={34} />} />
+              <InfoTile title={t('lob.ev.rank')} onClick={space('classement')} icon={<StatsIcon size={34} />} />
             </div>
           </section>
 
