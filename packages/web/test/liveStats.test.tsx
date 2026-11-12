@@ -10,7 +10,7 @@ import { SettingsProvider } from '../src/lib/settings';
 afterEach(() => vi.useRealTimers());
 
 describe('fréquentation du site', () => {
-  it('les tuiles affichent joueurs en ligne et salles ouvertes, ou un tiret tant que rien n’est connu', () => {
+  it('les compteurs n’apparaissent qu’à partir d’une fréquentation suffisante, sinon un message neutre les remplace', () => {
     const client = new GameClient({ storage: new MemorySessionStore() });
     client.dispose = () => undefined;
     client.listRooms = async () => [];
@@ -22,10 +22,14 @@ describe('fréquentation du site', () => {
       </SettingsProvider>
     );
     const { rerender } = render(view(null));
-    expect(screen.getByTestId('lob.live.online').textContent).toBe('—');
+    expect(screen.queryByTestId('lob.live.online')).toBeNull();
+    expect(screen.getByTestId('lob.live.always')).toBeInTheDocument();
+    rerender(view({ online: 3, rooms: 1 }));
+    expect(screen.queryByTestId('lob.live.online')).toBeNull();
     rerender(view({ online: 12, rooms: 3 }));
     expect(screen.getByTestId('lob.live.online').textContent).toBe('12');
     expect(screen.getByTestId('lob.live.rooms').textContent).toBe('3');
+    expect(screen.queryByTestId('lob.live.always')).toBeNull();
     expect(screen.getByText('Joueurs en ligne')).toBeInTheDocument();
     expect(screen.getByText('Salles ouvertes')).toBeInTheDocument();
   });

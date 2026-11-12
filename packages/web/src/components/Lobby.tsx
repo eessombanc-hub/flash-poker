@@ -2,6 +2,11 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import { Avatar, Button } from './ui';
 
+/** Intitulé d'un groupe du rail (ordinateur seulement). */
+export function RailGroup({ label }: { label: string }) {
+  return <p className="hidden px-1 pt-3 text-xs font-semibold uppercase tracking-widest text-gold-300/90 lg:block" aria-hidden="true">{label}</p>;
+}
+
 /** Tuile du rail de jeux : bandeau de couleur, icône, titre ; toute la tuile est cliquable. */
 export function RailTile({ icon, title, onClick, tone, suit }: { icon: ReactNode; title: string; onClick: () => void; tone: 'felt' | 'ruby' | 'gold' | 'ink' | 'sea'; suit: string }) {
   const tones = {
@@ -37,7 +42,7 @@ export interface Slide {
 }
 
 /** Bandeau à diapositives : défilement automatique (suspendu au survol, au focus et si l'utilisateur limite les animations). */
-export function Banner({ slides }: { slides: Slide[] }) {
+export function Banner({ slides, autoplay = false }: { slides: Slide[]; autoplay?: boolean }) {
   const { t } = useI18n();
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -47,10 +52,10 @@ export function Banner({ slides }: { slides: Slide[] }) {
   const idx = Math.min(i, n - 1);
 
   useEffect(() => {
-    if (paused || reduce || n < 2) return;
+    if (!autoplay || paused || reduce || n < 2) return;
     const id = setInterval(() => setI((k) => (k + 1) % n), 7000);
     return () => clearInterval(id);
-  }, [paused, reduce, n]);
+  }, [autoplay, paused, reduce, n]);
 
   const s = slides[idx];
   if (!s) return null;
@@ -66,7 +71,7 @@ export function Banner({ slides }: { slides: Slide[] }) {
       className={`relative overflow-hidden rounded-3xl border border-gold-500/30 bg-gradient-to-br ${s.bg} shadow-gold`}
     >
       <span aria-hidden="true" className="pointer-events-none absolute -right-4 -top-10 select-none font-display text-[16rem] leading-none text-ivory-100/[0.06]">{s.suit}</span>
-      <div id={regionId} aria-live={paused || reduce ? 'polite' : 'off'} className="relative flex min-h-[15rem] flex-col justify-between gap-6 p-6 sm:min-h-[17rem] sm:flex-row sm:items-center sm:px-16 sm:py-9">
+      <div id={regionId} aria-live={autoplay && !paused && !reduce ? 'off' : 'polite'} className="relative flex min-h-[15rem] flex-col justify-between gap-6 p-6 sm:min-h-[17rem] sm:flex-row sm:items-center sm:px-16 sm:py-9">
         <div key={s.id} className="max-w-lg motion-safe:animate-fadein">
           <h2 className="font-display text-3xl leading-tight tracking-wide text-ivory-50 sm:text-4xl">{s.title}</h2>
           <p className="mt-3 text-sm text-ivory-100/85 sm:text-base">{s.text}</p>
@@ -103,11 +108,15 @@ export function InfoTile({ title, onClick, icon, tone = 'ink' }: { title: string
   );
 }
 
-/** Panneau joueur : profil si connecté, invitation à ouvrir un compte sinon ; entrée rapide par code de partie. */
-export function SidePanel({ me, live, onProfile, onRegister, onJoin, children }: { live?: { online: number; rooms: number } | null; me?: { nickname: string; avatar?: string | null } | null; onProfile?: () => void; onRegister?: () => void; onJoin: (code: string) => void; children?: ReactNode }) {
+/** En dessous de ce nombre de joueurs en ligne, les chiffres desservent le site : on affiche un message toujours vrai. */
+export const LIVE_MIN = 10;
+
+/** Panneau joueur : profil si connecté, bénéfices d'un compte sinon ; entrée rapide par code de partie ; fréquentation. */
+export function SidePanel({ me, live, onProfile, onJoin, children }: { live?: { online: number; rooms: number } | null; me?: { nickname: string; avatar?: string | null } | null; onProfile?: () => void; onJoin: (code: string) => void; children?: ReactNode }) {
   const { t } = useI18n();
   const [code, setCode] = useState('');
   const field = useId();
+  const busy = !!live && live.online >= LIVE_MIN;
   return (
     <aside aria-label={t('lob.side')} className="space-y-3">
       <div className="rounded-2xl border border-ivory-100/12 bg-ink-800/70 p-4">
@@ -122,8 +131,7 @@ export function SidePanel({ me, live, onProfile, onRegister, onJoin, children }:
         ) : (
           <div>
             <p className="font-display text-lg text-ivory-50">{t('lob.guest.title')}</p>
-            <p className="mt-1 text-sm text-ivory-200/80">{t('lob.guest.text')}</p>
-            {onRegister && <Button className="mt-3 w-full" onClick={onRegister}>{t('lob.guest.cta')}</Button>}
+            <p className="mt-1 text-sm text-ivory-100/85">{t('lob.guest.benefits')}</p>
           </div>
         )}
       </div>
@@ -141,20 +149,24 @@ export function SidePanel({ me, live, onProfile, onRegister, onJoin, children }:
           <Button type="submit" variant="secondary" disabled={code.trim().length < 3}>{t('lob.code.go')}</Button>
         </div>
       </form>
-      <dl className="grid grid-cols-2 gap-2" aria-label={t('lob.live')}>
-        {([
-          ['lob.live.online', live?.online, 'bg-jade-400'],
-          ['lob.live.rooms', live?.rooms, 'bg-gold-400'],
-        ] as const).map(([key, n, dot]) => (
-          <div key={key} className="rounded-2xl border border-ivory-100/12 bg-ink-800/70 px-3 py-3 text-center">
-            <dd className="font-display text-3xl leading-none text-ivory-50" data-testid={key}>{n ?? '—'}</dd>
-            <dt className="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-ivory-200/80">
-              <span aria-hidden="true" className={`h-2 w-2 rounded-full ${dot} ${n !== undefined ? 'motion-safe:animate-pulseRing' : 'opacity-40'}`} />
-              {t(key)}
-            </dt>
-          </div>
-        ))}
-      </dl>
+      {busy ? (
+        <dl className="grid grid-cols-2 gap-2" aria-label={t('lob.live')}>
+          {([
+            ['lob.live.online', live!.online, 'bg-jade-400'],
+            ['lob.live.rooms', live!.rooms, 'bg-gold-400'],
+          ] as const).map(([key, n, dot]) => (
+            <div key={key} className="rounded-2xl border border-ivory-100/12 bg-ink-800/70 px-3 py-3 text-center">
+              <dd className="font-display text-3xl leading-none text-ivory-50" data-testid={key}>{n}</dd>
+              <dt className="mt-1.5 flex items-center justify-center gap-1.5 text-xs text-ivory-100/90">
+                <span aria-hidden="true" className={`h-2 w-2 rounded-full ${dot}`} />
+                {t(key)}
+              </dt>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="rounded-2xl border border-ivory-100/12 bg-ink-800/70 px-4 py-3 text-center text-sm text-ivory-100/90" data-testid="lob.live.always">{t('lob.live.always')}</p>
+      )}
     </aside>
   );
 }

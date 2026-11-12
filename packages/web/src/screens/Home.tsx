@@ -5,7 +5,8 @@ import { formatChips } from '../lib/format';
 import { ApiError, type LiveStats, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { BrandMark } from '../components/BrandMark';
-import { Banner, InfoTile, RailTile, SidePanel, type Slide } from '../components/Lobby';
+import { Banner, InfoTile, RailGroup, RailTile, SidePanel, type Slide } from '../components/Lobby';
+import { TablePreview } from '../components/TablePreview';
 import type { SpaceTab } from './Space';
 import { useEffect, useState, type ReactNode } from 'react';
 import { StatsIcon, CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
@@ -16,45 +17,47 @@ import { isFirstVisit, markOnboarded } from '../lib/onboarding';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, onSpace, onRegister, me, live, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; onRegister?: () => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, onSpace, me, live, langSelect, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
   const [welcome, setWelcome] = useState(() => !!onQuickStart && isFirstVisit());
+  const space = (tab: SpaceTab) => () => onSpace?.(tab);
 
-  // Les rubriques réservées au compte mènent à « Mon espace », ou à l'inscription pour un visiteur.
-  const space = (tab: SpaceTab) => () => (me && onSpace ? onSpace(tab) : onRegister?.());
-
+  // Joueur inscrit : bandeau à diapositives. Visiteur ou première visite : un seul message, une seule action.
   const slides: Slide[] = [
     { id: 'table', title: t('lob.s1.title'), text: t('lob.s1.text'), cta: t('lob.s1.cta'), onClick: onCreate, icon: <CardsIcon size={64} />, suit: '♠', bg: 'from-felt-700 via-felt-900 to-ink-900' },
     ...(onQuickStart ? [{ id: 'guide', title: t('lob.s2.title'), text: t('lob.s2.text'), cta: t('lob.s2.cta'), onClick: onQuickStart, icon: <TrophyIcon size={64} />, suit: '♥', bg: 'from-ruby-600/60 via-ink-800 to-ink-900' }] : []),
     ...(me && onChallenges ? [{ id: 'defis', title: t('lob.s3.title'), text: t('lob.s3.text'), cta: t('lob.s3.cta'), onClick: onChallenges, icon: <TrophyIcon size={64} />, suit: '♦', bg: 'from-gold-700/50 via-ink-800 to-ink-900' }] : []),
     ...(onVariants ? [{ id: 'variantes', title: t('lob.s4.title'), text: t('lob.s4.text'), cta: t('lob.s4.cta'), onClick: onVariants, icon: <ChipsIcon size={64} />, suit: '♣', bg: 'from-ink-600 via-ink-800 to-ink-900' }] : []),
   ];
+  const showHero = welcome || !me;
 
   return (
     <div className="min-h-[calc(100dvh-3rem)]">
-      <header className="mx-auto flex max-w-[88rem] items-center justify-between gap-2 px-4 py-4 sm:px-5">
+      <header className="mx-auto flex max-w-[88rem] flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-4 sm:px-5">
         <BrandMark />
         <div className="flex items-center gap-0 sm:gap-1">
           <Button variant="ghost" className="whitespace-nowrap px-2 sm:px-3" onClick={() => setSettings(true)}>
             {t('common.settings')}
           </Button>
           {account}
+          {langSelect && <div className="ml-1 sm:ml-2">{langSelect}</div>}
         </div>
       </header>
 
       <main className="mx-auto grid max-w-[88rem] gap-4 px-4 pb-12 sm:px-5 lg:grid-cols-[13.5rem_minmax(0,1fr)_19rem] lg:items-start">
-        {/* Rail des jeux : une colonne à gauche sur ordinateur, une rangée défilante sur téléphone */}
+        {/* Rail des jeux : deux actions fortes, puis le poker, puis les autres jeux */}
         <nav aria-label={t('lob.rail')} className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0">
           <RailTile icon={<CardsIcon size={40} />} title={t('home.create.title')} onClick={onCreate} tone="gold" suit="♠" />
           <RailTile icon={<JoinIcon size={38} />} title={t('home.join.title')} onClick={() => onJoin()} tone="felt" suit="♥" />
-          <RailTile icon={<TrophyIcon size={38} />} title={t('home.solo.title')} onClick={onTrain} tone="ruby" suit="♦" />
+          <RailGroup label={t('lob.group.poker')} />
+          <RailTile icon={<TrophyIcon size={38} />} title={t('home.solo.title')} onClick={onTrain} tone="ink" suit="♦" />
           {onVariants && <RailTile icon={<ChipsIcon size={38} />} title={t('home.variants.title')} onClick={onVariants} tone="ink" suit="♣" />}
-          {onBlackjack && <RailTile icon={<CoinIcon size={38} />} title={t('home.blackjack')} onClick={onBlackjack} tone="sea" suit="♠" />}
-          {onTableau && <RailTile icon={<CardsIcon size={38} />} title={t('tb.variant.classic')} onClick={() => onTableau('classic')} tone="felt" suit="♦" />}
+          {(onBlackjack || onTableau) && <RailGroup label={t('lob.group.other')} />}
+          {onBlackjack && <RailTile icon={<CoinIcon size={38} />} title={t('home.blackjack')} onClick={onBlackjack} tone="ink" suit="♠" />}
+          {onTableau && <RailTile icon={<CardsIcon size={38} />} title={t('tb.variant.classic')} onClick={() => onTableau('classic')} tone="ink" suit="♦" />}
           {onTableau && <RailTile icon={<CardsIcon size={38} />} title={t('tb.variant.hand5')} onClick={() => onTableau('hand5')} tone="ink" suit="♥" />}
-          <RailTile icon={<RulesIcon size={38} />} title={t('home.rules.title')} onClick={() => setRules(true)} tone="ink" suit="♣" />
         </nav>
 
         <div className="min-w-0 space-y-6">
@@ -64,41 +67,59 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
               {notice}
             </p>
           )}
-          {welcome && onQuickStart && (
-            <section aria-label={t('ob.title')} className="flex flex-col gap-4 rounded-2xl border border-gold-400/60 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <Eyebrow>{t('ob.eyebrow')}</Eyebrow>
-                <h2 className="mt-1 font-display text-2xl text-ivory-50">{t('ob.title')}</h2>
-                <p className="mt-1 max-w-xl text-sm text-ivory-200/85">{t('ob.text')}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
-                <Button onClick={onQuickStart}>{t('ob.start')}</Button>
+
+          {showHero ? (
+            <section aria-label={welcome && onQuickStart ? t('ob.title') : t('lob.banner')} className="relative overflow-hidden rounded-3xl border border-gold-500/40 bg-gradient-to-br from-felt-700 via-felt-900 to-ink-900 p-5 shadow-gold sm:p-8">
+              <span aria-hidden="true" className="pointer-events-none absolute -right-6 -top-12 select-none font-display text-[18rem] leading-none text-ivory-100/[0.05]">♠</span>
+              <div className="relative grid items-center gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+                <div>
+                  {welcome && onQuickStart && <Eyebrow>{t('ob.eyebrow')}</Eyebrow>}
+                  <h2 className="mt-1 font-display text-3xl leading-tight tracking-wide text-ivory-50 sm:text-4xl">{welcome && onQuickStart ? t('ob.title') : t('lob.s1.title')}</h2>
+                  <p className="mt-3 max-w-md text-sm text-ivory-100/90 sm:text-base">{welcome && onQuickStart ? t('ob.text') : t('lob.s1.text')}</p>
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    {welcome && onQuickStart ? (
+                      <>
+                        <Button className="px-6 py-3 text-base" onClick={onQuickStart}>{t('ob.start')}</Button>
+                        <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button className="px-6 py-3 text-base" onClick={onCreate}>{t('lob.s1.cta')}</Button>
+                        {onQuickStart && <Button variant="ghost" onClick={onQuickStart}>{t('lob.s2.cta')}</Button>}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <TablePreview />
               </div>
             </section>
+          ) : (
+            <Banner slides={slides} />
           )}
 
-          <Banner slides={slides} />
+          {me && (
+            <>
+              <section aria-label={t('lob.events')}>
+                <h2 className="mb-2 font-display text-xl text-ivory-50">{t('lob.events')}</h2>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <InfoTile title={t('lob.ev.defis')} onClick={space('defis')} icon={<TrophyIcon size={34} />} tone="gold" />
+                  <InfoTile title={t('lob.ev.friends')} onClick={space('favoris')} icon={<JoinIcon size={34} />} />
+                  <InfoTile title={t('lob.ev.invite')} onClick={space('inviter')} icon={<ChipsIcon size={34} />} />
+                  <InfoTile title={t('lob.ev.rank')} onClick={space('classement')} icon={<StatsIcon size={34} />} />
+                </div>
+              </section>
 
-          <section aria-label={t('lob.events')}>
-            <h2 className="mb-2 font-display text-xl text-ivory-50">{t('lob.events')}</h2>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <InfoTile title={t('lob.ev.defis')} onClick={space('defis')} icon={<TrophyIcon size={34} />} tone="gold" />
-              <InfoTile title={t('lob.ev.friends')} onClick={space('favoris')} icon={<JoinIcon size={34} />} />
-              <InfoTile title={t('lob.ev.invite')} onClick={space('inviter')} icon={<ChipsIcon size={34} />} />
-              <InfoTile title={t('lob.ev.rank')} onClick={space('classement')} icon={<StatsIcon size={34} />} />
-            </div>
-          </section>
-
-          <section aria-label={t('lob.session')}>
-            <h2 className="mb-2 font-display text-xl text-ivory-50">{t('lob.session')}</h2>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <InfoTile title={t('space.tab.historique')} onClick={space('historique')} icon={<RulesIcon size={30} />} />
-              <InfoTile title={t('space.tab.statistiques')} onClick={space('statistiques')} icon={<CoinIcon size={30} />} />
-              <InfoTile title={t('space.tab.manches')} onClick={space('manches')} icon={<CardsIcon size={30} />} />
-              <InfoTile title={t('space.tab.bankroll')} onClick={space('bankroll')} icon={<ChipsIcon size={30} />} />
-            </div>
-          </section>
+              <section aria-label={t('lob.session')}>
+                <h2 className="mb-2 font-display text-xl text-ivory-50">{t('lob.session')}</h2>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <InfoTile title={t('space.tab.historique')} onClick={space('historique')} icon={<RulesIcon size={30} />} />
+                  <InfoTile title={t('space.tab.statistiques')} onClick={space('statistiques')} icon={<CoinIcon size={30} />} />
+                  <InfoTile title={t('space.tab.manches')} onClick={space('manches')} icon={<CardsIcon size={30} />} />
+                  <InfoTile title={t('space.tab.bankroll')} onClick={space('bankroll')} icon={<ChipsIcon size={30} />} />
+                </div>
+              </section>
+            </>
+          )}
 
           <ul className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4" aria-label={t('home.stats.aria')}>
             {[
@@ -109,7 +130,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
             ].map(([big, small]) => (
               <li key={big} className="rounded-2xl border border-ivory-100/10 bg-ink-800/60 px-4 py-3 text-center">
                 <span className="block font-display text-2xl text-gold-300">{big}</span>
-                <span className="text-xs text-ivory-200/75">{small}</span>
+                <span className="text-xs text-ivory-100/85">{small}</span>
               </li>
             ))}
           </ul>
@@ -117,10 +138,13 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           <div id="open-rooms" className="scroll-mt-4">
             <OpenRooms onSelect={onJoin} />
           </div>
-          <p className="pt-4 text-center text-xs text-ivory-300/60">{t('home.footer')}</p>
+          <footer className="space-y-2 pt-4 text-center text-xs text-ivory-100/80">
+            <p className="font-semibold text-ivory-100">{t('home.footer')}</p>
+            <button type="button" onClick={() => setRules(true)} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('home.rules.title')}</button>
+          </footer>
         </div>
 
-        <SidePanel live={live} me={me} onProfile={me && onSpace ? () => onSpace('profil') : undefined} onRegister={onRegister} onJoin={(c) => onJoin(c)}>
+        <SidePanel live={live} me={me} onProfile={me && onSpace ? () => onSpace('profil') : undefined} onJoin={(c) => onJoin(c)}>
           {me && onChallenges && <DailyStrip onOpen={onChallenges} />}
         </SidePanel>
       </main>

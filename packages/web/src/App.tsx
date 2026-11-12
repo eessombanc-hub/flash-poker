@@ -255,7 +255,7 @@ function AppContent() {
         me={me}
         live={live}
         onSpace={(tab) => { setSpaceTab(tab); setScreen('space'); }}
-        onRegister={() => setScreen({ auth: 'register' })}
+        langSelect={<LanguageSelect />}
         onBlackjack={() => setScreen('blackjack')}
         onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
         onJoin={(code) => {
@@ -271,7 +271,7 @@ function AppContent() {
     <SettingsProvider>
       <SoundBridge />
       <ConnectionBanner />
-      {!(session && view && view.status !== 'WAITING' && view.status !== 'CANCELLED') && <TopBar />}
+      {!(session && view && view.status !== 'WAITING' && view.status !== 'CANCELLED') && screen !== 'home' && <TopBar />}
       <Suspense fallback={<p className="p-8 text-center text-sm text-ivory-300/70" role="status">{t('common.loading')}</p>}>{content}</Suspense>
       <ToastHost toasts={toasts} onDismiss={client.dismissToast} />
     </SettingsProvider>
