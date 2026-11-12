@@ -120,3 +120,12 @@ export interface InviteOverview {
   mailEnabled: boolean;
 }
 
+
+export type { DailyChallenge, Engagement, Trophy } from './engagement';
+
+/** Ligne du classement hebdomadaire entre favoris : parties gagnées sur les sept derniers jours. */
+export interface LeaderboardRow extends AccountPublic {
+  wins: number;
+  games: number;
+  you: boolean;
+}

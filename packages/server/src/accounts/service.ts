@@ -9,7 +9,8 @@ import { DUMMY_HASH, hashPassword, needsRehash, newToken, tokenHash, verifyPassw
 import { maskEmail } from '../netSecurity';
 import { RateLimiter } from '../rateLimiter';
 import { variantProgress, type RoundFact } from './progress';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
+import { computeEngagement, type Engagement } from './engagement';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LeaderboardRow, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
 const nickname = z
@@ -378,6 +379,28 @@ export class AccountService {
       .map(([variant, s]) => ({ variant, played: s.played, won: s.won, points: s.points, ...variantProgress(s.facts) }))
       .sort((a, b) => b.played - a.played);
     return { variants, games: mine.length, gamesWon: mine.filter((g) => g.won).length };
+  }
+
+  /** Défis du jour, série de jours et trophées, calculés à la lecture. */
+  engagement(userId: string): Engagement {
+    const rows = this.db.prepare('SELECT ended_at, won FROM user_games WHERE user_id = ?').all(userId) as Row[];
+    return computeEngagement(rows.map((r) => ({ endedAt: r.ended_at as number, won: r.won === 1 })), this.now());
+  }
+
+  /** Classement des sept derniers jours entre le joueur et ses favoris : victoires, puis parties jouées (moins = mieux). */
+  leaderboard(userId: string): LeaderboardRow[] {
+    const since = this.now() - 7 * 86_400_000;
+    const ids = [userId, ...this.favorites(userId).map((f) => f.id)];
+    const q = this.db.prepare('SELECT COUNT(*) AS g, COALESCE(SUM(won), 0) AS w FROM user_games WHERE user_id = ? AND ended_at >= ?');
+    return ids
+      .map((id) => {
+        const acc = this.account(id);
+        if (!acc) return null;
+        const r = q.get(id, since) as Row;
+        return { id: acc.id, nickname: acc.nickname, avatar: acc.avatar, wins: Number(r.w), games: Number(r.g), you: id === userId };
+      })
+      .filter((x): x is LeaderboardRow => x !== null)
+      .sort((a, b) => b.wins - a.wins || a.games - b.games || a.nickname.localeCompare(b.nickname));
   }
 
   /** Bilan des parties : gains moins mises, partie après partie (cagnotte virtuelle, assurances comprises). */

@@ -24,6 +24,7 @@ const Blackjack = lazy(() => loadBlackjack().then((m) => ({ default: m.Blackjack
 const Tableau = lazy(() => loadTableau().then((m) => ({ default: m.Tableau })));
 const Variants = lazy(() => loadVariants().then((m) => ({ default: m.Variants })));
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
+import type { SpaceTab } from './screens/Space';
 
 type Screen = 'home' | 'create' | 'join' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | { auth: AuthMode };
 
@@ -175,6 +176,7 @@ function AppContent() {
   const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
   const [trainVariant, setTrainVariant] = useState<VariantId | undefined>(undefined);
   const [guided, setGuided] = useState(false);
+  const [spaceTab, setSpaceTab] = useState<SpaceTab>('profil');
   const [joinCode, setJoinCode] = useState<string>(initialCode);
 
   useEffect(() => {
@@ -210,7 +212,7 @@ function AppContent() {
     } else if (view.status === 'WAITING' || view.status === 'CANCELLED') content = <Lobby />;
     else content = <Table />;
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
-  else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} />;
+  else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} />;
   else if (screen === 'tableau') content = <Tableau onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} initialVariant={tableauVariant} />;
   else if (screen === 'variants')
@@ -245,6 +247,7 @@ function AppContent() {
       <Home
         onCreate={() => setScreen('create')}
         onTrain={() => setScreen('solo')}
+        onChallenges={me ? () => { setSpaceTab('defis'); setScreen('space'); } : undefined}
         onQuickStart={() => { setTrainVariant('CLOSED_1'); setGuided(true); setScreen('train'); }}
         onVariants={() => setScreen('variants')}
         onBlackjack={() => setScreen('blackjack')}
@@ -253,7 +256,7 @@ function AppContent() {
           setJoinCode(code ?? '');
           setScreen('join');
         }}
-        account={<AccountBar onAuth={(mode) => setScreen({ auth: mode })} onSpace={() => setScreen('space')} />}
+        account={<AccountBar onAuth={(mode) => setScreen({ auth: mode })} onSpace={() => { setSpaceTab('profil'); setScreen('space'); }} />}
         notice={closed === 'KICKED' ? t('notice.kicked') : closed === 'INVALID_SESSION' ? t('notice.invalid') : null}
       />
     );

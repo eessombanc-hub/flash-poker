@@ -9,11 +9,12 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 import { SettingsBody } from '../components/SettingsBody';
 import { useI18n } from '../i18n';
+import { DailyStrip } from '../components/Engagement';
 import { isFirstVisit, markOnboarded } from '../lib/onboarding';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -52,6 +53,8 @@ export function Home({ onQuickStart, onVariants, onCreate, onJoin, onTrain, onBl
           </div>
           <HeroScene />
         </section>
+
+        {onChallenges && <DailyStrip onOpen={onChallenges} />}
 
         {welcome && onQuickStart && (
           <section aria-label={t('ob.title')} className="mb-3 flex flex-col gap-4 rounded-2xl border border-gold-400/60 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-5 sm:flex-row sm:items-center sm:justify-between">

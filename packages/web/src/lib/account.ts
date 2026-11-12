@@ -3,7 +3,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
 import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
 import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbQueueDto, TbStatus } from './types';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
 const KEY = 'poker.account.v1';
@@ -195,6 +195,8 @@ export class AccountClient {
   game = (id: string) => this.request<GameDetail>('GET', `/me/games/${encodeURIComponent(id)}`);
   stats = () => this.request<{ variants: VariantStats[]; games: number; gamesWon: number }>('GET', '/me/stats');
   wallet = () => this.request<Wallet>('GET', '/me/wallet');
+  engagement = () => this.request<Engagement>('GET', '/me/engagement');
+  leaderboard = () => this.request<{ rows: LeaderboardRow[] }>('GET', '/me/leaderboard').then((r) => r.rows);
   bankroll = () => this.request<Bankroll>('GET', '/me/bankroll');
   // ----- Blackjack -----
   /** Code d'invité : aléatoire, créé une fois et conservé dans ce navigateur (le Blackjack se joue sans compte). */

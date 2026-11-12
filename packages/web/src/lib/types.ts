@@ -38,8 +38,12 @@ export type {
   FinishedGame,
   GameDetail,
   GameSummary,
+  DailyChallenge,
+  Engagement,
   InviteOverview,
+  LeaderboardRow,
   SentInvite,
+  Trophy,
   VariantStats,
   Wallet,
 } from '@poker/server/src/accounts/types';
