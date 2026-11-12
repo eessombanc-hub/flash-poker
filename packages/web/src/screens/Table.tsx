@@ -84,7 +84,8 @@ function TopBar({ onScores, onRules, onOptions, onBack }: { onScores: () => void
       </span>
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <button type="button" onClick={onBack} aria-label={t('table.retour_a_l')} className="shrink-0 rounded-lg px-2 py-1 text-sm text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
-          {t('table.retour')}</button>
+          <span aria-hidden="true" className="sm:hidden">←</span>
+          <span className="hidden sm:inline">{t('table.retour')}</span></button>
         <div className="min-w-0">
           <p className="truncate font-display text-base text-ivory-50 sm:text-lg">{view.name}</p>
           <p className="flex min-w-0 font-mono text-[11px] tracking-widest text-gold-400 sm:text-xs">

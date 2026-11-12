@@ -18,19 +18,7 @@ export function VariantPicker() {
   const [teats, setTeats] = useState(0);
   const [sideBets, setSideBets] = useState(false);
 
-  return (
-    <PanelShell
-      eyebrow={t('picker.manche', { roundNo: game.roundNo })}
-      title={isChooser ? t('picker.choisissez_la_variante') : t('picker.choisit_la_variante', { nick: nick(view, game.chooser) })}
-      hint={
-        isChooser
-          ? pending
-            ? t('picker.une_proposition_d')
-            : t('picker.sans_choix_en')
-          : t('picker.le_choix_tourne')
-      }
-      timerLabel={t('picker.choix_de_la')}
-    >
+  const list = (
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={t('picker.variantes')}>
         {VARIANTS.map((v) => {
           const available = game.variants.find((x) => x.variant === v.id)?.available ?? true;
@@ -56,6 +44,27 @@ export function VariantPicker() {
           );
         })}
       </ul>
+  );
+
+  return (
+    <PanelShell
+      eyebrow={t('picker.manche', { roundNo: game.roundNo })}
+      title={isChooser ? t('picker.choisissez_la_variante') : t('picker.choisit_la_variante', { nick: nick(view, game.chooser) })}
+      hint={
+        isChooser
+          ? pending
+            ? t('picker.une_proposition_d')
+            : t('picker.sans_choix_en')
+          : t('picker.le_choix_tourne')
+      }
+      timerLabel={t('picker.choix_de_la')}
+    >
+      {isChooser ? list : (
+        <details className="rounded-xl border border-ivory-100/12 bg-ink-900/40 px-4 py-3">
+          <summary className="cursor-pointer text-sm font-semibold text-gold-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('picker.voir')}</summary>
+          <div className="mt-3">{list}</div>
+        </details>
+      )}
       {opts63 && isChooser && (
         <div role="group" aria-label={t('picker.options_du_6')} className="mt-4 rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
           <p className="font-display text-lg text-ivory-50">{t('picker.options_du_6')}</p>

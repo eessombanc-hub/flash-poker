@@ -1572,6 +1572,7 @@ export const fr = {
   'overlays.revanche.ouvrir': 'Revanche avec les mêmes joueurs',
   'overlays.revanche.rejoindre': 'Rejoindre la revanche',
   'srv.nickrefused': 'Ce pseudo n’est pas accepté. Choisissez-en un autre.',
+  'picker.voir': 'Voir les variantes en jeu',
   'tb.history': 'Mes dernières parties',
   'tb.winsOf.one': '{w} victoire sur {n}',
   'tb.winsOf.other': '{w} victoires sur {n}',

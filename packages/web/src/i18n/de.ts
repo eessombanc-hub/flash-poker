@@ -1569,6 +1569,7 @@ export const de: Record<Key, string> = {
   'overlays.revanche.ouvrir': 'Revanche mit denselben Spielern',
   'overlays.revanche.rejoindre': 'Der Revanche beitreten',
   'srv.nickrefused': 'Dieser Spitzname ist nicht erlaubt. Bitte wähle einen anderen.',
+  'picker.voir': 'Varianten ansehen',
   'tb.history': 'Meine letzten Partien',
   'tb.winsOf.one': '{w} Sieg aus {n}',
   'tb.winsOf.other': '{w} Siege aus {n}',

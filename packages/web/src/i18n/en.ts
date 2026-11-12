@@ -1569,6 +1569,7 @@ export const en: Record<Key, string> = {
   'overlays.revanche.ouvrir': 'Rematch with the same players',
   'overlays.revanche.rejoindre': 'Join the rematch',
   'srv.nickrefused': 'This nickname is not accepted. Please choose another one.',
+  'picker.voir': 'See the variants in play',
   'tb.history': 'My latest games',
   'tb.winsOf.one': '{w} win out of {n}',
   'tb.winsOf.other': '{w} wins out of {n}',
