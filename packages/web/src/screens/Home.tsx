@@ -75,24 +75,19 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
             </p>
           )}
 
-          {welcome && onQuickStart ? (
-            <section aria-label={t('ob.title')} className="relative overflow-hidden rounded-3xl border border-gold-500/40 bg-gradient-to-br from-felt-700 via-felt-900 to-ink-900 p-5 shadow-gold sm:p-8">
-              <span aria-hidden="true" className="pointer-events-none absolute -right-6 -top-12 select-none font-display text-[18rem] leading-none text-ivory-100/[0.05]">♠</span>
-              <div className="relative grid items-center gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-                <div>
-                  <Eyebrow>{t('ob.eyebrow')}</Eyebrow>
-                  <h2 className="mt-1 font-display text-3xl leading-tight tracking-wide text-ivory-50 sm:text-4xl">{t('ob.title')}</h2>
-                  <p className="mt-3 max-w-md text-sm text-ivory-100/90 sm:text-base">{t('ob.text')}</p>
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <Button className="px-6 py-3 text-base" onClick={onQuickStart}>{t('ob.start')}</Button>
-                    <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
-                  </div>
-                </div>
-                <TablePreview />
+          <GameShowcase slides={slides} label={t('lob.banner')} />
+
+          {welcome && onQuickStart && (
+            <section aria-label={t('ob.title')} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold-500/30 bg-ink-800/60 px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <h2 className="font-display text-lg text-ivory-50">{t('ob.title')}</h2>
+                <p className="text-sm text-ivory-100/80">{t('ob.text')}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={onQuickStart}>{t('ob.start')}</Button>
+                <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
               </div>
             </section>
-          ) : (
-            <GameShowcase slides={slides} label={t('lob.banner')} />
           )}
 
           {me && (

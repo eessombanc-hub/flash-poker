@@ -222,7 +222,7 @@ describe('intégration : interface complète dans le DOM, pilotée comme un util
         <App />
       </ClientProvider>,
     );
-    await user.click(screen.getByRole('button', { name: 'Jouer en solo' }));
+    await user.click(screen.getAllByRole('button', { name: 'Jouer en solo' })[0]);
     await user.click(screen.getByRole('button', { name: 'Toutes les variantes' }));
     await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
     await user.click(within(screen.getByRole('radiogroup', { name: 'Adversaires CPU' })).getByRole('radio', { name: '2' }));
