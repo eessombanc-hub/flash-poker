@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { VariantId } from '@poker/engine';
 import { z } from 'zod';
 import { ServerError } from '../errors';
+import { isOffensiveName, OFFENSIVE_NAME_MESSAGE } from '../moderation';
 import { AVATAR_IMAGE_ID, avatarImageId, validAvatarJpeg } from './avatarImage';
 import type { AccountDb } from './db';
 import { mail, type Mailer } from './mailer';
@@ -17,7 +18,7 @@ import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, F
 const nickname = z
   .string()
   .transform((s) => s.trim())
-  .pipe(z.string().min(2, 'Pseudo de 2 à 20 caractères').max(20, 'Pseudo de 2 à 20 caractères').regex(/^[\p{L}\p{N} _.'-]+$/u, 'Pseudo : lettres, chiffres, espace, _ . \' -'));
+  .pipe(z.string().min(2, 'Pseudo de 2 à 20 caractères').max(20, 'Pseudo de 2 à 20 caractères').regex(/^[\p{L}\p{N} _.'-]+$/u, 'Pseudo : lettres, chiffres, espace, _ . \' -').refine((n) => !isOffensiveName(n), OFFENSIVE_NAME_MESSAGE));
 const email = z.string().transform((s) => s.trim().toLowerCase()).pipe(z.string().email('Adresse e-mail invalide').max(254));
 // Mots de passe les plus employés (liste volontairement courte : elle écarte les choix triviaux, pas davantage).
 const COMMON_PASSWORDS = new Set(

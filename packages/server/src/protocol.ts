@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isOffensiveName, maskOffensive, OFFENSIVE_NAME_MESSAGE } from './moderation';
 import type { GameView, RoundEvent, VariantId } from '@poker/engine';
 
 // ---------- Entrées client (validées côté serveur) ----------
@@ -6,7 +7,7 @@ import type { GameView, RoundEvent, VariantId } from '@poker/engine';
 const nickname = z
   .string()
   .transform((s) => s.trim())
-  .pipe(z.string().min(1).max(20).regex(/^[\p{L}\p{N} _.'-]+$/u, 'Pseudo : lettres, chiffres, espace, _ . \' -'));
+  .pipe(z.string().min(1).max(20).regex(/^[\p{L}\p{N} _.'-]+$/u, 'Pseudo : lettres, chiffres, espace, _ . \' -').refine((n) => !isOffensiveName(n), OFFENSIVE_NAME_MESSAGE));
 /** Avatar facultatif : identifiant de préréglage (jamais une URL). */
 const avatar = z.string().regex(/^[a-z0-9_-]{1,32}$/).optional();
 
@@ -71,7 +72,7 @@ export const CHAT_MAX_CHARS = 140;
 const chatText = z
   .string()
   .max(CHAT_MAX_CHARS * 4)
-  .transform((s) => s.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ').replace(/\s+/g, ' ').trim())
+  .transform((s) => maskOffensive(s.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ').replace(/\s+/g, ' ').trim()))
   .pipe(z.string().min(1).max(CHAT_MAX_CHARS));
 export const socialSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('chat'), text: chatText }),

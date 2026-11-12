@@ -1568,6 +1568,7 @@ export const en: Record<Key, string> = {
   'blackjack.intro': 'Beat the dealer by getting closer to 21 without going over. Pick a table that matches your level: chips are virtual and have no monetary value.',
   'overlays.revanche.ouvrir': 'Rematch with the same players',
   'overlays.revanche.rejoindre': 'Join the rematch',
+  'srv.nickrefused': 'This nickname is not accepted. Please choose another one.',
   'tb.history': 'My latest games',
   'tb.winsOf.one': '{w} win out of {n}',
   'tb.winsOf.other': '{w} wins out of {n}',

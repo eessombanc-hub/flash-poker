@@ -60,6 +60,7 @@ export const SERVER_MESSAGES: ReadonlyArray<readonly [RegExp, string, readonly s
   [/^Réponse\ invalide$/, 'srv.m055', []],
   [/^Trop\ de\ tentatives,\ réessayez\ plus\ tard$/, 'srv.m056', []],
   [/^Signalement\ vide$/, 'srv.m057', []],
+  [/^(?:\w+\.\ )?Ce\ pseudo\ n['’]est\ pas\ accepté$/, 'srv.nickrefused', []],
   [/^Le\ serveur\ est\ très\ sollicité\.\ Réessayez\ dans\ quelques\ minutes$/, 'srv.m058', []],
   [/^Une\ variante\ imposée\ n['’]existe\ qu['’]en\ entraînement\ contre\ le\ CPU$/, 'srv.m059', []],
   [/^Cette\ variante\ n['’]est\ pas\ jouable\ à\ (.+?)\ joueurs$/, 'srv.m060', ['a']],

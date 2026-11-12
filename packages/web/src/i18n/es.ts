@@ -1568,6 +1568,7 @@ export const es: Record<Key, string> = {
   'blackjack.intro': 'Gana al crupier acercándote a 21 sin pasarte. Elige una mesa según tu nivel: las fichas son virtuales y no tienen valor monetario.',
   'overlays.revanche.ouvrir': 'Revancha con los mismos jugadores',
   'overlays.revanche.rejoindre': 'Unirse a la revancha',
+  'srv.nickrefused': 'Este apodo no está permitido. Elige otro.',
   'tb.history': 'Mis últimas partidas',
   'tb.winsOf.one': '{w} victoria de {n}',
   'tb.winsOf.other': '{w} victorias de {n}',

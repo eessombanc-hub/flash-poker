@@ -1568,6 +1568,7 @@ export const de: Record<Key, string> = {
   'blackjack.intro': 'Schlage den Dealer, indem du der 21 näher kommst, ohne sie zu überschreiten. Wähle einen Tisch passend zu deinem Niveau: Die Chips sind virtuell und haben keinen Geldwert.',
   'overlays.revanche.ouvrir': 'Revanche mit denselben Spielern',
   'overlays.revanche.rejoindre': 'Der Revanche beitreten',
+  'srv.nickrefused': 'Dieser Spitzname ist nicht erlaubt. Bitte wähle einen anderen.',
   'tb.history': 'Meine letzten Partien',
   'tb.winsOf.one': '{w} Sieg aus {n}',
   'tb.winsOf.other': '{w} Siege aus {n}',

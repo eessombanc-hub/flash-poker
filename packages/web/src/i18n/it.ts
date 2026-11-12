@@ -1568,6 +1568,7 @@ export const it: Record<Key, string> = {
   'blackjack.intro': 'Batti il mazziere avvicinandoti a 21 senza superarlo. Scegli un tavolo in base al tuo livello: le fiche sono virtuali e non hanno alcun valore monetario.',
   'overlays.revanche.ouvrir': 'Rivincita con gli stessi giocatori',
   'overlays.revanche.rejoindre': 'Unisciti alla rivincita',
+  'srv.nickrefused': 'Questo nickname non è accettato. Scegline un altro.',
   'tb.history': 'Le mie ultime partite',
   'tb.winsOf.one': '{w} vittoria su {n}',
   'tb.winsOf.other': '{w} vittorie su {n}',

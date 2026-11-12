@@ -1571,6 +1571,7 @@ export const fr = {
   'blackjack.intro': 'Battez le croupier en vous rapprochant de 21 sans le dépasser. Choisissez une table selon votre niveau : les jetons sont virtuels et n’ont aucune valeur monétaire.',
   'overlays.revanche.ouvrir': 'Revanche avec les mêmes joueurs',
   'overlays.revanche.rejoindre': 'Rejoindre la revanche',
+  'srv.nickrefused': 'Ce pseudo n’est pas accepté. Choisissez-en un autre.',
   'tb.history': 'Mes dernières parties',
   'tb.winsOf.one': '{w} victoire sur {n}',
   'tb.winsOf.other': '{w} victoires sur {n}',

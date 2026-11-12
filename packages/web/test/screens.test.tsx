@@ -522,3 +522,12 @@ describe('table entre amis : variante imposée', () => {
     expect(created).toHaveBeenCalledWith({ name: 'Table de Emeric', maxPlayers: 4, targetPoints: 3, stakeChips: 100, assistance: false, private: true, nickname: 'Emeric', avatar: 'or' });
   });
 });
+
+describe('modération : message du serveur', () => {
+  it('le refus d’un pseudo injurieux est reconnu, avec ou sans le préfixe de champ ajouté par le serveur', async () => {
+    const { SERVER_MESSAGES } = await import('../src/lib/srvMessages');
+    for (const m of ['Ce pseudo n’est pas accepté', 'nickname. Ce pseudo n’est pas accepté']) {
+      expect(SERVER_MESSAGES.some(([re, key]) => key === 'srv.nickrefused' && re.test(m))).toBe(true);
+    }
+  });
+});
