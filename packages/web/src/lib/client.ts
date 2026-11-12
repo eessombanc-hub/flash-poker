@@ -5,7 +5,7 @@ import { describeEvent, type Tone } from './events';
 import { currentI18n } from '../i18n';
 import { errorText as localizedError } from './tbText';
 import type { Session, SessionStore } from './session';
-import type { ClientCommand, RoomView, RoundEvent, UpdateMessage } from './types';
+import type { ClientCommand, RoomView, RoundEvent, SocialMessage, ThrowItem, UpdateMessage } from './types';
 
 export interface Toast {
   id: number;
@@ -29,11 +29,14 @@ export interface ClientState {
   /** Événements récents (pour les annonces et animations). */
   feed: FeedItem[];
   toasts: Toast[];
+  /** Chat et objets lancés de la table (éphémères : rien n'est rejoué après une reconnexion). */
+  social: SocialMessage[];
   /** Pourquoi la partie a été quittée de force. */
   closed: null | 'KICKED' | 'INVALID_SESSION';
 }
 
 const FEED_LIMIT = 150;
+const SOCIAL_LIMIT = 60;
 
 export const initialState = (session: Session | null = null): ClientState => ({
   session,
@@ -43,6 +46,7 @@ export const initialState = (session: Session | null = null): ClientState => ({
   serverOffsetMs: 0,
   feed: [],
   toasts: [],
+  social: [],
   closed: null,
 });
 
@@ -159,6 +163,7 @@ export class GameClient {
     });
     socket.on('connect_error', () => this.set({ connection: 'offline' }));
     socket.on('update', (msg: UpdateMessage) => this.receive(msg));
+    socket.on('social', (msg: SocialMessage) => this.receiveSocial(msg));
     socket.on('kicked', () => this.terminate('KICKED'));
     socket.on('fatal', () => this.terminate('INVALID_SESSION'));
   }
@@ -176,6 +181,12 @@ export class GameClient {
         }
       }
     }
+  }
+
+  private receiveSocial(msg: SocialMessage): void {
+    if (!this.state.session || msg.roomCode !== this.state.session.code) return;
+    if (this.state.social.some((m) => m.id === msg.id)) return;
+    this.set({ social: [...this.state.social, msg].slice(-SOCIAL_LIMIT) });
   }
 
   private terminate(reason: 'KICKED' | 'INVALID_SESSION'): void {
@@ -237,6 +248,16 @@ export class GameClient {
   excludePlayer = (playerId: string): Promise<boolean> => this.act(() => this.emit('host:exclude', { playerId }));
   /** Approuve ou refuse l'assistance proposée par l'hôte (salle d'attente uniquement). */
   approveAssistance = (approve: boolean): Promise<boolean> => this.act(() => this.emit('lobby:approveAssistance', { approve }));
+  /** Chat et objets : sans son de commande ; un refus (trop de messages…) s'affiche en notification. */
+  async sendSocial(input: { kind: 'chat'; text: string } | { kind: 'throw'; item: ThrowItem; to: string }): Promise<boolean> {
+    try {
+      await this.emit('social', input);
+      return true;
+    } catch (e) {
+      this.toast('error', errorText(e));
+      return false;
+    }
+  }
   resync = (): Promise<boolean> => this.act(() => this.emit('state:resync'));
   async leaveLobby(): Promise<boolean> {
     const ok = await this.act(() => this.emit('lobby:leave'));

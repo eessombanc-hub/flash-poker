@@ -62,6 +62,23 @@ export type ClientCommand = z.infer<typeof clientCommandSchema>;
 export const excludeSchema = z.object({ playerId: z.string().min(1).max(64) });
 export const approveAssistanceSchema = z.object({ approve: z.boolean() });
 
+/** Objets amusants que l'on peut envoyer à un autre joueur (liste fermée : jamais de texte libre ni d'URL). */
+export const THROW_ITEMS = ['tomato', 'bouquet', 'pie', 'kiss', 'ice', 'beer', 'banana', 'popcorn', 'trophy', 'heart'] as const;
+export type ThrowItem = (typeof THROW_ITEMS)[number];
+export const CHAT_MAX_CHARS = 140;
+
+/** Caractères de contrôle et de mise en forme invisibles retirés, espaces réduits : ce qui reste est du texte brut. */
+const chatText = z
+  .string()
+  .max(CHAT_MAX_CHARS * 4)
+  .transform((s) => s.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ').replace(/\s+/g, ' ').trim())
+  .pipe(z.string().min(1).max(CHAT_MAX_CHARS));
+export const socialSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('chat'), text: chatText }),
+  z.object({ kind: z.literal('throw'), item: z.enum(THROW_ITEMS), to: z.string().min(1).max(64) }),
+]);
+export type SocialInput = z.infer<typeof socialSchema>;
+
 export const authSchema = z.object({ code: z.string().min(1).max(16), token: z.string().min(16).max(128) });
 
 // ---------- Sorties serveur ----------
@@ -134,7 +151,19 @@ export interface KickedMessage {
   type: 'kicked';
   roomCode: string;
 }
+/** Message éphémère de la table (chat, objet lancé) : jamais archivé, ni rejoué à la reconnexion, hors numéro de version. */
+export interface SocialMessage {
+  type: 'social';
+  roomCode: string;
+  id: string;
+  at: number;
+  from: string;
+  kind: 'chat' | 'throw';
+  text?: string;
+  item?: ThrowItem;
+  to?: string;
+}
 export interface Outgoing {
   playerId: string;
-  message: UpdateMessage | KickedMessage;
+  message: UpdateMessage | KickedMessage | SocialMessage;
 }

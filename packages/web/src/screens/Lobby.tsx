@@ -4,6 +4,7 @@ import { useClient, useGame } from '../lib/context';
 import { formatChips, STARTING_CHIPS } from '../lib/format';
 import { Avatar, Badge, Button, Eyebrow, Modal, Panel, Title } from '../components/ui';
 import { useI18n } from '../i18n';
+import { ChatDock } from '../components/Social';
 
 export function Lobby() {
   const { t, tp } = useI18n();
@@ -42,6 +43,7 @@ export function Lobby() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
+      <ChatDock canThrow={false} />
       <Button variant="ghost" onClick={() => (isHost ? setConfirmCancel(true) : void client.leaveLobby())} className="mb-4 -ml-3">
         {t('lobby.retour')}</Button>
       {confirmCancel && (

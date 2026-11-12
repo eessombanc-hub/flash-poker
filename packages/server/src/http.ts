@@ -129,6 +129,7 @@ export class RealtimeManager {
     };
 
     on('command', (payload) => this.manager.command(code, playerId, payload));
+    on('social', (payload) => this.manager.social(code, playerId, payload));
     on('lobby:start', () => this.manager.startGame(code, playerId));
     on('lobby:cancel', () => this.manager.cancelRoom(code, playerId));
     on('lobby:leave', () => this.manager.leaveLobby(code, playerId));

@@ -16,6 +16,7 @@ import {
   clientCommandSchema,
   createRoomSchema,
   joinRoomSchema,
+  socialSchema,
   type ClientCommand,
   type Outgoing,
   type PlayerPublic,
@@ -25,6 +26,7 @@ import {
   type RoomView,
 } from './protocol';
 import { AVATAR_IMAGE_ID } from './accounts/avatarImage';
+import { RateLimiter } from './rateLimiter';
 import type { FinishedGame } from './accounts/service';
 import type { Scheduler, Timer } from './scheduler';
 import { InMemoryRoomStore, type RoomConfig, type RoomSnapshot, type RoomStore } from './store';
@@ -139,6 +141,11 @@ export class RoomManager {
   private readonly ttl: TtlConfig;
   private readonly store: RoomStore;
   private readonly botCfg: BotConfig;
+  // Chat et objets : plafonds par joueur (anti-spam). Les compteurs restent en mémoire, rien n'est conservé.
+  private readonly chatLimit = new RateLimiter(5, 10_000, () => this.deps.scheduler.now());
+  private readonly throwBurst = new RateLimiter(1, 2_000, () => this.deps.scheduler.now());
+  private readonly throwMinute = new RateLimiter(15, 60_000, () => this.deps.scheduler.now());
+  private socialSeq = 0;
 
   constructor(private readonly deps: RoomManagerDeps) {
     this.timers = { durationMs: 60_000, warningMs: 10_000, ...deps.timers };
@@ -349,6 +356,30 @@ export class RoomManager {
     const cmd = this.parse(clientCommandSchema, raw);
     rec.lastSeenAt = this.deps.scheduler.now();
     this.applyGame(room, this.toGameCommand(playerId, cmd));
+  }
+
+  /**
+   * Chat et objets lancés : diffusés tels quels à tous les joueurs de la salle, sans aucun effet sur la partie, hors
+   * numéro de version, non conservés. L'expéditeur vient du jeton authentifié ; le texte est nettoyé et borné.
+   */
+  social(codeRaw: string, playerId: string, raw: unknown): void {
+    const room = this.room(codeRaw);
+    const rec = this.player(room, playerId);
+    if (room.status === 'CANCELLED') throw new ServerError('WRONG_STATE', 'La partie est annulée');
+    const msg = this.parse(socialSchema, raw);
+    const key = `${room.code}|${rec.id}`;
+    let out: { text: string } | { item: (typeof msg & { kind: 'throw' })['item']; to: string };
+    if (msg.kind === 'chat') {
+      if (!this.chatLimit.hit(key)) throw new ServerError('RATE_LIMITED', 'Trop de messages, ralentissez');
+      out = { text: msg.text };
+    } else {
+      if (msg.to === rec.id) throw new ServerError('BAD_REQUEST', 'Choisissez un autre joueur');
+      this.player(room, msg.to);
+      if (!this.throwBurst.hit(key) || !this.throwMinute.hit(key)) throw new ServerError('RATE_LIMITED', 'Trop d’objets envoyés, patientez un instant');
+      out = { item: msg.item, to: msg.to };
+    }
+    const base = { type: 'social' as const, roomCode: room.code, id: `${room.code}-${++this.socialSeq}`, at: this.deps.scheduler.now(), from: rec.id, kind: msg.kind };
+    for (const p of room.players) if (!p.bot) this.emit({ playerId: p.id, message: { ...base, ...out } });
   }
 
   view(codeRaw: string, playerId: string): RoomView {

@@ -163,6 +163,11 @@ function chip(delay = 0, gain = 0.09, pitch = 1): void {
 }
 
 export const Sound = {
+  /** Un objet atteint sa cible : claquement mou et petit rebond. */
+  splat: () => {
+    noise(0.09, jit(900), 0.8, 0.07, 0, 'bandpass', 400);
+    thump(jit(190), 90, 0.1, 0.1);
+  },
   /** Quinte flush : « Ohhh… yeahhh ! », voix de synthèse (voir cheer.ts), environ deux secondes. */
   cheer: () => {
     const c = audioCtx();

@@ -24,6 +24,7 @@ import { Reveal10Panel } from '../panels/Reveal10Panel';
 import { InsurancePanel } from '../panels/InsurancePanel';
 import { Line63Panel } from '../panels/Line63Panel';
 import { Reveal61Panel } from '../panels/Reveal61Panel';
+import { ChatDock, ThrowLayer } from '../components/Social';
 import { hasStraightFlush, morpionInfo, reveal10Info } from '../lib/roundInfo';
 import { VariantPicker } from '../panels/VariantPicker';
 import { RulesModal } from './Home';
@@ -346,6 +347,8 @@ export function Table() {
 
   return (
     <NewsContext.Provider value={news}>
+    <ThrowLayer />
+    <ChatDock canThrow />
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-2 py-1.5 sm:px-3 sm:py-2 lg:max-w-[100rem]">
       <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} onBack={() => (over ? client.leave() : setModal('quit'))} />
       {/* Téléphone et tablette : table au-dessus, actions en dessous. Écran large : côte à côte, pour que la table,
