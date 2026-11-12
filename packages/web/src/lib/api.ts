@@ -1,3 +1,5 @@
+import type { VariantId } from './types';
+
 export class ApiError extends Error {
   constructor(
     readonly code: string,
@@ -20,6 +22,10 @@ export interface CreateRoomInput {
   cpu?: number;
   /** Salle privée : absente de la liste publique, entrée par code ou lien d'invitation uniquement. */
   private?: boolean;
+  /** Variante imposée pour toutes les manches (absent : au choix à chaque manche). */
+  variant?: VariantId;
+  teats?: number;
+  sideBets?: boolean;
   nickname: string;
   avatar?: string;
 }
@@ -41,6 +47,7 @@ export interface RoomSummary {
   targetPoints: number;
   stakeChips: number;
   assistance: boolean;
+  variant?: VariantId;
 }
 
 async function post<T>(baseUrl: string, path: string, body: unknown, fetchFn: typeof fetch, accountToken?: string | null): Promise<T> {

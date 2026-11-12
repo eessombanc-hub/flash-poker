@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { EMPTY_PROGRESS, LevelBadge, VariantProgress } from '../components/VariantProgress';
 import { Badge, Button, Eyebrow, Modal } from '../components/ui';
+import { VariantGlyph } from '../components/VariantGlyph';
 import { useAccount, useAccountClient } from '../lib/context';
 import { VARIANTS } from '../lib/labels';
 import type { VariantId, VariantStats } from '../lib/types';
@@ -26,7 +27,7 @@ function Difficulty({ n }: { n: 1 | 2 | 3 }) {
  * « Variantes » : une fiche par jeu (description, règles essentielles, difficulté, joueurs, durée estimée, progression
  * personnelle) et un bouton pour jouer. La progression vient des manches réellement jouées avec le compte.
  */
-export function Variants({ onBack, onPlaySolo, onCreate, onLogin }: { onBack: () => void; onPlaySolo: (v: VariantId) => void; onCreate: () => void; onLogin: () => void }) {
+export function Variants({ onBack, onPlaySolo, onCreate, onLogin }: { onBack: () => void; onPlaySolo: (v: VariantId) => void; onCreate: (v: VariantId) => void; onLogin: () => void }) {
   const { t } = useI18n();
   const account = useAccount((s) => s.account);
   const client = useAccountClient();
@@ -53,7 +54,7 @@ export function Variants({ onBack, onPlaySolo, onCreate, onLogin }: { onBack: ()
       <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">
         {t('common.backHome')}
       </Button>
-      <Eyebrow>{t('vi.eyebrow')}</Eyebrow>
+      {account && <Eyebrow>{t('vi.eyebrow')}</Eyebrow>}
       <h1 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">{t('vi.title')}</h1>
       <p className="mt-2 max-w-2xl text-sm text-ivory-200/85">{t('vi.lead')}</p>
       {!account && (
@@ -71,7 +72,8 @@ export function Variants({ onBack, onPlaySolo, onCreate, onLogin }: { onBack: ()
           return (
             <li key={v.id} className="relative flex flex-col rounded-2xl border border-ivory-100/12 bg-gradient-to-br from-ink-700/80 to-ink-900/90 p-4 transition hover:border-gold-400/50 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-gold-400">
               <div className="flex items-start justify-between gap-2">
-                <div>
+                <VariantGlyph id={v.id} size={52} />
+                <div className="min-w-0 flex-1">
                   <Badge tone="neutral">{t(`vi.family.${m.family}` as Key)}</Badge>
                   <h2 className="mt-2 font-display text-2xl text-ivory-50">
                     <button type="button" onClick={() => setOpen(v.id)} className="text-left after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus:outline-none">
@@ -80,7 +82,7 @@ export function Variants({ onBack, onPlaySolo, onCreate, onLogin }: { onBack: ()
                   </h2>
                   <p className="text-sm text-gold-300">{v.tagline}</p>
                 </div>
-                <LevelBadge level={s.level} />
+                {s.played > 0 ? <LevelBadge level={s.level} /> : m.difficulty === 1 ? <Badge tone="gold">{t('vi.start')}</Badge> : null}
               </div>
               <p className="mt-3 text-xs text-ivory-300/80">
                 <Difficulty n={m.difficulty} />
@@ -105,7 +107,7 @@ export function Variants({ onBack, onPlaySolo, onCreate, onLogin }: { onBack: ()
             description={current.description}
             stats={account ? statsOf(current.id) : null}
             onPlaySolo={() => onPlaySolo(current.id)}
-            onCreate={onCreate}
+            onCreate={() => onCreate(current.id)}
             onLogin={onLogin}
             onClose={() => setOpen(null)}
           />

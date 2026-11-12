@@ -172,6 +172,7 @@ describe('intégration : interface complète dans le DOM, pilotée comme un util
     );
     // accueil → création
     await user.click(screen.getByRole('button', { name: 'Créer une partie' }));
+    await user.click(screen.getByRole('button', { name: /Personnaliser la table/ }));
     await user.type(screen.getByLabelText('Nom de la table'), 'Vendredi soir');
     await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
     await user.click(screen.getByRole('button', { name: 'Créer la table' }));

@@ -1,5 +1,5 @@
 import { COMMON_RULES } from '../lib/rulesText';
-import { VARIANTS } from '../lib/labels';
+import { VARIANTS, variantName } from '../lib/labels';
 import { useClient } from '../lib/context';
 import { formatChips } from '../lib/format';
 import { ApiError, type LiveStats, type RoomSummary } from '../lib/api';
@@ -136,7 +136,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           </ul>
 
           <div id="open-rooms" className="scroll-mt-4">
-            <OpenRooms onSelect={onJoin} />
+            <OpenRooms onSelect={onJoin} onCreate={onCreate} />
           </div>
           <footer className="space-y-2 pt-4 text-center text-xs text-ivory-100/80">
             <p className="font-semibold text-ivory-100">{t('home.footer')}</p>
@@ -165,7 +165,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
 }
 
 /** Liste publique des parties ouvertes : actualisée en continu, on les rejoint en un clic. */
-function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
+function OpenRooms({ onSelect, onCreate }: { onSelect: (code: string) => void; onCreate: () => void }) {
   const { t, tp } = useI18n();
   const client = useClient();
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
@@ -199,9 +199,14 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
         {t('rooms.title')}
       </h2>
       <Panel className="divide-y divide-ivory-100/10 p-2">
-        {rooms === null && !error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">{t('rooms.searching')}</p>}
-        {error && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">{t('rooms.unavailable')}</p>}
-        {rooms?.length === 0 && <p className="px-3 py-4 text-center text-sm text-ivory-300/60">{t('rooms.none')}</p>}
+        {rooms === null && !error && <p className="px-3 py-4 text-center text-sm text-ivory-200/80">{t('rooms.searching')}</p>}
+        {error && <p className="px-3 py-4 text-center text-sm text-ivory-200/80">{t('rooms.unavailable')}</p>}
+        {rooms?.length === 0 && (
+          <div className="px-3 py-5 text-center">
+            <p className="text-sm text-ivory-100/85">{t('rooms.none')}</p>
+            <Button className="mt-3" onClick={onCreate}>{t('rooms.first')}</Button>
+          </div>
+        )}
         {rooms?.map((r) => (
           <button
             key={r.code}
@@ -212,6 +217,7 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
             <span className="flex-1 min-w-0">
               <span className="block truncate font-medium text-ivory-50">{r.name}</span>
               <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ivory-300/70">
+                <span className="font-semibold text-ivory-100">{r.variant ? variantName(r.variant) : t('rooms.libre')}</span>
                 <span>
                   {t('rooms.players', { a: r.maxPlayers - r.seatsLeft, b: r.maxPlayers })}
                 </span>
@@ -226,6 +232,7 @@ function OpenRooms({ onSelect }: { onSelect: (code: string) => void }) {
               </span>
             </span>
             <Badge tone={r.status === 'RUNNING' ? 'amber' : 'green'}>{r.status === 'RUNNING' ? t('rooms.running') : t('rooms.waiting')}</Badge>
+            <span className="rounded-full border border-gold-500/50 px-3 py-1 text-xs font-semibold text-gold-300">{t('rooms.join')}</span>
           </button>
         ))}
       </Panel>

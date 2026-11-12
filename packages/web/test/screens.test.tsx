@@ -37,6 +37,8 @@ describe('salle d’attente', () => {
     expect(screen.queryByRole('button', { name: 'Retirer Emeric' })).toBeNull(); // pas d'auto-exclusion
     await user.click(screen.getByRole('button', { name: 'Retirer Alice' }));
     await user.click(screen.getByRole('button', { name: 'Annuler la partie' }));
+    expect(calls.cancel).toBe(0); // l'annulation demande désormais confirmation
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Annuler la partie' }));
     expect(calls.excluded).toEqual(['p2']);
     expect(calls.cancel).toBe(1);
   });
@@ -150,6 +152,7 @@ describe('formulaires', () => {
     client.createRoom = created;
     const submit = screen.getByRole('button', { name: 'Créer la table' });
     expect(submit).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: /Personnaliser la table/ }));
     await user.type(screen.getByLabelText('Nom de la table'), 'Vendredi');
     await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
     await user.click(within(screen.getByRole('radiogroup', { name: 'Objectif en points' })).getByRole('radio', { name: '5' }));
@@ -158,15 +161,15 @@ describe('formulaires', () => {
     expect(screen.getByText(/Cagnotte de 2\s000 jetons à 4 joueurs/u)).toBeInTheDocument();
     expect(submit).toBeEnabled();
     await user.click(submit);
-    expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeChips: 500, assistance: false, private: false, nickname: 'Emeric', avatar: 'or' });
+    expect(created).toHaveBeenCalledWith({ name: 'Vendredi', maxPlayers: 4, targetPoints: 5, stakeChips: 500, assistance: false, private: true, nickname: 'Emeric', avatar: 'or' });
   });
   it('création : le niveau « avec assistance » est proposé et transmis au serveur', async () => {
     const user = userEvent.setup();
     const { client } = renderWith(<CreateRoom onBack={() => undefined} />, null);
     const created = vi.fn(async () => undefined);
     client.createRoom = created;
+    await user.click(screen.getByRole('button', { name: /Personnaliser la table/ }));
     expect(screen.getByRole('radio', { name: 'Sans assistance' })).toHaveAttribute('aria-checked', 'true'); // défaut : aucune aide
-    await user.type(screen.getByLabelText('Nom de la table'), 'T');
     await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
     await user.click(screen.getByRole('radio', { name: 'Avec assistance' }));
     expect(screen.getByText(/Chaque joueur devra approuver/)).toBeInTheDocument(); // explication du vote
@@ -176,7 +179,6 @@ describe('formulaires', () => {
   it('création : pseudo invalide refusé', async () => {
     const user = userEvent.setup();
     renderWith(<CreateRoom onBack={() => undefined} />, null);
-    await user.type(screen.getByLabelText('Nom de la table'), 'T');
     await user.type(screen.getByLabelText('Votre pseudo'), 'E<>');
     expect(screen.getByRole('button', { name: 'Créer la table' })).toBeDisabled();
     await user.clear(screen.getByLabelText('Votre pseudo'));
@@ -188,7 +190,6 @@ describe('formulaires', () => {
     const { client } = renderWith(<CreateRoom onBack={() => undefined} />, null);
     const { ApiError } = await import('../src/lib/api');
     client.createRoom = async () => { throw new ApiError('RATE_LIMITED', 'Trop de requêtes, réessayez plus tard.'); };
-    await user.type(screen.getByLabelText('Nom de la table'), 'T');
     await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
     await user.click(screen.getByRole('button', { name: 'Créer la table' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Trop de requêtes');
@@ -454,5 +455,42 @@ describe('application : écrans selon l’état', () => {
     const w = renderWith(<App />, null);
     act(() => w.client.store.setState({ session: null, view: null, closed: 'KICKED' }));
     expect(screen.getByRole('alert')).toHaveTextContent('retiré de la partie par l’hôte');
+  });
+});
+
+describe('table entre amis : variante imposée', () => {
+  it('la salle d’attente annonce le jeu, résume la table et rappelle les règles', () => {
+    const view = roomView({ status: 'WAITING', players: players(2).map((p) => ({ ...p, state: 'LOBBY' as const, position: null })), you: { playerId: 'p1', role: 'HOST' }, seatsLeft: 2, config: { maxPlayers: 4, targetPoints: 3, stakeChips: 100, potChips: 200, assistance: false, private: true, variant: 'MORPION' } }, null);
+    renderWith(<Lobby />, view);
+    const summary = screen.getByTestId('lobby-summary').textContent ?? '';
+    expect(summary).toContain('Morpion');
+    expect(summary).toContain('4 joueurs maximum');
+    expect(screen.getByText(/Rappel des règles : Morpion/)).toBeInTheDocument();
+  });
+  it('sans variante imposée : « Variante au choix » et pas de rappel', () => {
+    const view = roomView({ status: 'WAITING', players: players(1).map((p) => ({ ...p, state: 'LOBBY' as const, position: null })), you: { playerId: 'p1', role: 'HOST' }, seatsLeft: 3, config: { maxPlayers: 4, targetPoints: 3, stakeChips: 0, potChips: 0, assistance: false, private: false } }, null);
+    renderWith(<Lobby />, view);
+    expect(screen.getByTestId('lobby-summary').textContent).toContain('Variante au choix à chaque manche');
+    expect(screen.queryByText(/Rappel des règles/)).toBeNull();
+  });
+  it('création : le jeu choisi est transmis, le nom par défaut vient du pseudo, 6 joueurs retirés pour Le 10', async () => {
+    const user = userEvent.setup();
+    const { client } = renderWith(<CreateRoom onBack={() => undefined} initialVariant="LE10" />, null);
+    const created = vi.fn(async () => undefined);
+    client.createRoom = created;
+    expect(screen.getByLabelText('Jeu')).toHaveValue('LE10');
+    expect(within(screen.getByRole('radiogroup', { name: 'Nombre de joueurs' })).queryByRole('radio', { name: '6' })).toBeNull();
+    await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
+    await user.click(screen.getByRole('button', { name: 'Créer la table' }));
+    expect(created).toHaveBeenCalledWith(expect.objectContaining({ name: 'Table de Emeric', variant: 'LE10', maxPlayers: 4 }));
+  });
+  it('création rapide : sans toucher aux réglages, une table privée de 4 joueurs, objectif 3, mise 100', async () => {
+    const user = userEvent.setup();
+    const { client } = renderWith(<CreateRoom onBack={() => undefined} />, null);
+    const created = vi.fn(async () => undefined);
+    client.createRoom = created;
+    await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
+    await user.click(screen.getByRole('button', { name: 'Créer la table' }));
+    expect(created).toHaveBeenCalledWith({ name: 'Table de Emeric', maxPlayers: 4, targetPoints: 3, stakeChips: 100, assistance: false, private: true, nickname: 'Emeric', avatar: 'or' });
   });
 });

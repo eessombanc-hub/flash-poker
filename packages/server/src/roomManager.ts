@@ -174,11 +174,10 @@ export class RoomManager {
     const host = this.newPlayer(who, 'LOBBY', true); // propose l'assistance : l'approuve de fait
     // Entraînement : la table est exactement l'hôte + ses adversaires CPU, donc privée (aucun siège libre)
     const maxPlayers = cfg.cpu ? cfg.cpu + 1 : cfg.maxPlayers;
-    if (cfg.variant && !cfg.cpu) throw new ServerError('BAD_REQUEST', 'Une variante imposée n’existe qu’en entraînement contre le CPU');
     if (cfg.variant && !isVariantAvailable(cfg.variant, maxPlayers)) throw new ServerError('BAD_REQUEST', `Cette variante n’est pas jouable à ${maxPlayers} joueurs`);
     const room: Room = {
       code,
-      config: { name: cfg.name, maxPlayers, targetPoints: cfg.targetPoints, stakeChips: cfg.stakeChips, assistance: cfg.assistance ?? false, private: cfg.cpu ? true : cfg.private ?? false },
+      config: { name: cfg.name, maxPlayers, targetPoints: cfg.targetPoints, stakeChips: cfg.stakeChips, assistance: cfg.assistance ?? false, private: cfg.cpu ? true : cfg.private ?? false, ...(cfg.variant ? { variant: cfg.variant, ...(cfg.variant === 'V6_3' ? { teats: cfg.teats ?? 0, sideBets: cfg.sideBets ?? false } : {}) } : {}) },
       status: 'WAITING',
       hostId: host.rec.id,
       players: [host.rec],
@@ -196,7 +195,7 @@ export class RoomManager {
     this.rooms.set(room.code, room);
     if (cfg.cpu) {
       room.players.push(...this.newBots(cfg.cpu, host.rec));
-      this.launch(room, cfg.variant ? { variant: cfg.variant, teats: cfg.variant === 'V6_3' ? cfg.teats ?? 0 : 0, sideBets: cfg.variant === 'V6_3' ? cfg.sideBets ?? false : false } : undefined); // démarre aussitôt : l'hôte retrouve la partie en cours dès qu'il se connecte
+      this.launch(room); // démarre aussitôt : l'hôte retrouve la partie en cours dès qu'il se connecte
       return { code: room.code, playerId: host.rec.id, token: host.token };
     }
     this.broadcast(room, [pub('ROOM_CREATED', { code: room.code })]);
@@ -292,20 +291,21 @@ export class RoomManager {
   }
 
   /** Tirage des positions, création de la partie, premier minuteur. Partagé par le lobby et le mode entraînement. */
-  private launch(room: Room, solo?: { variant: VariantId; teats: number; sideBets: boolean }): void {
+  private launch(room: Room): void {
+    const fixed = room.config.variant;
     // Assistance : seulement si TOUS les joueurs de la salle l'ont approuvée, sinon la partie démarre sans (silence = refus).
     const assistance = room.config.assistance && room.players.every((p) => p.assistanceApproved === true);
     // Positions tirées au sort, stables pendant toute la partie ; paramètres verrouillés
     const seating = assignPositions(room.players.map((p) => p.id), this.deps.rng);
     room.game = new GameManager(
-      { players: seating.order, targetPoints: room.config.targetPoints, stakeChips: room.config.stakeChips, maxPlayers: room.config.maxPlayers, assistance, ...(solo ? { fixedVariant: solo.variant, fixedOptions: { teats: solo.teats, sideBets: solo.sideBets } } : {}) },
+      { players: seating.order, targetPoints: room.config.targetPoints, stakeChips: room.config.stakeChips, maxPlayers: room.config.maxPlayers, assistance, ...(fixed ? { fixedVariant: fixed, fixedOptions: { teats: room.config.teats ?? 0, sideBets: room.config.sideBets ?? false } } : {}) },
       this.deps.rng,
       this.deps.gameHooks ?? {},
     );
     room.status = 'RUNNING';
     for (const p of room.players) p.state = 'SEATED';
     const started = [pub('GAME_STARTED', { order: seating.order, positions: seating.positions, assistance })];
-    if (solo) started.push(...room.game.apply({ type: 'TIMEOUT' })); // solo : la première manche démarre sans étape de choix
+    if (fixed) started.push(...room.game.apply({ type: 'TIMEOUT' })); // variante imposée : la première manche démarre sans étape de choix
     this.afterTransition(room, started);
   }
 
@@ -405,6 +405,7 @@ export class RoomManager {
         targetPoints: r.config.targetPoints,
         stakeChips: r.config.stakeChips,
         assistance: r.config.assistance,
+        ...(r.config.variant ? { variant: r.config.variant } : {}),
       }));
   }
 
@@ -715,6 +716,7 @@ export class RoomManager {
         potChips: gv ? gv.potChips : room.config.stakeChips * room.players.length,
         assistance: room.config.assistance,
         private: room.config.private ?? false,
+        ...(room.config.variant ? { variant: room.config.variant, ...(room.config.variant === 'V6_3' ? { teats: room.config.teats ?? 0, sideBets: room.config.sideBets ?? false } : {}) } : {}),
       },
       seatsLeft: room.config.maxPlayers - room.players.length,
       hostId: room.hostId,

@@ -20,6 +20,9 @@ function AccountIdentity({ me }: { me: AccountPrivate }) {
   );
 }
 
+/** Variantes injouables à 6 joueurs (donc avec 5 adversaires CPU). */
+const NOT_AT_SIX: readonly VariantId[] = ['CLOSED_2', 'LE10'];
+
 const NICK_RE = /^[\p{L}\p{N} _.'-]{1,20}$/u;
 
 /** « 7k2m » ou « poker-7K2M » → « POKER-7K2M ». */
@@ -28,23 +31,33 @@ export function normalizeCode(raw: string): string {
   return /^[2-9A-Z]{4}$/.test(s) ? `POKER-${s}` : s;
 }
 
-export function CreateRoom({ onBack }: { onBack: () => void }) {
-  const { t } = useI18n();
+export function CreateRoom({ onBack, initialVariant }: { onBack: () => void; initialVariant?: VariantId }) {
+  const { t, tp } = useI18n();
   const client = useClient();
   const me = useAccount((s) => s.account);
   const [name, setName] = useState('');
+  const [variant, setVariant] = useState<VariantId | ''>(initialVariant ?? '');
   const [maxPlayers, setMax] = useState(4);
   const [target, setTarget] = useState(3);
   const [stakeChips, setStake] = useState(100);
   const [nickname, setNick] = useState('');
   const [avatar, setAvatar] = useState('or');
   const [assistance, setAssistance] = useState(false);
-  const [privateRoom, setPrivate] = useState(false);
+  const [privateRoom, setPrivate] = useState(true);
+  const [teats, setTeats] = useState(0);
+  const [sideBets, setSideBets] = useState(false);
+  const [more, setMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const info = variant ? VARIANTS.find((v) => v.id === variant) : undefined;
+  const maxAllowed = variant && NOT_AT_SIX.includes(variant) ? 5 : 6;
+  const sizes = [2, 3, 4, 5, 6].filter((n) => n <= maxAllowed);
+  const players = Math.min(maxPlayers, maxAllowed);
+  const who = me ? me.nickname : nickname.trim();
+  const defaultName = who ? t('forms.table_de', { nickname: who }) : t('forms.ma_table');
+
   const errors = {
-    name: name.trim() ? '' : t('forms.donnez_un_nom'),
     nickname: me || NICK_RE.test(nickname.trim()) ? '' : t('forms.pseudo_de_1'),
   };
   const invalid = Object.values(errors).some(Boolean);
@@ -55,7 +68,17 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await client.createRoom({ name: name.trim(), maxPlayers, targetPoints: target, stakeChips, assistance, private: privateRoom, nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? avatar });
+      await client.createRoom({
+        name: name.trim() || defaultName,
+        maxPlayers: players,
+        targetPoints: target,
+        stakeChips,
+        assistance,
+        private: privateRoom,
+        nickname: me ? me.nickname : nickname.trim(),
+        avatar: me?.avatar ?? avatar,
+        ...(variant ? { variant, ...(variant === 'V6_3' ? { teats, sideBets } : {}) } : {}),
+      });
     } catch (err) {
       setError(errorText(currentI18n(), err, t('forms.creation_impossible')));
       setBusy(false);
@@ -70,27 +93,81 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
         <Eyebrow>{t('forms.nouvelle_table')}</Eyebrow>
         <Title className="mb-6 mt-1 text-3xl">{t('forms.creer_une_partie')}</Title>
         <form onSubmit={submit} className="space-y-5" noValidate>
-          <Field label={t('forms.nom_de_la')} htmlFor="name" error={name === '' ? '' : errors.name}>
-            <input id="name" className={inputClass} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder={t('forms.vendredi_soir')} autoComplete="off" />
+          <Field label={t('forms.jeu')} htmlFor="game" hint={info ? `${info.tagline}. ${maxAllowed < 6 ? t('forms.jeu.max5') : ''}`.trim() : t('forms.jeu.libre.hint')}>
+            <select
+              id="game"
+              className={inputClass}
+              value={variant}
+              onChange={(e) => {
+                const v = e.target.value as VariantId | '';
+                setVariant(v);
+                if (v && NOT_AT_SIX.includes(v)) setMax((m) => Math.min(m, 5));
+              }}
+            >
+              <option value="">{t('forms.jeu.libre')}</option>
+              {VARIANTS.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label={t('forms.nombre_de_joueurs')} hint={t('forms.vous_pouvez_demarrer')}>
-            <Segmented label={t('forms.nombre_de_joueurs2')} value={maxPlayers} options={[2, 3, 4, 5, 6]} onChange={setMax} />
-          </Field>
-          <Field label={t('forms.objectif_en_points')} hint={t('forms.le_premier_a')}>
-            <Segmented label={t('forms.objectif_en_points')} value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
-          </Field>
-          <Field
-            label={t('forms.mise_par_joueur')}
-            hint={t('forms.chaque_joueur_recoit', { formatChips: formatChips(STARTING_CHIPS), extra: stakeChips > 0 ? (" " + t('forms.cagnotte_de_a', { formatChips: formatChips(stakeChips * maxPlayers), maxPlayers })) : (" " + t('forms.sans_mise_la')) })}
-          >
-            <Segmented label={t('forms.mise_par_joueur2')} value={stakeChips} options={[0, 50, 100, 200, 500, 1000]} onChange={setStake} format={(v) => (v === 0 ? t('forms.sans') : v.toLocaleString('fr-FR'))} />
-          </Field>
-          <Field label={t('forms.niveau_de_la')} hint={assistance ? t('forms.chaque_joueur_devra') : t('forms.aucune_indication_chacun')}>
-            <Segmented label={t('forms.niveau_de_la')} value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? t('forms.avec_assistance') : t('forms.sans_assistance'))} />
+            <Segmented label={t('forms.nombre_de_joueurs2')} value={players} options={sizes} onChange={setMax} />
           </Field>
           <Field label={t('forms.visibilite')} hint={privateRoom ? t('forms.salle_privee_absente') : t('forms.salle_publique_visible')}>
-            <Segmented label={t('forms.visibilite')} value={privateRoom ? 'privee' : 'publique'} options={['publique', 'privee'] as const} onChange={(v) => setPrivate(v === 'privee')} format={(v) => (v === 'privee' ? t('forms.privee') : t('forms.publique'))} />
+            <Segmented label={t('forms.visibilite')} value={privateRoom ? 'privee' : 'publique'} options={['privee', 'publique'] as const} onChange={(v) => setPrivate(v === 'privee')} format={(v) => (v === 'privee' ? t('forms.privee') : t('forms.publique'))} />
           </Field>
+
+          <div className="rounded-xl border border-ivory-100/12 bg-ink-900/40">
+            <button
+              type="button"
+              aria-expanded={more}
+              aria-controls="create-more"
+              onClick={() => setMore((m) => !m)}
+              className="flex w-full items-center justify-between gap-3 rounded-xl px-4 py-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400"
+            >
+              <span>
+                <span className="block text-sm font-semibold text-ivory-50">{t('forms.personnaliser')}</span>
+                {!more && (
+                  <span className="mt-0.5 block text-xs text-ivory-200/85">
+                    {t('forms.recap', { goal: tp('lobby.point', target), stake: stakeChips > 0 ? t('forms.recap.stake', { amount: formatChips(stakeChips) }) : t('forms.recap.nostake'), assist: assistance ? t('forms.recap.assist') : t('forms.recap.noassist') })}
+                  </span>
+                )}
+              </span>
+              <span aria-hidden="true" className={`text-gold-300 transition ${more ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+            {more && (
+              <div id="create-more" className="space-y-5 border-t border-ivory-100/10 px-4 py-5">
+                <Field label={t('forms.nom_de_la')} htmlFor="name" hint={t('forms.nom.hint')}>
+                  <input id="name" className={inputClass} value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder={defaultName} autoComplete="off" />
+                </Field>
+                <Field label={t('forms.objectif_en_points')} hint={t('forms.le_premier_a')}>
+                  <Segmented label={t('forms.objectif_en_points')} value={target} options={[1, 2, 3, 4, 5]} onChange={setTarget} />
+                </Field>
+                <Field
+                  label={t('forms.mise_par_joueur')}
+                  hint={t('forms.chaque_joueur_recoit', { formatChips: formatChips(STARTING_CHIPS), extra: stakeChips > 0 ? (" " + t('forms.cagnotte_de_a', { formatChips: formatChips(stakeChips * players), maxPlayers: players })) : (" " + t('forms.sans_mise_la')) })}
+                >
+                  <Segmented label={t('forms.mise_par_joueur2')} value={stakeChips} options={[0, 50, 100, 200, 500, 1000]} onChange={setStake} format={(v) => (v === 0 ? t('forms.sans') : v.toLocaleString('fr-FR'))} />
+                </Field>
+                <Field label={t('forms.niveau_de_la')} hint={assistance ? t('forms.chaque_joueur_devra') : t('forms.aucune_indication_chacun')}>
+                  <Segmented label={t('forms.niveau_de_la')} value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? t('forms.avec_assistance') : t('forms.sans_assistance'))} />
+                </Field>
+                {variant === 'V6_3' && (
+                  <>
+                    <Field label={t('forms.tetines')} hint={t('forms.cartes_supplementaires_qui')}>
+                      <Segmented label={t('forms.tetines')} value={teats} options={[0, 1, 2]} onChange={setTeats} />
+                    </Field>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm text-ivory-100">
+                      <input type="checkbox" checked={sideBets} onChange={(e) => setSideBets(e.target.checked)} className="mt-1" />
+                      {t('forms.paris_exterieurs_sur')}</label>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           {me ? (
             <AccountIdentity me={me} />
           ) : (
@@ -108,7 +185,7 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
               {error}
             </p>
           )}
-          <Button type="submit" disabled={invalid || busy} className="w-full py-3.5 text-base">
+          <Button type="submit" disabled={invalid || busy || (!me && !nickname.trim())} className="w-full py-3.5 text-base">
             {busy ? t('forms.creation') : t('forms.creer_la_table')}
           </Button>
         </form>
@@ -118,8 +195,6 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
 }
 
 /** Entraînement : une table privée contre des adversaires CPU, démarrée tout de suite (aucune salle d'attente). */
-/** Variantes injouables à 6 joueurs (donc avec 5 adversaires CPU). */
-const NOT_AT_SIX: readonly VariantId[] = ['CLOSED_2', 'LE10'];
 
 export function TrainingRoom({ onBack, variant, guided = false }: { onBack: () => void; variant?: VariantId; guided?: boolean }) {
   const { t } = useI18n();

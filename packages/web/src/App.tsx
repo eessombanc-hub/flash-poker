@@ -176,6 +176,7 @@ function AppContent() {
   const [tableauCode] = useState(takeTableauCode);
   const [tableauVariant, setTableauVariant] = useState<'classic' | 'hand5'>('classic');
   const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
+  const [createVariant, setCreateVariant] = useState<VariantId | undefined>(undefined);
   const [trainVariant, setTrainVariant] = useState<VariantId | undefined>(undefined);
   const [guided, setGuided] = useState(false);
   const [spaceTab, setSpaceTab] = useState<SpaceTab>('profil');
@@ -225,11 +226,14 @@ function AppContent() {
           setTrainVariant(v);
           setScreen('train');
         }}
-        onCreate={() => setScreen('create')}
+        onCreate={(v) => {
+          setCreateVariant(v);
+          setScreen('create');
+        }}
         onLogin={() => setScreen({ auth: 'login' })}
       />
     );
-  else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} />;
+  else if (screen === 'create') content = <CreateRoom onBack={() => setScreen('home')} initialVariant={createVariant} />;
   else if (screen === 'solo')
     content = (
       <Solo
@@ -247,7 +251,10 @@ function AppContent() {
   else
     content = (
       <Home
-        onCreate={() => setScreen('create')}
+        onCreate={() => {
+          setCreateVariant(undefined);
+          setScreen('create');
+        }}
         onTrain={() => setScreen('solo')}
         onChallenges={me ? () => { setSpaceTab('defis'); setScreen('space'); } : undefined}
         onQuickStart={() => { setTrainVariant('CLOSED_1'); setGuided(true); setScreen('train'); }}

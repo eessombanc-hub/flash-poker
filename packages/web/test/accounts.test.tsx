@@ -82,6 +82,7 @@ describe('comptes joueurs dans l’interface', () => {
     await user.click(screen.getByRole('button', { name: /Créer une partie/ }));
     expect(screen.getByText(/Vous jouez sous le pseudo/)).toBeTruthy();
     expect(screen.queryByLabelText('Votre pseudo')).toBeNull();
+    await user.click(screen.getByRole('button', { name: /Personnaliser la table/ }));
     await user.type(screen.getByLabelText('Nom de la table'), 'Vendredi');
     await user.click(screen.getByRole('button', { name: 'Créer la table' }));
     await until(() => p.client.state.view?.players[0]?.nickname === 'Emeric', 'pseudo du compte');

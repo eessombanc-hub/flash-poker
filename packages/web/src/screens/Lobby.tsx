@@ -1,9 +1,10 @@
 import { LockIcon } from '../components/Icons3D';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useClient, useGame } from '../lib/context';
 import { formatChips, STARTING_CHIPS } from '../lib/format';
 import { Avatar, Badge, Button, Eyebrow, Modal, Panel, Title } from '../components/ui';
 import { useI18n } from '../i18n';
+import { VARIANTS } from '../lib/labels';
 import { ChatDock } from '../components/Social';
 
 export function Lobby() {
@@ -17,6 +18,24 @@ export function Lobby() {
   const allApproved = view.players.every((p) => p.assistanceApproved === true);
   const n = view.players.length;
   const link = typeof window === 'undefined' ? '' : `${window.location.origin}${window.location.pathname}?code=${view.code}`;
+
+  // Arrivées et départs annoncés discrètement, pour que l'hôte n'ait pas à surveiller la liste.
+  const seen = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const ids = new Set(view.players.map((p) => p.id));
+    if (seen.current) for (const p of view.players) if (!seen.current.has(p.id) && p.id !== view.you.playerId) client.toast('info', t('lobby.a_rejoint', { nickname: p.nickname }));
+    seen.current = ids;
+  }, [view.players, view.you.playerId, client, t]);
+
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  async function invite() {
+    try {
+      await navigator.share({ title: view.name, text: t('lobby.invite.texte', { name: view.name }), url: link });
+    } catch {
+      /* partage fermé par le joueur : rien à signaler */
+    }
+  }
+  const fixed = view.config.variant ? VARIANTS.find((v) => v.id === view.config.variant) : undefined;
 
   async function copy(text: string) {
     try {
@@ -66,11 +85,12 @@ export function Lobby() {
         )}
 
         <div className="mt-6 rounded-xl border border-gold-500/40 bg-ink-900/70 p-4 text-center">
-          <p className="text-xs uppercase tracking-[0.25em] text-ivory-300/70">{t('lobby.code_de_la')}</p>
+          <p className="text-xs uppercase tracking-[0.25em] text-ivory-200/80">{t('lobby.code_de_la')}</p>
           <p className="mt-1 select-all font-mono text-3xl font-bold tracking-[0.18em] text-gold-300 sm:text-4xl" data-testid="room-code">
             {view.code}
           </p>
           <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {canShare && <Button onClick={invite}>{t('lobby.inviter')}</Button>}
             <Button variant="secondary" onClick={() => copy(view.code)} aria-label={t('lobby.copier_le_code')}>
               {copied ? t('lobby.copie') : t('lobby.copier_le_code')}
             </Button>
@@ -79,19 +99,18 @@ export function Lobby() {
           </div>
         </div>
 
-        <dl className="mt-6 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
-          {[
-            [t('lobby.joueurs'), `${n} / ${view.config.maxPlayers}`],
-            [t('lobby.places_restantes'), String(view.seatsLeft)],
-            [t('lobby.objectif'), tp('lobby.point', view.config.targetPoints)],
-            [t('lobby.mise'), formatChips(view.config.stakeChips)],
-          ].map(([k, v]) => (
-            <div key={k} className="rounded-xl border border-ivory-100/10 bg-ink-900/50 px-2 py-3">
-              <dt className="text-[11px] uppercase tracking-widest text-ivory-300/70">{k}</dt>
-              <dd className="mt-0.5 text-lg font-semibold text-ivory-50">{v}</dd>
-            </div>
-          ))}
-        </dl>
+        <p className="mt-6 text-center text-lg text-ivory-50" data-testid="lobby-summary">
+          {t('lobby.resume', { game: fixed ? fixed.name : t('lobby.jeu.libre'), max: view.config.maxPlayers, goal: tp('lobby.point', view.config.targetPoints), stake: view.config.stakeChips > 0 ? t('lobby.resume.mise', { amount: formatChips(view.config.stakeChips) }) : t('lobby.resume.sansmise') })}
+        </p>
+        <p className="mt-1 text-center text-sm text-ivory-200/85" aria-live="polite">
+          {t('lobby.joueurs_presents', { n, max: view.config.maxPlayers })}
+        </p>
+        {fixed && (
+          <details className="mt-4 rounded-xl border border-ivory-100/12 bg-ink-900/40 px-4 py-3 text-sm text-ivory-100/90">
+            <summary className="cursor-pointer font-semibold text-gold-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('lobby.rappel_regles', { name: fixed.name })}</summary>
+            <p className="mt-2 leading-relaxed">{fixed.description}</p>
+          </details>
+        )}
         <p className="mt-3 text-center text-sm text-ivory-200/80">
           {t('lobby.chaque_joueur_recoit', { formatChips: formatChips(STARTING_CHIPS) })} <strong className="text-gold-300">{formatChips(view.config.potChips)}</strong>
         </p>
@@ -109,14 +128,14 @@ export function Lobby() {
                 {t('lobby.j_approuve_l')}</Button>
               <Button variant={mine?.assistanceApproved === false ? 'primary' : 'secondary'} aria-pressed={mine?.assistanceApproved === false} onClick={() => client.approveAssistance(false)}>
                 {t('lobby.je_prefere_sans')}</Button>
-              {mine?.assistanceApproved === null && <span className="text-xs text-ivory-300/70">{t('lobby.vous_n_avez')}</span>}
+              {mine?.assistanceApproved === null && <span className="text-xs text-ivory-200/80">{t('lobby.vous_n_avez')}</span>}
             </div>
-            <p className="mt-2 text-xs text-ivory-300/70" aria-live="polite">
+            <p className="mt-2 text-xs text-ivory-200/80" aria-live="polite">
               {allApproved ? t('lobby.tous_les_joueurs') : t('lobby.tant_que_tout')}
             </p>
           </section>
         ) : (
-          <p className="mt-3 text-center text-xs text-ivory-300/70">{t('lobby.partie_sans_assistance')}</p>
+          <p className="mt-3 text-center text-xs text-ivory-200/80">{t('lobby.partie_sans_assistance')}</p>
         )}
 
         <h3 className="mb-2 mt-7 text-sm font-semibold uppercase tracking-widest text-gold-400">{t('lobby.joueurs_connectes')}</h3>
@@ -126,7 +145,7 @@ export function Lobby() {
               <Avatar nickname={p.nickname} avatar={p.avatar} />
               <span className="flex-1 font-medium text-ivory-50">
                 {p.nickname}
-                {p.id === view.you.playerId && <span className="ml-2 text-xs text-ivory-300/70">{t('lobby.vous')}</span>}
+                {p.id === view.you.playerId && <span className="ml-2 text-xs text-ivory-200/80">{t('lobby.vous')}</span>}
               </span>
               {p.isHost && <Badge tone="gold">{t('lobby.hote')}</Badge>}
               {view.config.assistance && (
@@ -149,14 +168,14 @@ export function Lobby() {
               {t('lobby.place_libre')}</li>
           ))}
         </ul>
-        <p className="mt-3 text-xs text-ivory-300/70">{t('lobby.les_positions_utg')}</p>
+        <p className="mt-3 text-xs text-ivory-200/80">{t('lobby.les_positions_utg')}</p>
 
-        <div className="mt-7 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {isHost ? (
             <>
-              <Button variant="danger" onClick={() => client.cancelRoom()}>
+              <Button variant="ghost" className="text-ruby-200 hover:text-ruby-100" onClick={() => setConfirmCancel(true)}>
                 {t('lobby.annuler_la_partie')}</Button>
-              <Button disabled={n < 2} onClick={() => client.startGame()}>
+              <Button className="px-8 py-3 text-base" disabled={n < 2} onClick={() => client.startGame()}>
                 {t('lobby.demarrer_la_partie')}</Button>
             </>
           ) : (
@@ -168,7 +187,12 @@ export function Lobby() {
             </>
           )}
         </div>
-        {isHost && n < 2 && <p className="mt-2 text-right text-xs text-ivory-300/70">{t('lobby.il_faut_au')}</p>}
+        {isHost && n < 2 && (
+          <>
+            <p className="mt-2 text-right text-sm text-ivory-200/85">{t('lobby.il_faut_au')}</p>
+            <p className="text-right text-sm text-ivory-200/85">{t('lobby.partagez')}</p>
+          </>
+        )}
       </Panel>
     </main>
   );

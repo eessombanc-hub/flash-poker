@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { GameView, RoundEvent } from '@poker/engine';
+import type { GameView, RoundEvent, VariantId } from '@poker/engine';
 
 // ---------- Entrées client (validées côté serveur) ----------
 
@@ -24,7 +24,7 @@ export const createRoomSchema = z.object({
   /** Mode entraînement : nombre d'adversaires CPU (1 à 5). La table est alors privée (complète dès la création,
    * `maxPlayers` est ramené à CPU + 1) et la partie démarre aussitôt. Absent : partie entre humains. */
   cpu: z.number().int().min(1).max(5).optional(),
-  /** Entraînement uniquement : toutes les manches se jouent dans cette variante (absent : variante au choix, comme en partie normale). */
+  /** Toutes les manches se jouent dans cette variante, en entraînement comme entre amis (absent : variante au choix à chaque manche). */
   variant: z.enum(['V6_3', 'V6_1', 'CLOSED_1', 'CLOSED_2', 'AVIATION', 'AVIA_6', 'MORPION', 'LE10']).optional(),
   /** 6-3 imposé : nombre de tétines (0 à 2) et paris extérieurs. */
   teats: z.number().int().min(0).max(2).optional(),
@@ -120,6 +120,8 @@ export interface RoomSummary {
   targetPoints: number;
   stakeChips: number;
   assistance: boolean;
+  /** Variante imposée, absente si elle est choisie à chaque manche. */
+  variant?: VariantId;
 }
 
 /** Vue d'une room pour UN joueur : jamais de jeton, jamais de carte cachée d'autrui. */
@@ -127,7 +129,7 @@ export interface RoomView {
   code: string;
   name: string;
   status: RoomStatus;
-  config: { maxPlayers: number; targetPoints: number; stakeChips: number; potChips: number; assistance: boolean; private: boolean };
+  config: { maxPlayers: number; targetPoints: number; stakeChips: number; potChips: number; assistance: boolean; private: boolean; variant?: VariantId; teats?: number; sideBets?: boolean };
   seatsLeft: number;
   hostId: string;
   you: { playerId: string; role: 'HOST' | 'PLAYER' | 'QUEUED' };

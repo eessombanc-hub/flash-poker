@@ -10,6 +10,7 @@ import type { GameSnapshot } from '@poker/engine';
 // seul le type est importé statiquement (effacé à la compilation, donc jamais vu par Vite).
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
 import type { PlayerState, RoomStatus } from './protocol';
+import type { VariantId } from '@poker/engine';
 
 export interface RoomConfig {
   name: string;
@@ -21,6 +22,11 @@ export interface RoomConfig {
   /** Salle privée : absente de la liste publique, accessible seulement par son code ou le lien d'invitation.
    * Absent des parties enregistrées avant son ajout : publique. */
   private?: boolean;
+  /** Variante imposée pour toutes les manches (absent : variante au choix, comme avant). */
+  variant?: VariantId;
+  /** 6-3 imposé : tétines et paris extérieurs. */
+  teats?: number;
+  sideBets?: boolean;
 }
 
 export interface PlayerSnapshot {
