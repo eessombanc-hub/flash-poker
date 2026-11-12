@@ -99,9 +99,9 @@ function AccountBar({ onAuth, onSpace }: { onAuth: (mode: AuthMode) => void; onS
     );
   return (
     <div className="flex items-center gap-1 sm:gap-2">
-      <Button variant="ghost" className="px-3" onClick={() => onAuth('login')}>
+      <Button variant="ghost" className="whitespace-nowrap px-2 sm:px-3" onClick={() => onAuth('login')}>
         <ProfileIcon size={24} />
-        {t('common.login')}
+        <span className="max-[430px]:sr-only">{t('common.login')}</span>
       </Button>
       <Button variant="secondary" className="hidden px-3 sm:inline-flex" onClick={() => onAuth('register')}>
         {t('common.register')}
@@ -174,6 +174,7 @@ function AppContent() {
   const [tableauVariant, setTableauVariant] = useState<'classic' | 'hand5'>('classic');
   const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
   const [trainVariant, setTrainVariant] = useState<VariantId | undefined>(undefined);
+  const [guided, setGuided] = useState(false);
   const [joinCode, setJoinCode] = useState<string>(initialCode);
 
   useEffect(() => {
@@ -237,13 +238,14 @@ function AppContent() {
         onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
       />
     );
-  else if (screen === 'train') content = <TrainingRoom onBack={() => setScreen('solo')} variant={trainVariant} />;
+  else if (screen === 'train') content = <TrainingRoom onBack={() => { setGuided(false); setScreen(guided ? 'home' : 'solo'); }} variant={trainVariant} guided={guided} />;
   else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={joinCode} />;
   else
     content = (
       <Home
         onCreate={() => setScreen('create')}
         onTrain={() => setScreen('solo')}
+        onQuickStart={() => { setTrainVariant('CLOSED_1'); setGuided(true); setScreen('train'); }}
         onVariants={() => setScreen('variants')}
         onBlackjack={() => setScreen('blackjack')}
         onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}

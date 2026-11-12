@@ -6,6 +6,7 @@ import { VARIANTS } from '../lib/labels';
 import type { AccountPrivate, VariantId } from '../lib/types';
 import { currentI18n, useI18n } from '../i18n';
 import { errorText } from '../lib/tbText';
+import { markOnboarded } from '../lib/onboarding';
 
 /** Joueur inscrit : il joue sous le pseudo et l'avatar de son compte (modifiables dans « Mon espace »). */
 function AccountIdentity({ me }: { me: AccountPrivate }) {
@@ -120,16 +121,16 @@ export function CreateRoom({ onBack }: { onBack: () => void }) {
 /** Variantes injouables à 6 joueurs (donc avec 5 adversaires CPU). */
 const NOT_AT_SIX: readonly VariantId[] = ['CLOSED_2', 'LE10'];
 
-export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?: VariantId }) {
+export function TrainingRoom({ onBack, variant, guided = false }: { onBack: () => void; variant?: VariantId; guided?: boolean }) {
   const { t } = useI18n();
   const client = useClient();
   const info = variant ? VARIANTS.find((v) => v.id === variant) : undefined;
   const maxCpu = variant && NOT_AT_SIX.includes(variant) ? 4 : 5;
   const [teats, setTeats] = useState(0);
   const [sideBets, setSideBets] = useState(false);
-  const [cpu, setCpu] = useState(3);
-  const [target, setTarget] = useState(3);
-  const [assistance, setAssistance] = useState(false);
+  const [cpu, setCpu] = useState(guided ? 2 : 3);
+  const [target, setTarget] = useState(guided ? 1 : 3);
+  const [assistance, setAssistance] = useState(guided);
   const [nickname, setNick] = useState('');
   const [avatar, setAvatar] = useState('or');
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +144,7 @@ export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?
     setBusy(true);
     setError(null);
     try {
+      markOnboarded();
       await client.createRoom({ name: t('forms.entrainement'), maxPlayers: cpu + 1, targetPoints: target, stakeChips: 0, assistance, cpu, nickname: nickname.trim(), avatar, ...(variant ? { variant, ...(variant === 'V6_3' ? { teats, sideBets } : {}) } : {}) });
     } catch (err) {
       setError(errorText(currentI18n(), err, t('forms.creation_impossible')));
@@ -162,6 +164,19 @@ export function TrainingRoom({ onBack, variant }: { onBack: () => void; variant?
             ? t('forms.chaque_manche_se', { tagline: info.tagline })
             : t('forms.une_table_privee')}
         </p>
+        {guided && (
+          <div className="mb-6 rounded-xl border border-gold-500/40 bg-ink-900/60 p-4">
+            <p className="font-display text-lg text-ivory-50">{t('ob.guide.title')}</p>
+            <ol className="mt-3 space-y-2.5">
+              {(['ob.step1', 'ob.step2', 'ob.step3'] as const).map((k, i) => (
+                <li key={k} className="flex items-start gap-3 text-sm text-ivory-200/90">
+                  <span aria-hidden="true" className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gold-500/90 text-xs font-bold text-ink-950">{i + 1}</span>
+                  <span>{t(k)}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
         <form onSubmit={submit} className="space-y-5" noValidate>
           <Field label={t('forms.adversaires_cpu')} hint={variant ? (maxCpu === 4 ? t('forms.cette_variante_se') : undefined) : cpu === 5 ? t('forms.a_6_joueurs') : t('forms.a_joueurs_toutes', { n: cpu + 1 })}>
             <Segmented label={t('forms.adversaires_cpu')} value={cpu} options={[1, 2, 3, 4, 5].slice(0, maxCpu)} onChange={setCpu} />

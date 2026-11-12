@@ -9,16 +9,18 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 import { SettingsBody } from '../components/SettingsBody';
 import { useI18n } from '../i18n';
+import { isFirstVisit, markOnboarded } from '../lib/onboarding';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
+export function Home({ onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, notice, account }: { onQuickStart?: () => void; onVariants?: () => void; onCreate: () => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [welcome, setWelcome] = useState(() => !!onQuickStart && isFirstVisit());
   return (
     <div className="min-h-[calc(100dvh-3rem)]">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+      <header className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-4 sm:px-5">
         <p className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-xl tracking-wide text-ivory-50">
           <CardsIcon size={34} />
           {t('home.flash_poker')}</p>
@@ -51,20 +53,32 @@ export function Home({ onVariants, onCreate, onJoin, onTrain, onBlackjack, onTab
           <HeroScene />
         </section>
 
-        {/* Actions principales */}
-        <section aria-label={t('home.start')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <ActionTile icon={<CardsIcon size={58} />} title={t('home.create.title')} text={t('home.create.text')} onClick={onCreate} primary />
-          <ActionTile icon={<JoinIcon size={58} />} title={t('home.join.title')} text={t('home.join.text')} onClick={() => onJoin()} />
-          <ActionTile icon={<TrophyIcon size={58} />} title={t('home.solo.title')} text={t('home.solo.text')} onClick={onTrain} />
-          <ActionTile icon={<RulesIcon size={58} />} title={t('home.rules.title')} text={t('home.rules.text')} onClick={() => setRules(true)} />
-        </section>
-
-        {/* Variantes : fiches, règles et progression personnelle de chaque jeu */}
-        {onVariants && (
-          <section aria-label={t('vi.title')} className="mt-3">
-            <ActionTile icon={<CardsIcon size={58} />} title={t('home.variants.title')} text={t('home.variants.text')} onClick={onVariants} />
+        {welcome && onQuickStart && (
+          <section aria-label={t('ob.title')} className="mb-3 flex flex-col gap-4 rounded-2xl border border-gold-400/60 bg-gradient-to-r from-felt-800 via-felt-900 to-ink-900 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Eyebrow>{t('ob.eyebrow')}</Eyebrow>
+              <h2 className="mt-1 font-display text-2xl text-ivory-50">{t('ob.title')}</h2>
+              <p className="mt-1 max-w-xl text-sm text-ivory-200/85">{t('ob.text')}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button variant="ghost" onClick={() => { markOnboarded(); setWelcome(false); }}>{t('ob.later')}</Button>
+              <Button onClick={onQuickStart}>{t('ob.start')}</Button>
+            </div>
           </section>
         )}
+
+        {/* Actions principales : « Créer » domine, les autres s'alignent derrière */}
+        <section aria-label={t('home.start')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ActionTile icon={<CardsIcon size={64} />} title={t('home.create.title')} text={t('home.create.text')} onClick={onCreate} primary suit="♠" className="lg:col-span-2" />
+          <ActionTile icon={<JoinIcon size={58} />} title={t('home.join.title')} text={t('home.join.text')} onClick={() => onJoin()} suit="♥" />
+          <ActionTile icon={<TrophyIcon size={58} />} title={t('home.solo.title')} text={t('home.solo.text')} onClick={onTrain} suit="♦" />
+        </section>
+
+        {/* Variantes et mémo des règles : fiches, règles et progression personnelle de chaque jeu */}
+        <section aria-label={t('vi.title')} className={`mt-3 grid gap-3 ${onVariants ? 'sm:grid-cols-2' : ''}`}>
+          {onVariants && <ActionTile icon={<ChipsIcon size={52} />} title={t('home.variants.title')} text={t('home.variants.text')} onClick={onVariants} suit="♣" compact />}
+          <ActionTile icon={<RulesIcon size={52} />} title={t('home.rules.title')} text={t('home.rules.text')} onClick={() => setRules(true)} suit="♠" compact />
+        </section>
 
         {/* Blackjack : rubrique à part, distincte des variantes de poker */}
         {onBlackjack && (
@@ -154,19 +168,22 @@ export function Home({ onVariants, onCreate, onJoin, onTrain, onBlackjack, onTab
  * mais le bouton ne contient que le titre (son nom accessible est exactement le texte qu'il affiche) ; la phrase
  * d'explication lui est rattachée comme description.
  */
-function ActionTile({ icon, title, text, onClick, primary = false }: { icon: ReactNode; title: string; text: string; onClick: () => void; primary?: boolean }) {
+function ActionTile({ icon, title, text, onClick, primary = false, suit, compact = false, className = '' }: { icon: ReactNode; title: string; text: string; onClick: () => void; primary?: boolean; suit?: string; compact?: boolean; className?: string }) {
   const id = useId();
   return (
     <div
-      className={`group relative flex items-center gap-4 rounded-2xl border p-4 transition hover:-translate-y-0.5 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-400 motion-reduce:transform-none sm:flex-col sm:items-start sm:p-5 ${
+      className={`group relative flex items-center gap-4 overflow-hidden rounded-2xl border p-4 transition hover:-translate-y-0.5 ${className} has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold-400 motion-reduce:transform-none ${compact ? '' : 'sm:flex-col sm:items-start sm:p-5'} ${
         primary
           ? 'border-gold-400/70 bg-gradient-to-br from-gold-500/25 via-ink-800/90 to-ink-900 shadow-gold'
           : 'border-ivory-100/12 bg-gradient-to-br from-ink-700/80 to-ink-900/90 hover:border-ivory-100/30'
       }`}
     >
-      <span className="transition group-hover:scale-105 motion-reduce:transform-none" aria-hidden="true">{icon}</span>
-      <span className="min-w-0">
-        <button type="button" onClick={onClick} aria-describedby={`${id}-d`} className="block text-left font-display text-xl text-ivory-50 focus:outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']">
+      {suit && (
+        <span aria-hidden="true" className={`pointer-events-none absolute -bottom-6 -right-2 select-none font-display leading-none ${suit === '♥' || suit === '♦' ? 'text-ruby-500/[0.14]' : 'text-ivory-100/[0.06]'} ${primary ? 'text-[9rem]' : 'text-[6.5rem]'}`}>{suit}</span>
+      )}
+      <span className="relative transition group-hover:scale-105 motion-reduce:transform-none" aria-hidden="true">{icon}</span>
+      <span className="relative min-w-0">
+        <button type="button" onClick={onClick} aria-describedby={`${id}-d`} className={`block text-left font-display ${primary ? 'text-2xl' : 'text-xl'} text-ivory-50 focus:outline-none after:absolute after:inset-0 after:rounded-2xl after:content-['']`}>
           {title}
         </button>
         <span id={`${id}-d`} className="mt-1 block text-sm text-ivory-200/80">{text}</span>
