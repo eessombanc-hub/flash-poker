@@ -24,9 +24,13 @@ const STEP = 12; // pixels d'aperçu par appui sur une flèche
  * Photo de profil : choix d'un fichier, recadrage carré (glisser, flèches du clavier, zoom), envoi.
  * Le fichier d'origine reste sur l'appareil : seul le JPEG de 128 pixels est envoyé.
  */
-export function AvatarUpload({ current, upload, onRemove }: { current: string; upload: (jpeg: Blob) => Promise<void>; onRemove: () => Promise<void> }) {
+export function AvatarUpload({ current, upload, onRemove, deferred = false }: { current: string; upload: (jpeg: Blob) => Promise<void>; onRemove: () => Promise<void>; deferred?: boolean }) {
   const { t } = useI18n();
-  const hasPhoto = isImageAvatar(current);
+  // `deferred` : à l'inscription, le compte n'existe pas encore. La photo est gardée sur l'appareil (aperçu ci-dessous)
+  // puis envoyée par le parent dès que le compte est créé.
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  useEffect(() => () => { if (pendingUrl) URL.revokeObjectURL(pendingUrl); }, [pendingUrl]);
+  const hasPhoto = deferred ? pendingUrl !== null : isImageAvatar(current);
   const input = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -86,9 +90,11 @@ export function AvatarUpload({ current, upload, onRemove }: { current: string; u
     setBusy(true);
     setNote(null);
     try {
-      await upload(await renderAvatarJpeg(img, crop));
+      const jpeg = await renderAvatarJpeg(img, crop);
+      await upload(jpeg);
+      if (deferred) setPendingUrl(URL.createObjectURL(jpeg));
       close();
-      setNote({ tone: 'ok', text: t('avu.saved') });
+      setNote({ tone: 'ok', text: t(deferred ? 'avu.ready' : 'avu.saved') });
     } catch (e) {
       setNote({ tone: 'error', text: errorText(currentI18n(), e) });
     } finally {
@@ -101,6 +107,7 @@ export function AvatarUpload({ current, upload, onRemove }: { current: string; u
     setNote(null);
     try {
       await onRemove();
+      setPendingUrl(null);
       setNote({ tone: 'ok', text: t('avu.removed') });
     } catch (e) {
       setNote({ tone: 'error', text: errorText(currentI18n(), e) });
@@ -115,7 +122,8 @@ export function AvatarUpload({ current, upload, onRemove }: { current: string; u
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" tabIndex={-1} aria-label={t('avu.file')} onChange={(e) => void pick(e.target.files?.[0])} />
 
       {!img && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          {deferred && pendingUrl && <img src={pendingUrl} alt={t('avu.preview')} width={56} height={56} className="h-14 w-14 rounded-full object-cover ring-2 ring-gold-500/60" />}
           <button type="button" disabled={busy} onClick={() => input.current?.click()} className={`${btn} border-gold-500/60 text-gold-300 hover:bg-gold-500/10`}>
             {hasPhoto ? t('avu.replace') : t('avu.import')}
           </button>

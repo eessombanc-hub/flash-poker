@@ -148,6 +148,17 @@ function ProfileTab() {
   const me = useAccount((s) => s.account)!;
   const [nickname, setNick] = useState(me.nickname);
   const [avatar, setAvatar] = useState(me.avatar ?? 'or');
+  const [avState, setAvState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  // Un changement d'avatar (modèle ou avatar personnalisé) est enregistré aussitôt : plus besoin du bouton du profil.
+  async function saveAvatar(next: string) {
+    setAvState(null);
+    try {
+      await account.updateProfile({ avatar: next });
+      setAvState({ tone: 'ok', text: t('sp.av.saved') });
+    } catch (err) {
+      setAvState({ tone: 'error', text: message(err) });
+    }
+  }
   const [state, setState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [mail, setMail] = useState({ email: me.email, password: '' });
   const [mailState, setMailState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
@@ -230,29 +241,35 @@ function ProfileTab() {
     <div className="space-y-8">
       <form onSubmit={saveProfile} className="space-y-4">
         <H2>{t('space.profil')}</H2>
-        <div className="flex items-center gap-4">
-          <Avatar nickname={nickname || me.nickname} avatar={avatar} size={64} />
-          <p className="text-sm text-ivory-200/80">{t('space.votre_pseudo_et')}</p>
-        </div>
         <Field label={t('space.pseudo')} htmlFor="sp-nick">
           <input id="sp-nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
         </Field>
-        <Field label={t('space.avatar')}>
-          <AvatarPicker value={avatar} onChange={setAvatar} />
-        </Field>
-        <Field label={t('avu.label')}>
-          <AvatarUpload
-            current={avatar}
-            upload={async (jpeg) => {
-              const updated = await account.uploadAvatar(jpeg);
-              setAvatar(updated.avatar ?? 'or');
-            }}
-            onRemove={async () => {
-              await account.updateProfile({ avatar: 'or' });
-              setAvatar('or');
-            }}
-          />
-        </Field>
+        <section aria-label={t('sp.av.title')} className="space-y-4 rounded-2xl border border-gold-500/25 bg-ink-900/40 p-4 sm:p-5">
+          <div className="flex items-center gap-4">
+            <Avatar nickname={nickname || me.nickname} avatar={avatar} size={88} />
+            <div className="min-w-0">
+              <h3 className="font-display text-lg text-ivory-50">{t('sp.av.title')}</h3>
+              <p className="text-sm text-ivory-200/80">{t('sp.av.text')}</p>
+            </div>
+          </div>
+          <Field label={t('space.avatar')}>
+            <AvatarPicker value={avatar} onChange={(v) => { setAvatar(v); void saveAvatar(v); }} />
+          </Field>
+          <Field label={t('avu.label')}>
+            <AvatarUpload
+              current={avatar}
+              upload={async (jpeg) => {
+                const updated = await account.uploadAvatar(jpeg);
+                setAvatar(updated.avatar ?? 'or');
+              }}
+              onRemove={async () => {
+                await account.updateProfile({ avatar: 'or' });
+                setAvatar('or');
+              }}
+            />
+          </Field>
+          {avState && <Notice tone={avState.tone}>{avState.text}</Notice>}
+        </section>
         {state && <Notice tone={state.tone}>{state.text}</Notice>}
         <Button type="submit" disabled={nickname.trim().length < 2}>
           {t('space.enregistrer_le_profil')}</Button>

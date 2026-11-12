@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { ProfileIcon } from '../components/Icons3D';
+import { AvatarUpload } from '../components/AvatarUpload';
 import { Avatar, AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Title } from '../components/ui';
 import type { AccountPublic } from '../lib/types';
 import { useAccount, useAccountClient } from '../lib/context';
@@ -53,6 +54,7 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [avatar, setAvatar] = useState('or');
+  const [photo, setPhoto] = useState<Blob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -97,6 +99,9 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
       if (mode === 'login') await account.login(login.trim(), password);
       else if (mode === 'register') {
         await account.register({ nickname: nickname.trim(), email: email.trim(), password, avatar, ...(invite ? { invite } : {}) });
+        // Photo choisie à l'inscription : envoyée maintenant que le compte existe. Un échec n'empêche pas l'inscription
+        // (la photo se change à tout moment dans « Mon espace »).
+        if (photo) await account.uploadAvatar(photo).catch(() => undefined);
         const c = account.takeRecoveryCode();
         if (c) {
           setIssued(c);
@@ -212,9 +217,14 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
               </Field>
             )}
             {mode === 'register' && (
+              <>
               <Field label={t('auth.avatar')}>
                 <AvatarPicker value={avatar} onChange={setAvatar} />
               </Field>
+              <Field label={t('avu.label')}>
+                <AvatarUpload deferred current={avatar} upload={async (jpeg) => setPhoto(jpeg)} onRemove={async () => setPhoto(null)} />
+              </Field>
+              </>
             )}
             {error && <ErrorBox>{error}</ErrorBox>}
             {busy && slow && <p role="status" className="text-sm text-ivory-300/80">{t('auth.wake')}</p>}

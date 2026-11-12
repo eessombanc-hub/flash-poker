@@ -82,6 +82,22 @@ describe('Import de la photo de profil', () => {
     expect(screen.queryByRole('group', { name: 'Recadrer votre photo' })).toBeNull();
   });
 
+  it('à l’inscription (mode différé) : la photo est gardée, prévisualisée, puis retirable', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:photo');
+    URL.revokeObjectURL = vi.fn();
+    const user = userEvent.setup();
+    const props = { current: 'or', upload: vi.fn<(jpeg: Blob) => Promise<void>>().mockResolvedValue(undefined), onRemove: vi.fn<() => Promise<void>>().mockResolvedValue(undefined) };
+    render(<I18nProvider initial="fr"><AvatarUpload deferred {...props} /></I18nProvider>);
+    await user.upload(screen.getByLabelText('Choisir un fichier image'), file());
+    await user.click(await screen.findByRole('button', { name: 'Utiliser cette photo' }));
+    expect(await screen.findByText(/sera enregistrée avec votre compte/)).toBeInTheDocument();
+    expect(props.upload).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('img', { name: 'Aperçu de la photo' }).getAttribute('src')).toBe('blob:photo');
+    await user.click(screen.getByRole('button', { name: 'Retirer ma photo' }));
+    await waitFor(() => expect(screen.queryByRole('img', { name: 'Aperçu de la photo' })).toBeNull());
+    expect(props.onRemove).toHaveBeenCalledTimes(1);
+  });
+
   it('les flèches du clavier déplacent le cadrage et l’annulation n’envoie rien', async () => {
     const user = userEvent.setup();
     const props = setup();
