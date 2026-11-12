@@ -49,6 +49,13 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
+      # Sauvegarde gratuite et chiffrée des comptes dans un dépôt GitHub privé (voir SAUVEGARDE_GRATUITE.md).
+      - key: BACKUP_GITHUB_REPO
+        sync: false
+      - key: BACKUP_GITHUB_TOKEN
+        sync: false
+      - key: BACKUP_PASSPHRASE
+        sync: false
     # PORT et HOST : Render les fournit déjà (PORT=10000, écoute sur 0.0.0.0) ; main.ts les lit tels quels.
     healthCheckPath: /health
     autoDeployTrigger: commit # redéploie automatiquement à chaque push sur la branche connectée

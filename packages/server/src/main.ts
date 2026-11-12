@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
 import { CryptoRng } from '@poker/engine';
 import { AccountDb } from './accounts/db';
+import { resolveBackup, restoreIfNeeded, startBackupLoop } from './backup';
 import { resolveMailer } from './accounts/mailer';
 import { AccountService } from './accounts/service';
 import { BlackjackService } from './blackjack/service';
@@ -41,7 +42,26 @@ if (testTimers) console.warn(`⚠ Minuteurs allongés à ${phaseSeconds} s (mode
 // E-mails (mot de passe oublié, favori connecté) : BREVO_API_KEY, RESEND_API_KEY ou SMTP_* (voir accounts/mailer.ts) ; sans eux, rien ne part.
 const accountsPath = process.env.STORE === 'memory' ? ':memory:' : (process.env.ACCOUNTS_DB_PATH ?? join(dirname(process.env.DB_PATH ?? './data/flashpoker.db'), 'comptes.db'));
 const mailer = resolveMailer(process.env);
+// Sauvegarde durable gratuite (BACKUP_GITHUB_REPO, BACKUP_GITHUB_TOKEN, BACKUP_PASSPHRASE : voir backup.ts) :
+// la base des comptes est restaurée avant son ouverture, puis sauvegardée régulièrement et à l'arrêt.
+const backupCfg = accountsPath === ':memory:' ? null : resolveBackup(process.env);
+const backup = await restoreIfNeeded(backupCfg, accountsPath);
 const accountsDb = new AccountDb(accountsPath);
+if (backup && backupCfg) {
+  const loop = startBackupLoop(backup, accountsDb.db, backupCfg.intervalMs);
+  console.log(`Sauvegarde chiffrée activée vers ${backupCfg.repo} (toutes les ${backupCfg.intervalMs / 1000} s si la base a changé)`);
+  let stopping = false;
+  for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+    process.on(sig, () => {
+      if (stopping) return;
+      stopping = true;
+      loop.stop();
+      void loop.flush().finally(() => process.exit(0));
+    });
+  }
+} else {
+  console.log('Sauvegarde externe désactivée : sur un disque éphémère, les comptes sont perdus à chaque redéploiement.');
+}
 const accounts = new AccountService(accountsDb, mailer, { appUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL });
 console.log(mailer.enabled ? `E-mails activés (${mailer.kind ?? 'SMTP'})` : 'E-mails désactivés : aucun service d’envoi configuré (mot de passe oublié indisponible)');
 const blackjack = new BlackjackService(accountsDb);

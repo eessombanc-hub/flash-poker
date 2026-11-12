@@ -67,6 +67,10 @@ Les services Resend (`RESEND_API_KEY`) et SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_
 
 **Rappel important** : sur le plan gratuit, le disque est effacé à chaque mise à jour. Les comptes, l’historique et les favoris disparaissent donc à chaque redéploiement, jusqu’à l’ajout d’un stockage durable. Un joueur qui a perdu son compte ne peut pas le récupérer par e-mail, puisqu’il n’existe plus.
 
+## Garder les comptes malgré le disque éphémère
+
+Voir `SAUVEGARDE_GRATUITE.md` : sauvegarde chiffrée dans un dépôt GitHub privé, gratuite, à configurer une fois.
+
 ## Mises à jour
 
 À chaque nouvelle version envoyée sur GitHub (branche `main`), Render redéploie automatiquement
