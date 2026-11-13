@@ -93,11 +93,37 @@ export class HttpMailer implements Mailer {
   }
 }
 
+/** Noms et valeurs nettoyés : espaces autour des noms et des valeurs retirés, noms mis en majuscules (une variable vide ne masque pas une variable renseignée de même nom). */
+function normalizeEnv(env: Record<string, string | undefined>): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [name, value] of Object.entries(env)) {
+    const key = name.trim().toUpperCase();
+    const v = value?.trim();
+    if (!out[key] && v) out[key] = v;
+    else if (!(key in out)) out[key] = v;
+  }
+  return out;
+}
+
 export function resolveMailer(env: Record<string, string | undefined>, fetchFn?: typeof fetch): Mailer {
-  const from = env.MAIL_FROM?.trim();
-  if (env.BREVO_API_KEY && from) return new HttpMailer('Brevo', env.BREVO_API_KEY, from, fetchFn);
-  if (env.RESEND_API_KEY && from) return new HttpMailer('Resend', env.RESEND_API_KEY, from, fetchFn);
-  return env.SMTP_HOST ? new SmtpMailer(env) : new LogMailer(false);
+  const e = normalizeEnv(env);
+  const from = e.MAIL_FROM;
+  if (e.BREVO_API_KEY && from) return new HttpMailer('Brevo', e.BREVO_API_KEY, from, fetchFn);
+  if (e.RESEND_API_KEY && from) return new HttpMailer('Resend', e.RESEND_API_KEY, from, fetchFn);
+  return e.SMTP_HOST ? new SmtpMailer(e) : new LogMailer(false);
+}
+
+/**
+ * Diagnostic pour le journal de démarrage quand les e-mails restent désactivés : quelles variables liées à l'envoi
+ * existent, et si elles contiennent quelque chose. Seuls les noms et un état « renseignée » ou « vide » sont écrits,
+ * jamais une valeur, pour ne rien divulguer dans les journaux.
+ */
+export function describeMailEnv(env: Record<string, string | undefined>): string {
+  const names = Object.keys(env).filter((k) => /MAIL|RESEND|BREVO|SMTP/i.test(k)).sort();
+  const seen = names.map((k) => `${JSON.stringify(k)} (${env[k]?.trim() ? 'renseignée' : 'vide'})`);
+  const e = normalizeEnv(env);
+  const missing = ['MAIL_FROM', 'RESEND_API_KEY'].filter((k) => !e[k]);
+  return `Variables d’e-mail détectées : ${seen.length ? seen.join(', ') : 'aucune'}. Manquantes ou vides pour Resend : ${missing.length ? missing.join(', ') : 'aucune'}.`;
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);

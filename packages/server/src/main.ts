@@ -2,7 +2,7 @@ import { dirname, join } from 'node:path';
 import { CryptoRng } from '@poker/engine';
 import { AccountDb } from './accounts/db';
 import { resolveBackup, restoreIfNeeded, startBackupLoop } from './backup';
-import { resolveMailer } from './accounts/mailer';
+import { describeMailEnv, resolveMailer } from './accounts/mailer';
 import { AccountService } from './accounts/service';
 import { BlackjackService } from './blackjack/service';
 import { BlackjackTables } from './blackjack/tables';
@@ -64,6 +64,7 @@ if (backup && backupCfg) {
 }
 const accounts = new AccountService(accountsDb, mailer, { appUrl: process.env.APP_URL ?? process.env.RENDER_EXTERNAL_URL });
 console.log(mailer.enabled ? `E-mails activés (${mailer.kind ?? 'SMTP'})` : 'E-mails désactivés : aucun service d’envoi configuré (mot de passe oublié indisponible)');
+if (!mailer.enabled) console.log(describeMailEnv(process.env));
 const blackjack = new BlackjackService(accountsDb);
 const blackjackTables = new BlackjackTables(accountsDb, blackjack);
 const tableau = new TableauService(accountsDb, blackjack);

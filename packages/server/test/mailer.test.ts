@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HttpMailer, LogMailer, SmtpMailer, parseSender, resolveMailer } from '../src/accounts/mailer';
+import { HttpMailer, LogMailer, SmtpMailer, describeMailEnv, parseSender, resolveMailer } from '../src/accounts/mailer';
 
 const message = { to: 'ana@example.fr', subject: 'Nouveau mot de passe', text: 'texte', html: '<p>html</p>' };
 const ok = () => vi.fn<typeof fetch>(async () => new Response('{}', { status: 201 }));
@@ -17,6 +17,14 @@ describe('choix du service d’envoi', () => {
 
   it('une clé d’API sans expéditeur n’active rien (l’envoi échouerait)', () => {
     expect(resolveMailer({ BREVO_API_KEY: 'k' }).enabled).toBe(false);
+  });
+
+  it('tolère les espaces autour des noms et des valeurs, et la casse des noms', () => {
+    expect(resolveMailer({ 'RESEND_API_KEY ': ' re_x ', ' mail_from': ' Flash Poker <no-reply@mail.flash-poker.fr> ' }).kind).toBe('Resend');
+  });
+
+  it('une variable vide ne masque pas une variable renseignée de même nom', () => {
+    expect(resolveMailer({ RESEND_API_KEY: '', 'resend_api_key': 're_x', MAIL_FROM: 'a@b.fr' }).kind).toBe('Resend');
   });
 });
 
@@ -60,5 +68,20 @@ describe('envoi par API HTTPS', () => {
     expect((err as Error).message).toContain('HTTP 400');
     expect((err as Error).message).toContain('sender not verified');
     expect((err as Error).message).not.toContain('cle-secrete');
+  });
+});
+
+describe('diagnostic des variables d’e-mail', () => {
+  it('liste les noms et l’état, jamais les valeurs', () => {
+    const line = describeMailEnv({ MAIL_FROM: 'Flash Poker <no-reply@x.fr>', RESEND_KEY: 're_secret', PATH: '/bin' });
+    expect(line).toContain('"MAIL_FROM" (renseignée)');
+    expect(line).toContain('"RESEND_KEY" (renseignée)');
+    expect(line).toContain('Manquantes ou vides pour Resend : RESEND_API_KEY');
+    expect(line).not.toContain('re_secret');
+    expect(line).not.toContain('PATH');
+  });
+  it('signale une variable vide et l’absence de toute variable', () => {
+    expect(describeMailEnv({ RESEND_API_KEY: '  ', MAIL_FROM: 'a@b.fr' })).toContain('"RESEND_API_KEY" (vide)');
+    expect(describeMailEnv({})).toContain('aucune');
   });
 });
