@@ -173,7 +173,8 @@ function AppContent() {
   const me = useAccount((s) => s.account);
   const [resetToken] = useState(takeResetToken);
   const [invite] = useState(takeInviteCode);
-  const [tableauCode] = useState(takeTableauCode);
+  const [tableauCode, setTableauCode] = useState(takeTableauCode);
+  const [bjJoin, setBjJoin] = useState('');
   const [tableauVariant, setTableauVariant] = useState<'classic' | 'hand5'>('classic');
   const [screen, setScreen] = useState<Screen>(() => (resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
   const [createVariant, setCreateVariant] = useState<VariantId | undefined>(undefined);
@@ -216,8 +217,8 @@ function AppContent() {
     else content = <Table onRegister={() => setScreen({ auth: 'register' })} />;
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} />;
-  else if (screen === 'blackjack') content = <Blackjack onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} />;
-  else if (screen === 'tableau') content = <Tableau onBack={() => setScreen('home')} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} initialVariant={tableauVariant} />;
+  else if (screen === 'blackjack') content = <Blackjack onBack={() => { setBjJoin(''); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialJoin={bjJoin || undefined} />;
+  else if (screen === 'tableau') content = <Tableau onBack={() => { setTableauCode(''); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} initialVariant={tableauVariant} />;
   else if (screen === 'variants')
     content = (
       <Variants
@@ -268,6 +269,10 @@ function AppContent() {
         onJoin={(code) => {
           setJoinCode(code ?? '');
           setScreen('join');
+        }}
+        onJoinTable={(game, code, variant) => {
+          if (game === 'blackjack') { setBjJoin(code); setScreen('blackjack'); }
+          else { setTableauCode(code); if (variant) setTableauVariant(variant); setScreen('tableau'); }
         }}
         account={<AccountBar onAuth={(mode) => setScreen({ auth: mode })} onSpace={() => { setSpaceTab('profil'); setScreen('space'); }} />}
         notice={closed === 'KICKED' ? t('notice.kicked') : closed === 'INVALID_SESSION' ? t('notice.invalid') : null}

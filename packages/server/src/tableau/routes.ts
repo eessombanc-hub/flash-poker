@@ -11,6 +11,7 @@ const createSchema = z.object({
   mode: z.enum(['training', 'friendly', 'ranked']),
   level: z.enum(['beginner', 'intermediate', 'expert']).optional(),
   variant: z.enum(['classic', 'hand5']).optional(),
+  public: z.boolean().optional(),
   nickname: nick.optional(),
 });
 
@@ -36,10 +37,11 @@ export function registerTableauRoutes(app: FastifyInstance, tb: TableauService, 
   };
   const code = (req: FastifyRequest): string => String((req.params as { code: string }).code).slice(0, 12);
 
+  app.get('/tableau/games', async () => ({ games: tb.listOpen() })); // liste publique : aucune donnée de compte
   app.post('/tableau/games', async (req, reply) => {
     const p = createSchema.safeParse(req.body);
     if (!p.success) throw new ServerError('BAD_REQUEST', 'Partie invalide');
-    return reply.status(201).send(tb.create(me(req, p.data.nickname), { mode: p.data.mode, level: p.data.level, variant: p.data.variant }));
+    return reply.status(201).send(tb.create(me(req, p.data.nickname), { mode: p.data.mode, level: p.data.level, variant: p.data.variant, public: p.data.public }));
   });
   const variantOf = (req: FastifyRequest) => {
     const v = z.enum(['classic', 'hand5']).safeParse((req.query as { variant?: string }).variant ?? 'classic');

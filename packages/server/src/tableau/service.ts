@@ -38,6 +38,8 @@ interface Room {
   mode: TbMode;
   /** Variante : classique, ou « Tableau 5 cartes » (main de 5 cartes). Absent = classique (anciennes parties). */
   variant?: TableauVariant;
+  /** Partie amicale ouverte : visible dans la liste « Parties ouvertes » tant qu'elle attend un adversaire. */
+  public?: boolean;
   seed: string;
   commitment: string;
   seats: [Player, Player | null];
@@ -330,7 +332,19 @@ export class TableauService {
     return a ? { code: a.room.code, mode: a.room.mode, status: a.room.status } : null;
   }
 
-  create(who: Who, req: { mode: TbMode; level?: AiLevel; variant?: TableauVariant }): TbGameDto {
+  /** Parties amicales ouvertes, en attente d'un adversaire (les plus récentes d'abord). */
+  listOpen(): { code: string; variant: TableauVariant; nickname: string; avatar: string | null; createdAt: number }[] {
+    const rows = this.db.prepare('SELECT data FROM tb_game').all() as { data: string }[];
+    const out: { code: string; variant: TableauVariant; nickname: string; avatar: string | null; createdAt: number }[] = [];
+    for (const r of rows) {
+      const room = JSON.parse(r.data) as Room;
+      if (room.public !== true || room.mode !== 'friendly' || room.status !== 'waiting' || room.seats[1] || !room.seats[0]) continue;
+      out.push({ code: room.code, variant: room.variant ?? 'classic', nickname: room.seats[0].nickname, avatar: room.seats[0].avatar, createdAt: room.createdAt });
+    }
+    return out.sort((a, b) => b.createdAt - a.createdAt).slice(0, 30);
+  }
+
+  create(who: Who, req: { mode: TbMode; level?: AiLevel; variant?: TableauVariant; public?: boolean }): TbGameDto {
     this.sweep();
     const existing = this.activeOf(who.userId);
     if (existing) {
@@ -351,7 +365,7 @@ export class TableauService {
     const human: Player = { kind: 'human', userId: who.userId, nickname: who.nickname, avatar: who.avatar, level: null, idle: 0 };
     const cpu: Player = { kind: 'cpu', userId: null, nickname: CPU_NAMES[level], avatar: null, level, idle: 0 };
     const room: Room = {
-      code: this.newCode(), mode: req.mode, variant, seed, commitment: tableauCommitment(seed),
+      code: this.newCode(), mode: req.mode, variant, ...(req.mode === 'friendly' && req.public === true ? { public: true } : {}), seed, commitment: tableauCommitment(seed),
       seats: [human, req.mode !== 'friendly' ? cpu : null],
       status: req.mode !== 'friendly' ? 'playing' : 'waiting', log: [], turnSince: now, cpuDelay: 0, paused: false, forfeit: null,
       createdAt: now, finishedAt: null, version: 0, updatedAt: now, xpDone: false,

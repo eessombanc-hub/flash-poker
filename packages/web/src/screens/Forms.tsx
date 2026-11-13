@@ -335,7 +335,7 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
     auto.current = true;
     void submit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [me]);
 
   return (
     <main className="mx-auto max-w-xl px-4 py-8">

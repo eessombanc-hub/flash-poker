@@ -247,7 +247,7 @@ export class AccountClient {
     return this.request<T>(method, path, body, { 'x-bj-guest': this.guestId() });
   }
   // ----- Le Tableau -----
-  tbCreate = (input: { mode: 'training' | 'friendly' | 'ranked'; level?: AiLevel; variant?: TableauVariant; nickname?: string }) => this.bj<TbGameDto>('POST', '/tableau/games', input);
+  tbCreate = (input: { mode: 'training' | 'friendly' | 'ranked'; level?: AiLevel; variant?: TableauVariant; public?: boolean; nickname?: string }) => this.bj<TbGameDto>('POST', '/tableau/games', input);
   tbGet = (code: string) => this.bj<TbGameDto>('GET', `/tableau/games/${encodeURIComponent(code)}`);
   tbJoin = (code: string, nickname?: string) => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/join`, { nickname });
   tbPlace = (code: string, col: number, card?: string) => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/place`, { col, card });
@@ -262,7 +262,7 @@ export class AccountClient {
   tbHistory = () => this.bj<{ history: TbHistoryEntry[] }>('GET', '/me/tableau/history').then((r) => r.history);
   blackjack = () => this.bj<BjOverview>('GET', '/me/blackjack');
   // ----- Tables à plusieurs -----
-  bjTableCreate = (input: { table: string; seats: SeatKind[]; bet?: number; rules?: TableRules; nickname?: string }) => this.bj<BjTableDto>('POST', '/blackjack/tables', input);
+  bjTableCreate = (input: { table: string; seats: SeatKind[]; bet?: number; rules?: TableRules; public?: boolean; nickname?: string }) => this.bj<BjTableDto>('POST', '/blackjack/tables', input);
   bjTableGet = (code: string, version?: number) => this.bj<BjTableReply>('GET', `/blackjack/tables/${encodeURIComponent(code)}${version === undefined ? '' : `?v=${version}`}`);
   bjTableJoin = (code: string, nickname?: string) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/join`, { nickname });
   bjTableLeave = (code: string) => this.bj<{ left: true }>('POST', `/blackjack/tables/${encodeURIComponent(code)}/leave`, {});

@@ -28,7 +28,7 @@ const FREE_LIMITS = { minBet: 1, maxBet: 1000 };
 const rulesLine = rulesSummary;
 
 /** Point d'entrée : ouvert à tous. Invité ou connecté, jetons, niveau et manche en cours sont enregistrés côté serveur. */
-export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: () => void }) {
+export function Blackjack({ onBack, onLogin, initialJoin }: { onBack: () => void; onLogin: () => void; initialJoin?: string }) {
   const { t } = useI18n();
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
@@ -61,7 +61,7 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
                   {t('blackjack.se_connecter')}</button>
               </p>
             )}
-            <Game onPlaying={setPlaying} stepBack={stepBack} />
+            <Game onPlaying={setPlaying} stepBack={stepBack} initialJoin={initialJoin} />
           </>
         )}
       </main>
@@ -69,12 +69,12 @@ export function Blackjack({ onBack, onLogin }: { onBack: () => void; onLogin: ()
   );
 }
 
-function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void; stepBack?: { current: (() => boolean) | null } } = {}) {
+function Game({ onPlaying, stepBack, initialJoin }: { onPlaying?: (playing: boolean) => void; stepBack?: { current: (() => boolean) | null }; initialJoin?: string } = {}) {
   const { t } = useI18n();
   const account = useAccountClient()!;
   const { sound } = useSettings();
   const [prefs, setPrefs] = useState<BjPrefs>(loadPrefs);
-  const [tab, setTab] = useState<Tab>('jouer');
+  const [tab, setTab] = useState<Tab>(initialJoin ? 'plusieurs' : 'jouer');
   const [overview, setOverview] = useState<BjOverview | null>(null);
   const [active, setActive] = useState<BjActive | null>(null);
   const [result, setResult] = useState<BjResult | null>(null);
@@ -292,7 +292,7 @@ function Game({ onPlaying, stepBack }: { onPlaying?: (playing: boolean) => void;
               sound={sound}
             />
           ))}
-        {tab === 'plusieurs' && <MultiTables tables={overview?.tables ?? []} freeRules={prefs.rules} pedagogy={prefs.pedagogy} speed={prefs.speed} chips={chips} onSettled={onSettled} />}
+        {tab === 'plusieurs' && <MultiTables tables={overview?.tables ?? []} freeRules={prefs.rules} pedagogy={prefs.pedagogy} speed={prefs.speed} chips={chips} onSettled={onSettled} joinCode={initialJoin} />}
         {tab === 'progression' && (profile ? <div className="space-y-4"><StatsPanel profile={profile} /><ChallengesPanel challenges={overview!.challenges} achievements={overview!.achievements} /></div> : <p className="text-sm text-ivory-300/70">{t('blackjack.chargement')}</p>)}
         {tab === 'classement' && <LeaderboardPanel />}
         {tab === 'historique' && <HistoryPanel items={overview?.history ?? []} />}

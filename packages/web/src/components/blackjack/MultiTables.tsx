@@ -48,27 +48,30 @@ interface Props {
   speed: Speed;
   chips: number;
   onSettled: () => void;
+  /** Code d'une table ouverte choisie sur l'accueil : un joueur connecté la rejoint aussitôt. */
+  joinCode?: string;
 }
 
 /** Jeu à plusieurs : créer une table (1 à 6 places, humaines ou CPU), la rejoindre avec un code, jouer. */
-export function MultiTables({ tables, freeRules, pedagogy, speed, chips, onSettled }: Props) {
+export function MultiTables({ tables, freeRules, pedagogy, speed, chips, onSettled, joinCode }: Props) {
   const [code, setCode] = useState<string>(() => read(KEY));
   const choose = (c: string) => {
     write(KEY, c);
     setCode(c);
   };
   if (code) return <SharedTable code={code} pedagogy={pedagogy} speed={speed} onClose={() => choose('')} onSettled={onSettled} />;
-  return <Entry tables={tables} freeRules={freeRules} chips={chips} onEnter={choose} />;
+  return <Entry tables={tables} freeRules={freeRules} chips={chips} onEnter={choose} initialJoin={joinCode} />;
 }
 
-function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; freeRules: TableRules; chips: number; onEnter: (code: string) => void }) {
+function Entry({ tables, freeRules, chips, onEnter, initialJoin }: { tables: TablePreset[]; freeRules: TableRules; chips: number; onEnter: (code: string) => void; initialJoin?: string }) {
   const { t, tp } = useI18n();
   const account = useAccountClient()!;
   const me = useAccount((s) => s.account);
   const [nick, setNick] = useState(() => read(NICK_KEY) || '');
   const [table, setTable] = useState('decouverte');
   const [slots, setSlots] = useState<Slot[]>(['human', 'cpu', 'cpu', 'none', 'none', 'none']);
-  const [joinCode, setJoinCode] = useState('');
+  const [joinCode, setJoinCode] = useState(initialJoin?.toUpperCase() ?? '');
+  const [isPublic, setPublic] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const presets = tables.filter((t) => t.id !== 'libre');
@@ -90,6 +93,14 @@ function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; f
       setBusy(false);
     }
   };
+  // Table ouverte choisie sur l'accueil : le joueur connecté s'assoit tout de suite (invité : code prérempli, pseudo à saisir).
+  const auto = useRef(false);
+  useEffect(() => {
+    if (auto.current || !me || !initialJoin) return;
+    auto.current = true;
+    void run(() => account.bjTableJoin(initialJoin.toUpperCase(), undefined));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
   const setSlot = (i: number, v: Slot) => setSlots((cur) => cur.map((s, j) => (j === i ? v : s)));
   const preset = (s: Slot[]) => setSlots(s);
 
@@ -158,8 +169,13 @@ function Entry({ tables, freeRules, chips, onEnter }: { tables: TablePreset[]; f
             {error}
           </p>
         )}
+        {humans > 1 && (
+          <Field label={t('forms.visibilite')} hint={isPublic ? t('ot.hint.public') : t('ot.hint.private')}>
+            <Segmented label={t('forms.visibilite')} value={isPublic ? 'publique' : 'privee'} options={['privee', 'publique'] as const} onChange={(v) => setPublic(v === 'publique')} format={(v) => (v === 'privee' ? t('forms.privee') : t('forms.publique'))} />
+          </Field>
+        )}
         <div className="mt-5">
-          <Button disabled={busy || chips < 1} onClick={() => void run(() => account.bjTableCreate({ table, seats, nickname: guestNick, ...(table === 'libre' ? { rules: freeRules } : {}) }))}>
+          <Button disabled={busy || chips < 1} onClick={() => void run(() => account.bjTableCreate({ table, seats, nickname: guestNick, ...(humans > 1 && isPublic ? { public: true } : {}), ...(table === 'libre' ? { rules: freeRules } : {}) }))}>
             {humans > 1 ? tp('bjmulti.creer_attente', humans - 1) : t('bjmulti.creer_la_table')}
           </Button>
         </div>

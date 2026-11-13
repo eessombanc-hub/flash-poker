@@ -45,6 +45,8 @@ interface RoundRec {
 
 interface Room {
   code: string;
+  /** Table ouverte : listée tant qu'elle attend des joueurs (salle d'attente avec places humaines libres). */
+  public?: boolean;
   hostUserId: string;
   tableId: string;
   tableName: string;
@@ -143,7 +145,22 @@ export class BlackjackTables {
 
   // ---------- Création, arrivée, départ ----------
 
-  create(who: Who, input: { table: string; rules?: TableRules; seats: SeatKind[]; bet?: number }): BjTableDto {
+  /** Tables ouvertes en salle d'attente avec au moins une place humaine libre (les plus récentes d'abord). */
+  listOpen(): { code: string; tableName: string; host: string; seatsLeft: number; humanSeats: number; minLevel: number }[] {
+    const rows = this.db.prepare('SELECT data, updated_at FROM bj_table ORDER BY updated_at DESC LIMIT 200').all() as { data: string }[];
+    const out: { code: string; tableName: string; host: string; seatsLeft: number; humanSeats: number; minLevel: number }[] = [];
+    for (const r of rows) {
+      const room = JSON.parse(r.data) as Room;
+      if (room.public !== true || room.status !== 'LOBBY') continue;
+      const human = room.seats.filter((s) => s.kind === 'human');
+      const free = human.filter((s) => !s.userId).length;
+      if (free < 1) continue;
+      out.push({ code: room.code, tableName: room.tableName, host: room.seats.find((s) => s.userId === room.hostUserId)?.nickname ?? '', seatsLeft: free, humanSeats: human.length, minLevel: room.minLevel });
+    }
+    return out.slice(0, 30);
+  }
+
+  create(who: Who, input: { table: string; rules?: TableRules; seats: SeatKind[]; bet?: number; public?: boolean }): BjTableDto {
     this.purgeIdle();
     if (this.seatedAt(who.userId)) throw new ServerError('WRONG_STATE', 'Vous êtes déjà assis à une table. Quittez-la d’abord');
     if (this.bj.hasActiveRound(who.userId)) throw new ServerError('WRONG_STATE', 'Terminez d’abord votre manche solo en cours');
@@ -164,6 +181,7 @@ export class BlackjackTables {
     );
     const room: Room = {
       code: this.newCode(),
+      ...(input.public === true ? { public: true } : {}),
       hostUserId: who.userId,
       tableId: input.table,
       tableName: TABLE_NAMES[input.table] ?? 'Table libre',

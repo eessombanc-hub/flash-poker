@@ -2,7 +2,7 @@ import { COMMON_RULES } from '../lib/rulesText';
 import { VARIANTS, variantName } from '../lib/labels';
 import { useClient } from '../lib/context';
 import { formatChips } from '../lib/format';
-import { ApiError, type LiveStats, type RoomSummary } from '../lib/api';
+import { ApiError, type LiveStats, type OpenTable, type RoomSummary } from '../lib/api';
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { BrandMark } from '../components/BrandMark';
 import { InfoTile, RailGroup, RailTile, SidePanel } from '../components/Lobby';
@@ -13,14 +13,14 @@ import type { SpaceTab } from './Space';
 import { useEffect, useState, type ReactNode } from 'react';
 import { StatsIcon, CardsIcon, ChipsIcon, CoinIcon, JoinIcon, RulesIcon, TrophyIcon } from '../components/Icons3D';
 import { SettingsBody } from '../components/SettingsBody';
-import { useI18n } from '../i18n';
+import { useI18n, type Key } from '../i18n';
 import { DailyStrip } from '../components/Engagement';
 import { isFirstVisit, markOnboarded } from '../lib/onboarding';
 import type { VariantId } from '../lib/types';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onTrain, onBlackjack, onTableau, onSpace, me, live, langSelect, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, me, live, langSelect, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -129,7 +129,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           </ul>
 
           <div id="open-rooms" className="scroll-mt-4">
-            <OpenRooms onSelect={onJoin} onCreate={() => onCreate()} />
+            <OpenRooms onSelect={onJoin} onSelectTable={onJoinTable} onCreate={() => onCreate()} />
           </div>
           <footer className="space-y-2 pt-4 text-center text-xs text-ivory-100/80">
             <p className="font-semibold text-ivory-100">{t('home.footer')}</p>
@@ -158,19 +158,21 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
 }
 
 /** Liste publique des parties ouvertes : actualisée en continu, on les rejoint en un clic. */
-function OpenRooms({ onSelect, onCreate }: { onSelect: (code: string) => void; onCreate: () => void }) {
+function OpenRooms({ onSelect, onSelectTable, onCreate }: { onSelect: (code: string) => void; onSelectTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onCreate: () => void }) {
   const { t, tp } = useI18n();
   const client = useClient();
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
+  const [others, setOthers] = useState<OpenTable[]>([]);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const list = await client.listRooms();
+        const [list, more] = await Promise.all([client.listRooms(), client.listOpenTables().catch(() => [] as OpenTable[])]);
         if (!cancelled) {
           setRooms(list);
+          setOthers(more);
           setError(false);
         }
       } catch (err) {
@@ -194,12 +196,30 @@ function OpenRooms({ onSelect, onCreate }: { onSelect: (code: string) => void; o
       <Panel className="divide-y divide-ivory-100/10 p-2">
         {rooms === null && !error && <p className="px-3 py-4 text-center text-sm text-ivory-200/80">{t('rooms.searching')}</p>}
         {error && <p className="px-3 py-4 text-center text-sm text-ivory-200/80">{t('rooms.unavailable')}</p>}
-        {rooms?.length === 0 && (
+        {rooms?.length === 0 && others.length === 0 && (
           <div className="px-3 py-5 text-center">
             <p className="text-sm text-ivory-100/85">{t('rooms.none')}</p>
             <Button className="mt-3" onClick={onCreate}>{t('rooms.first')}</Button>
           </div>
         )}
+        {others.map((o) => (
+          <button
+            key={`${o.game}-${o.code}`}
+            type="button"
+            onClick={() => (onSelectTable ?? (() => undefined))(o.game, o.code, o.variant)}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-ivory-100/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold-400"
+          >
+            <span className="flex-1 min-w-0">
+              <span className="block truncate font-medium text-ivory-50">{o.game === 'blackjack' ? `${t('ot.game.blackjack')} · ${o.title}` : `${t('ot.game.tableau')} · ${t(`tb.variant.${o.variant ?? 'classic'}` as Key)}`}</span>
+              <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ivory-300/70">
+                <span className="font-semibold text-ivory-100">{t('ot.host', { name: o.host })}</span>
+                <span>{t('rooms.players', { a: o.seats - o.seatsLeft, b: o.seats })}</span>
+              </span>
+            </span>
+            <Badge tone="green">{t('rooms.waiting')}</Badge>
+            <span className="rounded-full border border-gold-500/50 px-3 py-1 text-xs font-semibold text-gold-300">{t('rooms.join')}</span>
+          </button>
+        ))}
         {rooms?.map((r) => (
           <button
             key={r.code}

@@ -91,6 +91,7 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
   const [variant, setVariant] = useState<TableauVariant>(initialVariant);
   const [nick, setNick] = useState(() => readStore(NICK_KEY));
   const [code, setCode] = useState(initialCode ?? '');
+  const [isPublic, setPublic] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [active, setActive] = useState<{ code: string; mode: string } | null>(null);
@@ -188,6 +189,14 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
     }
   };
   const nickname = guest && nick.trim() ? nick.trim() : undefined;
+  // Invitation ou partie ouverte choisie sur l'accueil : un joueur connecté rejoint aussitôt (invité : code prérempli).
+  const autoJoin = useRef(false);
+  useEffect(() => {
+    if (autoJoin.current || guest || !initialCode) return;
+    autoJoin.current = true;
+    void run(() => client.tbJoin(initialCode.trim().toUpperCase(), undefined));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guest]);
   const wins = history.filter((h) => h.outcome === 'win').length;
 
   return (
@@ -251,7 +260,11 @@ function Menu({ client, guest, initialCode, initialVariant, onGame }: { client: 
         <Panel className="p-5">
           <h2 className="font-display text-xl text-ivory-50">{t('tb.vs.human')}</h2>
           <p className="mt-1 text-sm text-ivory-200/85">{t('tb.vs.human.text')}</p>
-          <Button className="mt-3 w-full" variant="secondary" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'friendly', variant, nickname }))}>
+          <div className="mt-3">
+            <Segmented label={t('forms.visibilite')} value={isPublic ? 'publique' : 'privee'} options={['privee', 'publique'] as const} onChange={(v) => setPublic(v === 'publique')} format={(v) => (v === 'privee' ? t('forms.privee') : t('forms.publique'))} />
+            <p className="mt-1.5 text-xs text-ivory-300/80">{isPublic ? t('ot.hint.public') : t('ot.hint.private')}</p>
+          </div>
+          <Button className="mt-3 w-full" variant="secondary" disabled={busy} onClick={() => void run(() => client.tbCreate({ mode: 'friendly', variant, nickname, ...(isPublic ? { public: true } : {}) }))}>
             {t('tb.create.friendly')}
           </Button>
           <form

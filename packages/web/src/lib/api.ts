@@ -90,6 +90,40 @@ export async function listRooms(baseUrl: string, fetchFn: typeof fetch = fetch):
   return data.rooms;
 }
 
+/** Partie ouverte d'un autre jeu que le poker (Blackjack à plusieurs, duel amical du Tableau). */
+export interface OpenTable {
+  game: 'blackjack' | 'tableau';
+  code: string;
+  /** Nom de la table (Blackjack) ou variante (Tableau). */
+  title: string;
+  host: string;
+  /** Places humaines encore libres. */
+  seatsLeft: number;
+  /** Places humaines au total. */
+  seats: number;
+  variant?: 'classic' | 'hand5';
+}
+
+/** Parties ouvertes du Blackjack et du Tableau ; une liste indisponible est simplement vide (le poker reste affiché). */
+export async function listOpenTables(baseUrl: string, fetchFn: typeof fetch = fetch): Promise<OpenTable[]> {
+  const get = async <T>(path: string): Promise<T | null> => {
+    try {
+      const res = await fetchFn(`${baseUrl}${path}`);
+      return res.ok ? ((await res.json()) as T) : null;
+    } catch {
+      return null;
+    }
+  };
+  const [bj, tb] = await Promise.all([
+    get<{ tables: { code: string; tableName: string; host: string; seatsLeft: number; humanSeats: number }[] }>('/blackjack/tables'),
+    get<{ games: { code: string; variant: 'classic' | 'hand5'; nickname: string }[] }>('/tableau/games'),
+  ]);
+  return [
+    ...(bj?.tables ?? []).map((t): OpenTable => ({ game: 'blackjack', code: t.code, title: t.tableName, host: t.host, seatsLeft: t.seatsLeft, seats: t.humanSeats })),
+    ...(tb?.games ?? []).map((g): OpenTable => ({ game: 'tableau', code: g.code, title: g.variant, host: g.nickname, seatsLeft: 1, seats: 2, variant: g.variant })),
+  ];
+}
+
 export interface LiveStats {
   online: number;
   rooms: number;
