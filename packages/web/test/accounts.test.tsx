@@ -10,6 +10,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../src/App';
+import { JoinRoom, TrainingRoom } from '../src/screens/Forms';
 import { AccountClient } from '../src/lib/account';
 import { GameClient } from '../src/lib/client';
 import { AccountProvider, ClientProvider } from '../src/lib/context';
@@ -226,5 +227,42 @@ describe('comptes joueurs dans l’interface', () => {
     expect(await screen.findByRole('img', { name: /Bilan cumulé sur 1 partie/ })).toBeTruthy();
 
     expect(screen.queryByRole('tab', { name: /Jetons/ })).toBeNull(); // pas de boutique tant que la vente n'est pas validée
+  });
+
+  it('connecté : un code ou une invitation fait rejoindre la partie sous son pseudo, sans formulaire', async () => {
+    const env = await start();
+    const host = env.make();
+    const created = await host.client.createRoom({ name: 'Table test', maxPlayers: 4, targetPoints: 3, stakeChips: 0, assistance: false, nickname: 'Hote', avatar: 'or' });
+    void created;
+    await until(() => host.client.state.view?.code, 'table créée');
+    const code = host.client.state.view!.code;
+    const guest = env.make();
+    await guest.account.register({ nickname: 'Lea', email: 'lea@exemple.fr', password: 'tapis-vert-42' });
+    render(
+      <ClientProvider client={guest.client}>
+        <AccountProvider account={guest.account}>
+          <JoinRoom onBack={() => undefined} initialCode={code} />
+        </AccountProvider>
+      </ClientProvider>,
+    );
+    await until(() => guest.client.state.view?.players.some((p) => p.nickname === 'Lea' && p.registered), 'arrivée automatique sous le pseudo du compte');
+  });
+
+  it('connecté : l’entraînement ne demande ni pseudo ni avatar', async () => {
+    const env = await start();
+    const p = env.make();
+    await p.account.register({ nickname: 'Lea', email: 'lea@exemple.fr', password: 'tapis-vert-42' });
+    const user = userEvent.setup();
+    render(
+      <ClientProvider client={p.client}>
+        <AccountProvider account={p.account}>
+          <TrainingRoom onBack={() => undefined} />
+        </AccountProvider>
+      </ClientProvider>,
+    );
+    expect(screen.getByText(/Vous jouez sous le pseudo/)).toBeTruthy();
+    expect(screen.queryByLabelText('Votre pseudo')).toBeNull();
+    await user.click(screen.getByRole('button', { name: /Lancer l’entraînement/ }));
+    await until(() => p.client.state.view?.players.some((pl) => pl.nickname === 'Lea'), 'entraînement sous le pseudo du compte');
   });
 });

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, useEffect, useRef } from 'react';
 import { useAccount, useClient } from '../lib/context';
 import { formatChips, STARTING_CHIPS } from '../lib/format';
 import { Avatar, AvatarPicker, Button, Eyebrow, Field, inputClass, Panel, Segmented, Title } from '../components/ui';
@@ -206,12 +206,14 @@ export function TrainingRoom({ onBack, variant, guided = false }: { onBack: () =
   const [cpu, setCpu] = useState(guided ? 2 : 3);
   const [target, setTarget] = useState(guided ? 1 : 3);
   const [assistance, setAssistance] = useState(guided);
+  const me = useAccount((s) => s.account);
   const [nickname, setNick] = useState('');
   const [avatar, setAvatar] = useState('or');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const nickOk = NICK_RE.test(nickname.trim());
+  // Joueur connecté : son pseudo et son avatar sont repris du compte, rien à saisir.
+  const nickOk = Boolean(me) || NICK_RE.test(nickname.trim());
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -220,7 +222,7 @@ export function TrainingRoom({ onBack, variant, guided = false }: { onBack: () =
     setError(null);
     try {
       markOnboarded();
-      await client.createRoom({ name: t('forms.entrainement'), maxPlayers: cpu + 1, targetPoints: target, stakeChips: 0, assistance, cpu, nickname: nickname.trim(), avatar, ...(variant ? { variant, ...(variant === 'V6_3' ? { teats, sideBets } : {}) } : {}) });
+      await client.createRoom({ name: t('forms.entrainement'), maxPlayers: cpu + 1, targetPoints: target, stakeChips: 0, assistance, cpu, nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? avatar, ...(variant ? { variant, ...(variant === 'V6_3' ? { teats, sideBets } : {}) } : {}) });
     } catch (err) {
       setError(errorText(currentI18n(), err, t('forms.creation_impossible')));
       setBusy(false);
@@ -272,12 +274,18 @@ export function TrainingRoom({ onBack, variant, guided = false }: { onBack: () =
           <Field label={t('forms.niveau_de_la')} hint={assistance ? t('forms.le_nom_de') : t('forms.aucune_indication_vous')}>
             <Segmented label={t('forms.niveau_de_la')} value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? t('forms.avec_assistance') : t('forms.sans_assistance'))} />
           </Field>
-          <Field label={t('forms.votre_pseudo')} htmlFor="nick" error={nickname === '' || nickOk ? '' : t('forms.pseudo_de_1')}>
-            <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
-          </Field>
-          <Field label={t('forms.avatar')}>
-            <AvatarPicker value={avatar} onChange={setAvatar} />
-          </Field>
+          {me ? (
+            <AccountIdentity me={me} />
+          ) : (
+            <>
+              <Field label={t('forms.votre_pseudo')} htmlFor="nick" error={nickname === '' || nickOk ? '' : t('forms.pseudo_de_1')}>
+                <input id="nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
+              </Field>
+              <Field label={t('forms.avatar')}>
+                <AvatarPicker value={avatar} onChange={setAvatar} />
+              </Field>
+            </>
+          )}
           {error && (
             <p role="alert" className="rounded-lg border border-ruby-500/50 bg-ruby-950/60 px-3 py-2 text-sm text-ruby-100">
               {error}
@@ -306,8 +314,8 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
   const codeOk = /^POKER-[2-9A-Z]{4}$/.test(normalized);
   const nickOk = Boolean(me) || NICK_RE.test(nickname.trim());
 
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function submit(e?: FormEvent) {
+    e?.preventDefault();
     if (!codeOk || !nickOk || busy) return;
     setBusy(true);
     setError(null);
@@ -318,6 +326,16 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
       setBusy(false);
     }
   }
+
+  // Joueur connecté arrivant avec un code valide (salle ouverte, lien d'invitation, code saisi) : il rejoint tout de
+  // suite sous son pseudo et son avatar. En cas d'échec (table pleine, code périmé), le formulaire reste là avec l'erreur.
+  const auto = useRef(false);
+  useEffect(() => {
+    if (auto.current || !me || !/^POKER-[2-9A-Z]{4}$/.test(normalizeCode(initialCode))) return;
+    auto.current = true;
+    void submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <main className="mx-auto max-w-xl px-4 py-8">
