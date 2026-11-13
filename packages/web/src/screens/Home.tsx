@@ -20,7 +20,7 @@ import type { VariantId } from '../lib/types';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, me, live, langSelect, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, me, live, langSelect, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -129,7 +129,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           </ul>
 
           <div id="open-rooms" className="scroll-mt-4">
-            <OpenRooms onSelect={onJoin} onSelectTable={onJoinTable} onCreate={() => onCreate()} />
+            <OpenRooms onSelect={onJoin} onWatch={onWatch} onSelectTable={onJoinTable} onCreate={() => onCreate()} />
           </div>
           <footer className="space-y-2 pt-4 text-center text-xs text-ivory-100/80">
             <p className="font-semibold text-ivory-100">{t('home.footer')}</p>
@@ -158,7 +158,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
 }
 
 /** Liste publique des parties ouvertes : actualisée en continu, on les rejoint en un clic. */
-function OpenRooms({ onSelect, onSelectTable, onCreate }: { onSelect: (code: string) => void; onSelectTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onCreate: () => void }) {
+function OpenRooms({ onSelect, onWatch, onSelectTable, onCreate }: { onSelect: (code: string) => void; onWatch?: (code: string) => void; onSelectTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onCreate: () => void }) {
   const { t, tp } = useI18n();
   const client = useClient();
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);
@@ -220,14 +220,10 @@ function OpenRooms({ onSelect, onSelectTable, onCreate }: { onSelect: (code: str
             <span className="rounded-full border border-gold-500/50 px-3 py-1 text-xs font-semibold text-gold-300">{t('rooms.join')}</span>
           </button>
         ))}
-        {rooms?.map((r) => (
-          <button
-            key={r.code}
-            type="button"
-            onClick={() => onSelect(r.code)}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-ivory-100/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold-400"
-          >
-            <span className="flex-1 min-w-0">
+        {rooms?.map((r) => {
+          const running = r.status === 'RUNNING';
+          const info = (
+            <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-ivory-50">{r.name}</span>
               <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ivory-300/70">
                 <span className="font-semibold text-ivory-100">{r.variant ? variantName(r.variant) : t('rooms.libre')}</span>
@@ -242,12 +238,29 @@ function OpenRooms({ onSelect, onSelectTable, onCreate }: { onSelect: (code: str
                   </>
                 )}
                 {r.assistance && <Badge tone="gold">{t('rooms.assist')}</Badge>}
+                {r.spectators > 0 && <span>{tp('rooms.watching', r.spectators)}</span>}
               </span>
             </span>
-            <Badge tone={r.status === 'RUNNING' ? 'amber' : 'green'}>{r.status === 'RUNNING' ? t('rooms.running') : t('rooms.waiting')}</Badge>
-            <span className="rounded-full border border-gold-500/50 px-3 py-1 text-xs font-semibold text-gold-300">{t('rooms.join')}</span>
-          </button>
-        ))}
+          );
+          const pill = 'rounded-full border border-gold-500/50 px-3 py-1 text-xs font-semibold text-gold-300 hover:bg-gold-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400';
+          if (!running)
+            return (
+              <button key={r.code} type="button" onClick={() => onSelect(r.code)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-ivory-100/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold-400">
+                {info}
+                <Badge tone="green">{t('rooms.waiting')}</Badge>
+                <span className="rounded-full border border-gold-500/50 px-3 py-1 text-xs font-semibold text-gold-300">{t('rooms.join')}</span>
+              </button>
+            );
+          // Partie en cours : on peut la regarder (toujours) ou, s'il reste un siège, la rejoindre.
+          return (
+            <div key={r.code} className="flex w-full flex-wrap items-center gap-3 rounded-xl px-3 py-2.5">
+              {info}
+              <Badge tone="amber">{t('rooms.running')}</Badge>
+              {onWatch && <button type="button" onClick={() => onWatch(r.code)} className={pill}>{t('rooms.watch')}</button>}
+              {r.seatsLeft > 0 && <button type="button" onClick={() => onSelect(r.code)} className={pill}>{t('rooms.join')}</button>}
+            </div>
+          );
+        })}
       </Panel>
     </section>
   );

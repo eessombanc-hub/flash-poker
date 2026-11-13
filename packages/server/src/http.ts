@@ -246,7 +246,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     }
     let online = 0;
     for (const at of seen.values()) if (t - at <= ONLINE_MS) online++;
-    return reply.header('Cache-Control', 'no-store').send({ online, rooms: opts.manager.listOpen().length });
+    return reply.header('Cache-Control', 'no-store').send({ online, rooms: opts.manager.listOpen().filter((r) => r.seatsLeft > 0).length });
   });
   app.get('/rooms', async (req, reply) => {
     guard('list', req.ip); // limite le polling de la liste, distinct de la création/arrivée
@@ -261,6 +261,11 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     guard('join', req.ip); // freine l'énumération des codes de partie
     const account = opts.accounts ? optionalAccount(opts.accounts, req) : null;
     return reply.status(201).send(opts.manager.joinRoom(req.params.code, req.body, account));
+  });
+  app.post<{ Params: { code: string } }>('/rooms/:code/spectate', async (req, reply) => {
+    guard('join', req.ip);
+    const account = opts.accounts ? optionalAccount(opts.accounts, req) : null;
+    return reply.status(201).send(opts.manager.spectate(req.params.code, req.body, account));
   });
   if (opts.accounts) registerAccountRoutes(app, opts.accounts, { now, authRateLimit: opts.authRateLimit });
   if (opts.accounts && opts.tableau) registerTableauRoutes(app, opts.tableau, opts.accounts, { now });

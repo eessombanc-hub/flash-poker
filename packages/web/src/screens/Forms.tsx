@@ -373,3 +373,57 @@ export function JoinRoom({ onBack, initialCode = '' }: { onBack: () => void; ini
     </main>
   );
 }
+
+/** Regarder une partie publique en cours : aucun siège, aucune carte cachée ; le pseudo n'est demandé qu'aux invités. */
+export function WatchRoom({ onBack, code }: { onBack: () => void; code: string }) {
+  const { t } = useI18n();
+  const client = useClient();
+  const me = useAccount((s) => s.account);
+  const [nickname, setNick] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const nickOk = Boolean(me) || NICK_RE.test(nickname.trim());
+
+  async function submit(e?: FormEvent) {
+    e?.preventDefault();
+    if (!nickOk || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await client.spectateRoom(code, { nickname: me ? me.nickname : nickname.trim(), avatar: me?.avatar ?? 'ardoise' });
+    } catch (err) {
+      setError(errorText(currentI18n(), err, t('watch.impossible')));
+      setBusy(false);
+    }
+  }
+  // Joueur connecté : il s'installe en spectateur tout de suite, sous son pseudo.
+  const auto = useRef(false);
+  useEffect(() => {
+    if (auto.current || !me) return;
+    auto.current = true;
+    void submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
+
+  return (
+    <main className="mx-auto max-w-xl px-4 py-8">
+      <Button variant="ghost" onClick={onBack} className="mb-4 -ml-3">{t('forms.retour')}</Button>
+      <Panel className="p-6 sm:p-8">
+        <Eyebrow>{t('watch.eyebrow')}</Eyebrow>
+        <Title className="mb-2 mt-1 text-3xl">{t('watch.title')}</Title>
+        <p className="mb-6 text-sm text-ivory-200/85">{t('watch.body', { code })}</p>
+        <form onSubmit={submit} className="space-y-5" noValidate>
+          {me ? (
+            <AccountIdentity me={me} />
+          ) : (
+            <Field label={t('forms.votre_pseudo')} htmlFor="watch-nick" error={nickname === '' || nickOk ? '' : t('forms.pseudo_de_1')}>
+              <input id="watch-nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
+            </Field>
+          )}
+          {error && <p role="alert" className="rounded-lg border border-ruby-500/50 bg-ruby-950/60 px-3 py-2 text-sm text-ruby-100">{error}</p>}
+          <Button type="submit" disabled={!nickOk || busy} className="w-full py-3.5 text-base">{busy ? t('forms.connexion') : t('watch.cta')}</Button>
+        </form>
+      </Panel>
+    </main>
+  );
+}

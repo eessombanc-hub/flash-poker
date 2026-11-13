@@ -87,6 +87,7 @@ export function roomView(over: Partial<RoomView> = {}, g: GameView | null = game
     hostId: 'p1',
     you: { playerId: ME, role: 'HOST' },
     players: players(n),
+    spectators: [],
     version: 5,
     serverTime: Date.now(),
     deadline: g?.timer ? { at: Date.now() + 25_000, kind: g.timer.kind, key: g.timer.key } : null,

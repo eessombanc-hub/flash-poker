@@ -87,7 +87,8 @@ export function ThrowLayer() {
   return <p className="sr-only" role="status">{said}</p>;
 }
 
-function line(m: SocialMessage, players: PlayerPublic[], t: ReturnType<typeof useI18n>['t']): { who: PlayerPublic | undefined; text: string } {
+type Person = { id: string; nickname: string; avatar?: string | null };
+function line(m: SocialMessage, players: Person[], t: ReturnType<typeof useI18n>['t']): { who: Person | undefined; text: string } {
   const who = players.find((p) => p.id === m.from);
   const nick = (id?: string) => players.find((p) => p.id === id)?.nickname ?? '';
   return {
@@ -115,6 +116,8 @@ export function ChatDock({ canThrow }: { canThrow: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const me = view?.you.playerId ?? '';
   const players = view?.players ?? [];
+  // Les spectateurs écrivent aussi : leurs messages doivent porter leur pseudo.
+  const people: Person[] = useMemo(() => [...players, ...(view?.spectators ?? [])], [players, view?.spectators]);
   const targets = useMemo(() => players.filter((p) => p.id !== me && !p.excluded), [players, me]);
   const visible = useMemo(() => social.filter((m) => (m.kind === 'chat' ? !prefs.hideChat : !prefs.hideItems)), [social, prefs]);
   const unread = open || prefs.hideChat ? 0 : social.slice(seenCount).filter((m) => m.kind === 'chat' && m.from !== me).length;
@@ -135,7 +138,7 @@ export function ChatDock({ canThrow }: { canThrow: boolean }) {
   useEffect(() => {
     const last = social.at(-1);
     if (!last || last.kind !== 'chat' || last.from === me || open || prefs.hideChat) return;
-    const who = players.find((p) => p.id === last.from)?.nickname ?? '';
+    const who = people.find((p) => p.id === last.from)?.nickname ?? '';
     setBubble({ id: last.id, text: `${who} : ${last.text ?? ''}` });
     const timer = setTimeout(() => setBubble((b) => (b?.id === last.id ? null : b)), 5000);
     return () => clearTimeout(timer);
@@ -193,7 +196,7 @@ export function ChatDock({ canThrow }: { canThrow: boolean }) {
       <ul ref={logRef} aria-label={t('soc.log')} role="log" className="scroll-thin min-h-[5rem] flex-1 space-y-1.5 overflow-y-auto px-3 py-2">
         {visible.length === 0 && <li className="py-3 text-center text-xs text-ivory-300/70">{t('soc.empty')}</li>}
         {visible.map((m) => {
-          const l = line(m, players, t);
+          const l = line(m, people, t);
           const mine = m.from === me;
           return (
             <li key={m.id} className={`flex items-start gap-2 text-sm ${mine ? 'flex-row-reverse' : ''}`}>

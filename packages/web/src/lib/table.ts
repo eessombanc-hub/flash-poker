@@ -6,6 +6,7 @@ export function useTable() {
   const view = useGame((s) => s.view)!;
   const game = view.game!;
   const me = view.you.playerId;
+  const spectator = view.you.role === 'SPECTATOR';
   const mePub = view.players.find((p) => p.id === me)!;
   const seated = isSeated(view);
   return {
@@ -15,9 +16,11 @@ export function useTable() {
     me,
     mePub,
     seated,
-    excluded: mePub.excluded,
+    /** Regarde la partie sans y jouer : aucune main, aucune action. */
+    spectator,
+    excluded: mePub?.excluded ?? false,
     /** Assis, non exclu, partie en cours. */
-    canAct: seated && !mePub.excluded && view.status === 'RUNNING',
+    canAct: seated && !spectator && !mePub?.excluded && view.status === 'RUNNING',
     deadlineAt: view.deadline?.at ?? null,
     timerKey: game.timer?.key ?? '',
   };

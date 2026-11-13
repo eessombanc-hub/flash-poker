@@ -47,6 +47,8 @@ export interface RoomSummary {
   targetPoints: number;
   stakeChips: number;
   assistance: boolean;
+  /** Personnes qui regardent la partie en ce moment. */
+  spectators: number;
   variant?: VariantId;
 }
 
@@ -139,3 +141,7 @@ export async function fetchStats(baseUrl: string, visitor: string, fetchFn: type
   if (!res.ok) throw new ApiError('HTTP', `Erreur serveur (${res.status})`);
   return (await res.json()) as LiveStats;
 }
+
+/** Regarder une partie publique en cours : un jeton de spectateur, sans siège ni cartes. */
+export const spectateRoom = (baseUrl: string, code: string, input: JoinRoomInput, fetchFn: typeof fetch = fetch, accountToken?: string | null): Promise<{ spectatorId: string; token: string }> =>
+  post(baseUrl, `/rooms/${encodeURIComponent(code.trim().toUpperCase())}/spectate`, input, fetchFn, accountToken);

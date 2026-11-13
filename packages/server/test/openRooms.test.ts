@@ -26,6 +26,7 @@ describe('RoomManager.listOpen', () => {
       targetPoints: 5,
       stakeChips: 200,
       assistance: false,
+      spectators: 0,
     });
   });
 

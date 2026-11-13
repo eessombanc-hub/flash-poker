@@ -121,6 +121,8 @@ export interface RoomSummary {
   targetPoints: number;
   stakeChips: number;
   assistance: boolean;
+  /** Nombre de personnes qui regardent la partie en ce moment. */
+  spectators: number;
   /** Variante imposée, absente si elle est choisie à chaque manche. */
   variant?: VariantId;
 }
@@ -133,8 +135,10 @@ export interface RoomView {
   config: { maxPlayers: number; targetPoints: number; stakeChips: number; potChips: number; assistance: boolean; private: boolean; variant?: VariantId; teats?: number; sideBets?: boolean };
   seatsLeft: number;
   hostId: string;
-  you: { playerId: string; role: 'HOST' | 'PLAYER' | 'QUEUED' };
+  you: { playerId: string; role: 'HOST' | 'PLAYER' | 'QUEUED' | 'SPECTATOR' };
   players: PlayerPublic[];
+  /** Personnes qui regardent la partie sans y jouer (connectées en ce moment). */
+  spectators: { id: string; nickname: string; avatar: string | null }[];
   version: number;
   serverTime: number;
   /** Code de la table de revanche, une fois ouverte par l'un des joueurs d'une partie terminée. */

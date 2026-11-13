@@ -106,6 +106,18 @@ interface PlayerRec {
   bot: boolean;
 }
 
+/** Spectateur : regarde une partie publique en cours, sans siège ni cartes. Jamais conservé après un redémarrage. */
+interface SpectatorRec {
+  id: string;
+  nickname: string;
+  avatar: string | null;
+  tokenHash: string;
+  connected: boolean;
+  lastSeenAt: number;
+}
+const MAX_SPECTATORS = 30;
+const SPECTATOR_GRACE_MS = 10 * 60_000;
+
 interface Room {
   code: string;
   config: RoomConfig;
@@ -126,6 +138,7 @@ interface Room {
   botTimer?: Timer;
   /** Code de la table de revanche ouverte par l'un des joueurs une fois la partie terminée. */
   rematchCode?: string;
+  spectators: SpectatorRec[];
 }
 
 const hashToken = (token: string): string => createHash('sha256').update(token).digest('hex');
@@ -193,6 +206,7 @@ export class RoomManager {
       timerKind: null,
       deadlineAt: null,
       handles: {},
+      spectators: [],
     };
     this.rooms.set(room.code, room);
     if (cfg.cpu) {
@@ -268,7 +282,8 @@ export class RoomManager {
   /** Jeton → joueur. Une room inconnue et un mauvais jeton sont indiscernables. */
   authenticate(codeRaw: string, token: string): string {
     const room = this.rooms.get(this.normalize(codeRaw));
-    const rec = room?.players.find((p) => p.tokenHash === hashToken(token));
+    const h = hashToken(token);
+    const rec = room?.players.find((p) => p.tokenHash === h) ?? room?.spectators.find((p) => p.tokenHash === h);
     if (!room || !rec) throw new ServerError('UNAUTHORIZED', 'Session invalide');
     return rec.id;
   }
@@ -277,6 +292,13 @@ export class RoomManager {
 
   connect(codeRaw: string, playerId: string): void {
     const room = this.room(codeRaw);
+    const watcher = room.spectators.find((x) => x.id === playerId);
+    if (watcher) {
+      watcher.connected = true;
+      watcher.lastSeenAt = this.deps.scheduler.now();
+      this.broadcast(room, [], false); // tout le monde voit arriver le spectateur ; lui reçoit l'état complet
+      return;
+    }
     const rec = this.player(room, playerId);
     rec.connected = true;
     rec.lastSeenAt = room.lastConnectedAt = this.deps.scheduler.now();
@@ -289,6 +311,14 @@ export class RoomManager {
    */
   disconnect(codeRaw: string, playerId: string): void {
     const room = this.rooms.get(this.normalize(codeRaw));
+    const watcher = room?.spectators.find((x) => x.id === playerId);
+    if (room && watcher) {
+      if (!watcher.connected) return;
+      watcher.connected = false;
+      watcher.lastSeenAt = this.deps.scheduler.now();
+      this.broadcast(room, [], false);
+      return;
+    }
     const rec = room?.players.find((p) => p.id === playerId);
     if (!room || !rec || !rec.connected) return;
     rec.connected = false;
@@ -392,9 +422,11 @@ export class RoomManager {
    */
   social(codeRaw: string, playerId: string, raw: unknown): void {
     const room = this.room(codeRaw);
-    const rec = this.player(room, playerId);
+    const watcher = room.spectators.find((x) => x.id === playerId);
+    const rec = watcher ?? this.player(room, playerId);
     if (room.status === 'CANCELLED') throw new ServerError('WRONG_STATE', 'La partie est annulée');
     const msg = this.parse(socialSchema, raw);
+    if (watcher && msg.kind !== 'chat') throw new ServerError('FORBIDDEN', 'Les spectateurs peuvent écrire, pas lancer d’objets');
     const key = `${room.code}|${rec.id}`;
     let out: { text: string } | { item: (typeof msg & { kind: 'throw' })['item']; to: string };
     if (msg.kind === 'chat') {
@@ -408,12 +440,39 @@ export class RoomManager {
     }
     const base = { type: 'social' as const, roomCode: room.code, id: `${room.code}-${++this.socialSeq}`, at: this.deps.scheduler.now(), from: rec.id, kind: msg.kind };
     for (const p of room.players) if (!p.bot) this.emit({ playerId: p.id, message: { ...base, ...out } });
+    for (const w of room.spectators) this.emit({ playerId: w.id, message: { ...base, ...out } });
   }
 
   view(codeRaw: string, playerId: string): RoomView {
     const room = this.room(codeRaw);
-    this.player(room, playerId);
+    if (!room.spectators.some((x) => x.id === playerId)) this.player(room, playerId);
     return this.viewFor(room, playerId);
+  }
+
+  /**
+   * Regarder une partie publique en cours : aucun siège, aucune carte cachée (vue « publique » du moteur), le chat
+   * en lecture et en écriture. Refusé pour une salle privée, non démarrée ou terminée.
+   */
+  spectate(codeRaw: string, raw: unknown, account?: AccountRef | null): { spectatorId: string; token: string } {
+    const room = this.room(codeRaw);
+    const parsed = this.parse(joinRoomSchema, raw);
+    if (room.config.private) throw new ServerError('FORBIDDEN', 'Cette partie est privée');
+    if (room.status !== 'RUNNING') throw new ServerError('WRONG_STATE', 'On ne regarde qu’une partie en cours');
+    const now = this.deps.scheduler.now();
+    room.spectators = room.spectators.filter((w) => w.connected || now - w.lastSeenAt < SPECTATOR_GRACE_MS);
+    if (room.spectators.length >= MAX_SPECTATORS) throw new ServerError('ROOM_FULL', 'Trop de spectateurs pour cette partie');
+    const who = this.identity(parsed.nickname, parsed.avatar ?? null, account);
+    const taken = (n: string) => room.players.some((p) => p.nickname.toLowerCase() === n.toLowerCase()) || room.spectators.some((w) => w.nickname.toLowerCase() === n.toLowerCase());
+    if (who.accountId && (room.players.some((p) => p.accountId === who.accountId))) throw new ServerError('NICKNAME_TAKEN', 'Vous jouez déjà dans cette partie');
+    let nickname = who.nickname;
+    if (taken(nickname)) {
+      if (who.accountId) nickname = `${nickname} (2)`;
+      else throw new ServerError('NICKNAME_TAKEN', 'Ce pseudo est déjà utilisé dans cette partie');
+    }
+    const token = this.deps.tokenFactory ? this.deps.tokenFactory() : randomBytes(24).toString('hex');
+    const id = `s_${randomBytes(5).toString('hex')}`;
+    room.spectators.push({ id, nickname, avatar: who.avatar, tokenHash: hashToken(token), connected: false, lastSeenAt: now });
+    return { spectatorId: id, token };
   }
 
   /**
@@ -422,7 +481,7 @@ export class RoomManager {
    */
   listOpen(): RoomSummary[] {
     return [...this.rooms.values()]
-      .filter((r) => !r.config.private && (r.status === 'WAITING' || r.status === 'RUNNING') && r.players.length < r.config.maxPlayers)
+      .filter((r) => !r.config.private && ((r.status === 'WAITING' && r.players.length < r.config.maxPlayers) || r.status === 'RUNNING'))
       .sort((a, b) => b.createdAt - a.createdAt)
       .map((r) => ({
         code: r.code,
@@ -433,6 +492,7 @@ export class RoomManager {
         targetPoints: r.config.targetPoints,
         stakeChips: r.config.stakeChips,
         assistance: r.config.assistance,
+        spectators: r.spectators.filter((w) => w.connected).length,
         ...(r.config.variant ? { variant: r.config.variant } : {}),
       }));
   }
@@ -696,6 +756,7 @@ export class RoomManager {
       timerKind: s.timerKind,
       deadlineAt: s.deadlineAt,
       handles: {},
+      spectators: [],
     };
     this.rooms.set(room.code, room);
     if (room.status === 'RUNNING' && room.game) {
@@ -716,9 +777,10 @@ export class RoomManager {
   // ---------- Vues et diffusion ----------
 
   private viewFor(room: Room, viewerId: string): RoomView {
-    const gv = room.game ? room.game.view(viewerId) : null;
+    const watcher = room.spectators.find((w) => w.id === viewerId);
+    const gv = room.game ? room.game.view(watcher ? null : viewerId) : null;
     const seat = new Map(gv?.players.map((p) => [p.player, p]));
-    const me = this.player(room, viewerId);
+    const me = watcher ? null : this.player(room, viewerId);
     const players: PlayerPublic[] = room.players.map((p) => ({
       id: p.id,
       nickname: p.nickname,
@@ -748,8 +810,9 @@ export class RoomManager {
       },
       seatsLeft: room.config.maxPlayers - room.players.length,
       hostId: room.hostId,
-      you: { playerId: viewerId, role: viewerId === room.hostId ? 'HOST' : me.state === 'QUEUED' ? 'QUEUED' : 'PLAYER' },
+      you: { playerId: viewerId, role: watcher ? 'SPECTATOR' : viewerId === room.hostId ? 'HOST' : me!.state === 'QUEUED' ? 'QUEUED' : 'PLAYER' },
       players,
+      spectators: room.spectators.filter((w) => w.connected).map((w) => ({ id: w.id, nickname: w.nickname, avatar: w.avatar })),
       version: room.version,
       serverTime: this.deps.scheduler.now(),
       rematch: room.rematchCode ?? null,
@@ -759,9 +822,12 @@ export class RoomManager {
   }
 
   /** Une transition = une version ; chaque joueur reçoit SA vue et SES événements en même temps. */
-  private broadcast(room: Room, events: RoundEvent[]): void {
+  private broadcast(room: Room, events: RoundEvent[], persist = true): void {
     room.version++;
     room.updatedAt = this.deps.scheduler.now();
+    for (const w of room.spectators) {
+      this.emit({ playerId: w.id, message: { type: 'update', roomCode: room.code, version: room.version, view: this.viewFor(room, w.id), events: events.filter((e) => e.visibility === 'PUBLIC') } });
+    }
     for (const p of room.players) {
       this.emit({
         playerId: p.id,
@@ -774,7 +840,7 @@ export class RoomManager {
         },
       });
     }
-    this.persist(room);
+    if (persist) this.persist(room);
   }
 
   private emit(o: Outgoing): void {

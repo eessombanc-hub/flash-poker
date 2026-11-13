@@ -25,7 +25,7 @@ function renderHome(listRooms: () => Promise<RoomSummary[]>, onJoin = vi.fn(), o
   return { ...utils, onJoin, onCreate, onTrain };
 }
 
-const ROOM: RoomSummary = { code: 'POKER-7K2M', name: 'Vendredi soir', status: 'WAITING', maxPlayers: 4, seatsLeft: 2, targetPoints: 3, stakeChips: 2000, assistance: false };
+const ROOM: RoomSummary = { code: 'POKER-7K2M', name: 'Vendredi soir', status: 'WAITING', maxPlayers: 4, seatsLeft: 2, targetPoints: 3, stakeChips: 2000, assistance: false, spectators: 0 };
 
 afterEach(() => {
   vi.useRealTimers();

@@ -8,7 +8,7 @@ import { Sound } from '../lib/sound';
 const BJ_KEY = 'poker.bj.table.v1';
 
 export type DockGame = 'poker' | 'blackjack' | 'tableau';
-type DockState = 'connecting' | 'waiting' | 'ready' | 'playing' | 'cancelled';
+type DockState = 'connecting' | 'waiting' | 'ready' | 'playing' | 'watching' | 'cancelled';
 
 interface Row {
   key: string;
@@ -142,11 +142,11 @@ export function TableDock({ slots, account, signedIn, trigger, compact, shownSlo
     const ids = new Set(view.players.map((p) => p.id));
     const before = seen.current.get(i);
     if (before && i !== shownSlot) {
-      for (const p of view.players) if (!before.ids.has(p.id) && p.id !== view.you.playerId) queueMicrotask(() => mark(t('dock.alert.joined', { nickname: p.nickname, code: view.code }), key));
-      if (before.status === 'WAITING' && view.status === 'RUNNING') queueMicrotask(() => mark(t('dock.alert.started', { code: view.code }), key));
+      if (view.you.role !== 'SPECTATOR') for (const p of view.players) if (!before.ids.has(p.id) && p.id !== view.you.playerId) queueMicrotask(() => mark(t('dock.alert.joined', { nickname: p.nickname, code: view.code }), key));
+      if (view.you.role !== 'SPECTATOR' && before.status === 'WAITING' && view.status === 'RUNNING') queueMicrotask(() => mark(t('dock.alert.started', { code: view.code }), key));
     }
     seen.current.set(i, { ids, status: view.status });
-    const state: DockState = view.status === 'CANCELLED' ? 'cancelled' : view.status === 'WAITING' ? (view.players.length >= 2 ? 'ready' : 'waiting') : 'playing';
+    const state: DockState = view.you.role === 'SPECTATOR' ? 'watching' : view.status === 'CANCELLED' ? 'cancelled' : view.status === 'WAITING' ? (view.players.length >= 2 ? 'ready' : 'waiting') : 'playing';
     rows.push({ key, game: 'poker', code: view.code, state, players: view.status === 'WAITING' ? { n: view.players.length, max: view.config.maxPlayers } : undefined, slot: i });
   });
   for (const e of external) rows.push({ key: `${e.game}:${e.code}`, game: e.game, code: e.code, state: e.state, slot: undefined });
@@ -156,7 +156,7 @@ export function TableDock({ slots, account, signedIn, trigger, compact, shownSlo
 
   const stateText = (r: Row): string =>
     r.state === 'connecting' ? t('dock.state.connecting')
-      : r.state === 'playing' ? t('dock.state.playing')
+      : r.state === 'watching' ? t('dock.state.watching') : r.state === 'playing' ? t('dock.state.playing')
         : r.state === 'cancelled' ? t('dock.state.cancelled')
           : r.state === 'ready' && r.players ? t('dock.state.players', r.players)
             : t('dock.state.waiting');

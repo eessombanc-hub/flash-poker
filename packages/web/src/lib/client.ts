@@ -1,6 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import { ApiError, createRoom, fetchStats, joinRoom, listOpenTables, listRooms, type OpenTable, type LiveStats, type CreateRoomInput, type JoinRoomInput, type RoomSummary } from './api';
+import { ApiError, createRoom, fetchStats, joinRoom, listOpenTables, listRooms, spectateRoom, type OpenTable, type LiveStats, type CreateRoomInput, type JoinRoomInput, type RoomSummary } from './api';
 import { describeEvent, type Tone } from './events';
 import { currentI18n } from '../i18n';
 import { errorText as localizedError } from './tbText';
@@ -126,6 +126,13 @@ export class GameClient {
     this.opts.beforeNewTable?.();
     const res = await joinRoom(this.baseUrl, code, input, this.opts.fetchFn, this.opts.accountToken?.());
     this.begin({ code: code.trim().toUpperCase(), token: res.token, playerId: res.playerId, nickname: input.nickname });
+  }
+
+  /** Regarder une partie publique en cours : la session conservée est celle d'un spectateur (sans siège). */
+  async spectateRoom(code: string, input: JoinRoomInput): Promise<void> {
+    this.opts.beforeNewTable?.();
+    const res = await spectateRoom(this.baseUrl, code, input, this.opts.fetchFn, this.opts.accountToken?.());
+    this.begin({ code: code.trim().toUpperCase(), token: res.token, playerId: res.spectatorId, nickname: input.nickname });
   }
 
   /** Liste publique des parties ouvertes (accueil) : aucun effet sur la session en cours. */

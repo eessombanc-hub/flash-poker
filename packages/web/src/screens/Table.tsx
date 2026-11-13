@@ -262,7 +262,8 @@ function TableFelt() {
 // ---------- Panneaux d'action ----------
 function ActionDock() {
   const { t, tp } = useI18n();
-  const { view, game, round, excluded, timerKey } = useTable();
+  const { view, game, round, excluded, timerKey, spectator } = useTable();
+  const client = useClient();
   const ref = useRef<HTMLDivElement>(null);
   // Nouvelle phase à jouer : si le bas du panneau (main, bouton de validation) dépasse de l'écran, on l'y ramène.
   useEffect(() => {
@@ -275,6 +276,27 @@ function ActionDock() {
   if (excluded) notes.push(<Banner key="x" tone="red">{t('table.vous_avez_ete')}</Banner>);
 
   let body: ReactNode = null;
+  if (spectator) {
+    // Spectateur : ni main, ni boutons de jeu ; on lui dit où en est la partie et qui doit jouer.
+    const waiting = (round ? round.awaiting : game.phase === 'VARIANT_SELECTION' ? game.awaiting : []).map((id) => nick(view, id));
+    return (
+      <div ref={ref} className="space-y-3">
+        <Panel className="p-5">
+          <p className="font-display text-xl text-ivory-50">{t('table.spectator.title')}</p>
+          <p className="mt-1 text-sm text-ivory-200/85">{t('table.spectator.body')}</p>
+          {game.phase === 'GAME_OVER' ? (
+            <p className="mt-3 text-sm text-gold-300">{t('table.la_partie_est')}</p>
+          ) : (
+            <p className="mt-3 text-sm text-ivory-100" aria-live="polite">
+              {game.phase === 'VARIANT_SELECTION' ? t('table.spectator.chooses', { name: nick(view, game.chooser) }) : waiting.length > 0 ? t('table.spectator.waiting', { names: waiting.join(', ') }) : t('table.spectator.resolving')}
+            </p>
+          )}
+          {view.spectators.length > 1 && <p className="mt-2 text-xs text-ivory-300/80">{t('table.spectator.others', { n: view.spectators.length - 1 })}</p>}
+          <Button variant="secondary" className="mt-4" onClick={() => client.leave()}>{t('table.spectator.leave')}</Button>
+        </Panel>
+      </div>
+    );
+  }
   if (game.phase === 'VARIANT_SELECTION') {
     body = (
       <>
@@ -304,7 +326,7 @@ function Banner({ children, tone = 'gold' }: { children: ReactNode; tone?: 'gold
 export function Table({ onRegister }: { onRegister?: () => void } = {}) {
   const { t, tp } = useI18n();
   const client = useClient();
-  const { view, game, me } = useTable();
+  const { view, game, me, spectator } = useTable();
   const feed = useGame((s) => s.feed);
   const { sound } = useSettings();
   const [modal, setModal] = useState<null | 'scores' | 'rules' | 'options' | 'quit'>(null);
@@ -349,9 +371,9 @@ export function Table({ onRegister }: { onRegister?: () => void } = {}) {
   return (
     <NewsContext.Provider value={news}>
     <ThrowLayer />
-    <ChatDock canThrow />
+    <ChatDock canThrow={!spectator} />
     <main className="relative mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-2 py-1.5 sm:px-3 sm:py-2 lg:max-w-[100rem]">
-      <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} onBack={() => (over ? client.leave() : setModal('quit'))} />
+      <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} onBack={() => (over || spectator ? client.leave() : setModal('quit'))} />
       {/* Téléphone et tablette : table au-dessus, actions en dessous. Écran large : côte à côte, pour que la table,
           votre main et les boutons tiennent ensemble dans la hauteur de l'écran, sans défiler. */}
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 lg:flex-row lg:gap-4">
@@ -365,7 +387,7 @@ export function Table({ onRegister }: { onRegister?: () => void } = {}) {
       </div>
 
       {result && <RoundResultModal record={result} events={events} board={resultBoard} view={view} final={over} onClose={() => { setResult(null); if (over) setFinalOpen(true); }} />}
-      {!result && over && finalOpen && game.outcome && <GameOverModal view={view} onClose={() => setFinalOpen(false)} onLeave={() => client.leave()} onRegister={onRegister ? () => { client.leave(); onRegister(); } : undefined} onRematch={view.players.some((p) => p.bot) ? undefined : () => void client.rematch()} />}
+      {!result && over && finalOpen && game.outcome && <GameOverModal view={view} onClose={() => setFinalOpen(false)} onLeave={() => client.leave()} onRegister={onRegister && !spectator ? () => { client.leave(); onRegister(); } : undefined} onRematch={spectator || view.players.some((p) => p.bot) ? undefined : () => void client.rematch()} />}
       {modal === 'scores' && <ScoreModal view={view} onClose={() => setModal(null)} />}
       {modal === 'rules' && <RulesModal onClose={() => setModal(null)} />}
       {modal === 'quit' && (

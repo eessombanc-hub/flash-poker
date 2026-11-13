@@ -8,7 +8,7 @@ import { Sound } from './lib/sound';
 import { useSlots } from './lib/slots';
 import { TableDock } from './components/TableDock';
 import type { AuthMode } from './screens/Auth';
-import { CreateRoom, JoinRoom, TrainingRoom } from './screens/Forms';
+import { CreateRoom, JoinRoom, TrainingRoom, WatchRoom } from './screens/Forms';
 import { Home } from './screens/Home';
 import { Solo } from './screens/Solo';
 import type { VariantId } from './lib/types';
@@ -29,7 +29,7 @@ const Variants = lazy(() => loadVariants().then((m) => ({ default: m.Variants })
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 import type { SpaceTab } from './screens/Space';
 
-type Screen = 'home' | 'create' | 'join' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | { auth: AuthMode };
+type Screen = 'home' | 'create' | 'join' | 'watch' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -184,13 +184,14 @@ function AppContent() {
   const [guided, setGuided] = useState(false);
   const [spaceTab, setSpaceTab] = useState<SpaceTab>('profil');
   const [joinCode, setJoinCode] = useState<string>(initialCode);
+  const [watchCode, setWatchCode] = useState('');
   // Plusieurs tables : le joueur peut quitter l'écran de sa table pour naviguer (elle reste ouverte et surveillée).
   const slots = useSlots();
   const [away, setAway] = useState(false);
   const activeSlot = slots ? slots.active : 0;
   useEffect(() => { if (!session) setAway(false); }, [session]);
   /** Ouvrir ou rejoindre une table de poker : on prend un emplacement libre, dans la limite de quatre tables. */
-  const enter = (to: 'create' | 'join' | 'train') => {
+  const enter = (to: 'create' | 'join' | 'train' | 'watch') => {
     if (slots && !slots.focusFree()) {
       client.toast('warning', t('err.TABLE_LIMIT'));
       return;
@@ -266,6 +267,7 @@ function AppContent() {
     );
   else if (screen === 'train') content = <TrainingRoom onBack={() => { setGuided(false); setScreen(guided ? 'home' : 'solo'); }} variant={trainVariant} guided={guided} />;
   else if (screen === 'join') content = <JoinRoom onBack={() => setScreen('home')} initialCode={joinCode} />;
+  else if (screen === 'watch') content = <WatchRoom onBack={() => setScreen('home')} code={watchCode} />;
   else
     content = (
       <Home
@@ -286,6 +288,10 @@ function AppContent() {
         onJoin={(code) => {
           setJoinCode(code ?? '');
           enter('join');
+        }}
+        onWatch={(code) => {
+          setWatchCode(code);
+          enter('watch');
         }}
         onJoinTable={(game, code, variant) => {
           if (game === 'blackjack') { setBjJoin(code); setScreen('blackjack'); }
