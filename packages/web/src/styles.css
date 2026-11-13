@@ -71,7 +71,7 @@ body {
 .felt {
   /* Table de casino : tapis feutré (couleur choisie dans les Paramètres, variables posées en style inline),
      bordé d'un rail capitonné aux couleurs du thème, d'un liseré doré et d'un pointillé de couture. */
-  --rail: 11px;
+  --rail: 14px;
   position: relative;
   border: var(--rail) solid transparent;
   background:
@@ -86,6 +86,10 @@ body {
     radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.38) 100%) padding-box,
     /* tapis */
     radial-gradient(ellipse at 50% 38%, var(--felt-a, #1a6b51) 0%, var(--felt-b, #0e4130) 52%, var(--felt-c, #06261c) 100%) padding-box,
+    /* grain du cuir sur le rail */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='l'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23l)'/%3E%3C/svg%3E") border-box,
+    /* reflet satiné qui court le long du rail */
+    linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.07) 22%, transparent 38%, transparent 70%, rgba(255, 255, 255, 0.05) 84%, transparent 100%) border-box,
     /* rail laqué : reflet net en haut, ombre profonde en bas */
     linear-gradient(172deg, rgb(var(--ink-500)) 0%, rgb(var(--ink-700)) 14%, rgb(var(--ink-900)) 46%, rgb(var(--ink-950)) 70%, rgb(var(--ink-800)) 100%) border-box;
   background-origin: border-box;
@@ -119,20 +123,18 @@ body {
   z-index: 1;
 }
 .felt::before {
-  /* ligne de couture du tapis, très discrète */
+  /* surpiqûre du rail, au milieu du cuir : fil crème, pointillé serré */
   content: '';
   position: absolute;
-  inset: 7px;
-  border: 1px dashed rgba(201, 162, 90, 0.2);
+  inset: calc(var(--rail) * -0.5 - 1px);
+  border: 1.5px dashed rgba(240, 226, 190, 0.38);
   border-radius: inherit;
   pointer-events: none;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.55));
 }
 @media (max-width: 640px) {
   .felt {
-    --rail: 8px;
-  }
-  .felt::before {
-    inset: 5px;
+    --rail: 10px;
   }
 }
 .mat {
@@ -149,6 +151,11 @@ body {
     0 10px 26px rgba(0, 0, 0, 0.4);
 }
 /* Table de Blackjack : même rail laqué que le poker, avec l'arc de mise du croupier en lieu et place du médaillon central. */
+.felt-bj {
+  /* laisse voir la surpiqûre qui court sur le rail (le contenu reste rogné au tapis sur les navigateurs sans cette option) */
+  overflow: clip !important;
+  overflow-clip-margin: border-box;
+}
 .felt-bj::after {
   inset: auto 7% 5% 7%;
   height: 58%;
@@ -159,7 +166,7 @@ body {
 }
 /* Plateaux du Tableau : bordure laquée et filet doré, comme les tables rondes, mais plus fine pour garder la place des colonnes. */
 .mat-rail {
-  --rail: 6px;
+  --rail: 8px;
   border: var(--rail) solid transparent;
   border-radius: 1.4rem;
   background:
@@ -167,6 +174,7 @@ body {
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 7px) padding-box,
     radial-gradient(ellipse 70% 80% at 50% 25%, rgba(255, 244, 214, 0.14), transparent 72%) padding-box,
     radial-gradient(ellipse at 50% 30%, var(--felt-a, #1a6b51) 0%, var(--felt-b, #0e4130) 58%, var(--felt-c, #06261c) 100%) padding-box,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='l'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='90' height='90' filter='url(%23l)'/%3E%3C/svg%3E") border-box,
     linear-gradient(172deg, rgb(var(--ink-500)) 0%, rgb(var(--ink-700)) 16%, rgb(var(--ink-900)) 50%, rgb(var(--ink-950)) 100%) border-box;
   background-origin: border-box;
   box-shadow:
@@ -176,6 +184,14 @@ body {
     inset 0 0 36px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(201, 162, 90, 0.35),
     0 14px 30px rgba(0, 0, 0, 0.5);
+}
+.mat-rail::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--rail) * -0.5 - 1px);
+  border: 1px dashed rgba(240, 226, 190, 0.34);
+  border-radius: inherit;
+  pointer-events: none;
 }
 .scroll-thin {
   scrollbar-width: thin;
