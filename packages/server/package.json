@@ -8,7 +8,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "start": "tsx src/main.ts",
-    "charge": "tsx charge/charge.ts"
+    "charge": "tsx charge/charge.ts",
+    "restaurer": "tsx scripts/restaurer.ts"
   },
   "dependencies": {
     "@fastify/static": "^10.1.10",

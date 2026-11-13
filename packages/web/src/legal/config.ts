@@ -16,6 +16,8 @@ export const LEGAL = {
   ],
   registrar: { name: 'OVH SAS', address: '2 rue Kellermann, 59100 Roubaix, France', url: 'https://www.ovhcloud.com' },
   mailer: { name: 'Resend', url: 'https://resend.com' },
+  /** Dépôt privé recevant les sauvegardes chiffrées de la base des comptes. */
+  backup: { name: 'GitHub, Inc.', url: 'https://github.com' },
 } as const;
 
 export type LegalPage = 'mentions' | 'privacy' | 'cookies';

@@ -99,11 +99,11 @@ function Privacy() {
         <Li>Compte et progression : jusqu’à la suppression du compte, que vous pouvez faire vous-même dans votre espace (rubrique profil). Elle efface le compte et les données qui lui sont rattachées.</Li>
         <Li>Sessions de connexion : 30 jours, ou jusqu’à votre déconnexion.</Li>
         <Li>Liens de réinitialisation du mot de passe : durée courte, puis supprimés.</Li>
-        <Li>Sauvegardes : les données supprimées peuvent subsister quelque temps dans les sauvegardes chiffrées du serveur, avant d’être écrasées par les sauvegardes suivantes.</Li>
+        <Li>Sauvegardes : la base des comptes est sauvegardée régulièrement, sous forme chiffrée, dans un dépôt privé. Une donnée supprimée peut subsister dans les sauvegardes antérieures, qui restent chiffrées et inaccessibles à des tiers, jusqu’à leur purge périodique par l’éditeur.</Li>
       </ul>
       <H>Destinataires et transferts hors de l’Union européenne</H>
       <P>
-        Seul l’éditeur accède aux données. Elles sont traitées pour son compte par les prestataires techniques cités dans les mentions légales : {LEGAL.hosts.map((h) => h.name).join(' et ')} (hébergement), {LEGAL.mailer.name} (envoi des courriels) et {LEGAL.registrar.name} (nom de domaine). Plusieurs de ces prestataires sont établis aux États-Unis : les transferts sont encadrés par les garanties prévues par le RGPD (décision d’adéquation ou clauses contractuelles types).
+        Seul l’éditeur accède aux données. Elles sont traitées pour son compte par les prestataires techniques cités dans les mentions légales : {LEGAL.hosts.map((h) => h.name).join(' et ')} (hébergement), {LEGAL.mailer.name} (envoi des courriels), {LEGAL.backup.name} (stockage des sauvegardes chiffrées) et {LEGAL.registrar.name} (nom de domaine). Plusieurs de ces prestataires sont établis aux États-Unis : les transferts sont encadrés par les garanties prévues par le RGPD (décision d’adéquation ou clauses contractuelles types).
       </P>
       <H>Vos droits</H>
       <P>
