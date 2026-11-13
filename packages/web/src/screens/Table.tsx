@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Board } from '../components/Board';
+import { FeltMark } from '../components/FeltMark';
 import { Seat } from '../components/Seat';
 import { SettingsBody } from '../components/SettingsBody';
 import { Badge, Button, Modal, Panel } from '../components/ui';
@@ -238,6 +239,7 @@ function TableFelt() {
           ))}
         </div>
         <div className="felt flex min-h-[150px] items-center justify-center rounded-[999px] px-[9%] py-3" style={feltVars}>
+          <FeltMark />
           <div className="w-full max-w-2xl">
             <TableCenter />
           </div>
@@ -247,6 +249,7 @@ function TableFelt() {
   }
   return (
     <div className="felt shrink-0 rounded-3xl p-1.5" style={feltVars} role="group" aria-label={t('table.table_de_jeu')}>
+      <FeltMark />
       <div className="py-1">
         <TableCenter />
       </div>

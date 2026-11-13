@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Badge, Button, Eyebrow, Field, inputClass, Panel, Segmented } from '../ui';
 import { PlayingCard } from '../Card';
+import { FeltMark } from '../FeltMark';
 import { EmblemBadge, FramedAvatar, TitleTag } from '../Cosmetics';
 import { ChipStack, HandView, type HelpData } from './BjTable';
 import { FairnessProof } from './Panels';
@@ -413,6 +414,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
       {/* Table en jeu */}
       {rv && (t.status === 'PLAYING' || t.status === 'DONE') && (
         <div className="felt felt-bj relative rounded-[32px] px-3 py-5 sm:px-6" style={{ ['--felt-a' as string]: '#0f4a37', ['--felt-b' as string]: '#093327', ['--felt-c' as string]: '#04170f' }}>
+          <FeltMark />
           <div className="flex flex-col items-center">
             <div className="mb-2 rounded-full border border-gold-500/40 bg-black/35 px-3.5 py-1 text-xs text-gold-200">{tr('bjmulti.croupier')} {t.rules.dealerHitsSoft17 ? tr('bjmulti.tire_sur_17') : tr('bjmulti.reste_sur_tous')}</div>
             <div className="flex min-h-[5.6rem] items-center [&>*:not(:first-child)]:-ml-6 sm:[&>*:not(:first-child)]:-ml-8" data-testid="dealer-cards">

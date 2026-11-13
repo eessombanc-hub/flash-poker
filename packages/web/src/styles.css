@@ -118,6 +118,38 @@ body {
   box-shadow: inset 0 0 0 5px transparent, inset 0 0 0 6px rgba(230, 207, 156, 0.06);
   pointer-events: none;
 }
+.felt > .felt-mark {
+  /* Signature gravée : doré très pâle, filet de part et d'autre, relief en creux. */
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.6rem, 2.2vw, 1.4rem);
+  pointer-events: none;
+  user-select: none;
+}
+.felt-mark-name {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font-size: clamp(1.15rem, 4.4vw, 3rem);
+  font-weight: 600;
+  letter-spacing: 0.5em;
+  margin-right: -0.5em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* or gravé : dégradé doré, translucide pour rester un décor */
+  background: linear-gradient(180deg, rgba(250, 232, 178, 0.34) 0%, rgba(214, 172, 88, 0.26) 55%, rgba(150, 110, 44, 0.3) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.3)) drop-shadow(0 1px 0 rgba(255, 240, 200, 0.07));
+}
+.felt-mark-rule {
+  width: clamp(1.5rem, 7vw, 5rem);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(230, 196, 120, 0.4), transparent);
+}
 .felt > * {
   position: relative;
   z-index: 1;

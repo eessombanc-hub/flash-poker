@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Badge, Button } from '../ui';
 import { PlayingCard } from '../Card';
 import { CoinRain, Shine } from '../Scene3D';
+import { FeltMark } from '../FeltMark';
 import { formatChips, formatSignedChips } from '../../lib/format';
 import { ACTION_LABEL, CHIP_COLORS, RESULT_LABEL, RESULT_TONE, SPEED_MS, totalText, paysText, decksText, type Pedagogy, type Speed } from '../../lib/blackjack';
 import { FELT_OPTIONS } from '../../lib/theme';
@@ -172,6 +173,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
       </div>
 
       <div className="felt felt-bj relative overflow-hidden rounded-[32px] px-3 py-3 sm:px-8 sm:py-4" style={feltVars}>
+        <FeltMark />
         {/* Croupier */}
         <div className="flex flex-col items-center">
           <div className="mb-2 flex items-center gap-2 rounded-full border border-gold-500/40 bg-black/35 px-3.5 py-1 text-xs text-gold-200">
