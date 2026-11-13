@@ -5,6 +5,7 @@ import {
 } from '@poker/engine';
 import type { AccountDb } from '../accounts/db';
 import { ServerError } from '../errors';
+import { tableCosmetics } from '../accounts/cosmetics';
 import { TableauStats, type TbLeaderboardRow, type TbProfileDto, type TbRatingChange } from './stats';
 import type { BlackjackService } from '../blackjack/service';
 
@@ -66,6 +67,8 @@ interface Room {
 export interface TbPlayerDto {
   nickname: string;
   avatar: string | null;
+  /** Titre, cadre et emblème équipés, absents quand le joueur ne porte rien. */
+  cosmetics: import('../accounts/cosmetics').Equipped | null;
   kind: 'human' | 'cpu';
   level: AiLevel | null;
   /** Classement du joueur dans la variante, pour les modes classés (comme l'affichage d'une partie d'échecs). */
@@ -604,7 +607,7 @@ export class TableauService {
     const last = game.log.at(-1) ?? null;
     return {
       code: room.code, mode: room.mode, variant: room.variant ?? 'classic', status: room.status, version: room.version, serverNow: this.now(), you,
-      players: room.seats.map((p, i) => (p ? { nickname: p.nickname, avatar: p.avatar, kind: p.kind, level: p.level, rating: tbIsRated(room.mode) && p.kind === 'human' && p.userId ? this.stats.ratingOf(p.userId, room.variant ?? 'classic') : null, you: i === you } : null)),
+      players: room.seats.map((p, i) => (p ? { nickname: p.nickname, avatar: p.avatar, cosmetics: p.kind === 'human' ? tableCosmetics(this.store.db, p.userId) : null, kind: p.kind, level: p.level, rating: tbIsRated(room.mode) && p.kind === 'human' && p.userId ? this.stats.ratingOf(p.userId, room.variant ?? 'classic') : null, you: i === you } : null)),
       commitment: room.commitment,
       view: room.status === 'waiting' ? null : game.view(you),
       labels: room.status === 'waiting' ? null : ([0, 1] as const).map((sd) => game.columnsOf(sd).map((c) => (c.length === 5 ? evaluateColumn(c).label : describePartial(c)))) as [string[], string[]],

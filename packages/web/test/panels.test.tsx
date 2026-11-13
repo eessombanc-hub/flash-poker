@@ -512,6 +512,18 @@ describe('sièges : secret des cartes et statuts', () => {
     expect(screen.getAllByRole('img', { name: 'Carte face cachée' })).toHaveLength(5);
     expect(container.innerHTML).not.toMatch(/ de (pique|cœur|carreau|trèfle)/);
   });
+  it('cadre, titre et emblème équipés sont montrés à la table, en grand comme en réduit', () => {
+    const p = { ...players(3)[1]!, cosmetics: { title: 'title.shark', frame: 'frame.gold', emblem: 'emblem.crown' } };
+    const { unmount } = renderWith(<Seat {...base} player={p} />, null);
+    expect(screen.getByTestId('avatar-frame')).toHaveAttribute('data-frame', 'frame.gold');
+    unmount();
+    renderWith(<Seat {...base} player={p} compact />, null);
+    expect(screen.getByTestId('avatar-frame')).toBeInTheDocument();
+  });
+  it('sans récompense équipée, aucun cadre n’est ajouté', () => {
+    renderWith(<Seat {...base} />, null);
+    expect(screen.queryByTestId('avatar-frame')).toBeNull();
+  });
   it('cartes visibles montrées à côté des dos', () => {
     renderWith(<Seat {...base} shown={['9h']} hiddenCount={4} />, null);
     expect(screen.getByRole('img', { name: '9 de cœur' })).toBeInTheDocument();

@@ -1,5 +1,6 @@
 import { PlayingCard } from './Card';
-import { Avatar, Badge, ScorePips } from './ui';
+import { Badge, ScorePips } from './ui';
+import { EmblemBadge, FramedAvatar, TitleTag } from './Cosmetics';
 import { pointsLabel } from '../lib/format';
 import { useSettings } from '../lib/settings';
 import type { PlayerPublic } from '../lib/types';
@@ -36,12 +37,14 @@ export function Seat({ player, isMe, target, shown, hiddenCount, active, validat
       aria-label={t('seat.txt', { nickname: player.nickname, v: isMe ? t('seat.vous_suffixe') : '', v2: player.bot ? t('seat.cpu_suffixe') : '', t: player.position ?? t('seat.sans_position'), pointsLabel: pointsLabel(score) })}
     >
       <div className="flex items-center gap-1.5">
-        <Avatar nickname={player.nickname} avatar={player.avatar} size={compact ? 26 : 38} dim={!player.connected || out} />
+        <FramedAvatar nickname={player.nickname} avatar={player.avatar} size={compact ? 26 : 38} frame={player.cosmetics?.frame} />
         <div className="text-left leading-tight">
           <p className={`${compact ? 'max-w-[5.5rem] text-xs' : 'max-w-[7.5rem] text-sm'} truncate font-semibold text-ivory-50`}>
             {player.nickname}
             {isMe && <span className="ml-1 text-[11px] font-normal text-ivory-300/70">{t('seat.vous')}</span>}
+            {player.cosmetics?.emblem && <span className="ml-1 inline-block align-middle"><EmblemBadge id={player.cosmetics.emblem} size={16} /></span>}
           </p>
+          {player.cosmetics?.title && <p className="max-w-[7.5rem] truncate"><TitleTag id={player.cosmetics.title} /></p>}
           <p className="text-xs tracking-wide text-gold-400">{player.position ?? '—'}</p>
         </div>
         {compact && <ScorePips score={score} target={target} />}
@@ -88,7 +91,7 @@ function CompactSeat({ player, isMe, target, shown, active, validated, folded, i
       aria-label={t('seat.txt', { nickname: player.nickname, v: isMe ? t('seat.vous_suffixe') : '', v2: player.bot ? t('seat.cpu_suffixe') : '', t: player.position ?? t('seat.sans_position'), pointsLabel: pointsLabel(score) })}
     >
       <div className="flex min-w-0 items-center gap-1">
-        <Avatar nickname={player.nickname} avatar={player.avatar} size={22} dim={!player.connected || out} />
+        <FramedAvatar nickname={player.nickname} avatar={player.avatar} size={22} frame={player.cosmetics?.frame} />
         <div className="min-w-0 flex-1 text-left leading-tight">
           <p className={`truncate text-xs font-semibold ${isMe ? 'text-gold-300' : 'text-ivory-50'}`}>{player.nickname}</p>
           <p className="whitespace-nowrap text-[10px] tracking-wide text-gold-400">{player.position ?? ''}{player.bot ? (player.position ? ', CPU' : 'CPU') : ''}</p>

@@ -148,6 +148,35 @@ body {
     inset 0 0 40px rgba(0, 0, 0, 0.45),
     0 10px 26px rgba(0, 0, 0, 0.4);
 }
+/* Table de Blackjack : même rail laqué que le poker, avec l'arc de mise du croupier en lieu et place du médaillon central. */
+.felt-bj::after {
+  inset: auto 7% 5% 7%;
+  height: 58%;
+  border-radius: 999px 999px 0 0;
+  border-bottom: 0;
+  border-color: rgba(230, 207, 156, 0.16);
+  box-shadow: inset 0 0 0 5px transparent, inset 0 0 0 6px rgba(230, 207, 156, 0.08);
+}
+/* Plateaux du Tableau : bordure laquée et filet doré, comme les tables rondes, mais plus fine pour garder la place des colonnes. */
+.mat-rail {
+  --rail: 6px;
+  border: var(--rail) solid transparent;
+  border-radius: 1.4rem;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E") padding-box,
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 7px) padding-box,
+    radial-gradient(ellipse 70% 80% at 50% 25%, rgba(255, 244, 214, 0.14), transparent 72%) padding-box,
+    radial-gradient(ellipse at 50% 30%, var(--felt-a, #1a6b51) 0%, var(--felt-b, #0e4130) 58%, var(--felt-c, #06261c) 100%) padding-box,
+    linear-gradient(172deg, rgb(var(--ink-500)) 0%, rgb(var(--ink-700)) 16%, rgb(var(--ink-900)) 50%, rgb(var(--ink-950)) 100%) border-box;
+  background-origin: border-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(230, 207, 156, 0.9),
+    inset 0 0 0 2px rgba(132, 101, 49, 0.85),
+    inset 0 0 0 3px rgba(0, 0, 0, 0.55),
+    inset 0 0 36px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(201, 162, 90, 0.35),
+    0 14px 30px rgba(0, 0, 0, 0.5);
+}
 .scroll-thin {
   scrollbar-width: thin;
   scrollbar-color: rgb(var(--ink-500)) transparent;

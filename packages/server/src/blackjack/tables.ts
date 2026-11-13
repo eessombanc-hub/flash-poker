@@ -5,6 +5,7 @@ import {
 import { randomBytes } from 'node:crypto';
 import type { AccountDb } from '../accounts/db';
 import { ServerError } from '../errors';
+import { tableCosmetics } from '../accounts/cosmetics';
 import type { BlackjackService } from './service';
 import type { BjResult, BjSeatDto, BjTableDto, BjTableReply, SeatKind, TableStatus } from './types';
 
@@ -505,6 +506,7 @@ export class BlackjackTables {
       open: s.kind === 'human' && !s.userId,
       nickname: s.nickname,
       avatar: s.avatar,
+      cosmetics: s.kind === 'human' ? tableCosmetics(this.db, s.userId) : null,
       chips: s.kind === 'cpu' ? s.cpuChips : s.userId ? this.bj.playerInfo(s.userId).chips : 0,
       ready: s.ready,
       bet: s.bet,

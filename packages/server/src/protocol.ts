@@ -97,6 +97,8 @@ export interface PlayerPublic {
   avatar: string | null;
   /** Joueur inscrit (compte) : peut être ajouté en favori. */
   registered: boolean;
+  /** Titre, cadre et emblème équipés (compte inscrit), absents quand le joueur ne porte rien. */
+  cosmetics: import('./accounts/cosmetics').Equipped | null;
   connected: boolean;
   state: PlayerState;
   isHost: boolean;

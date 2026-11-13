@@ -3,6 +3,7 @@ import { CryptoRng } from '@poker/engine';
 import { AccountDb } from './accounts/db';
 import { resolveBackup, restoreIfNeeded, startBackupLoop } from './backup';
 import { describeMailEnv, resolveMailer } from './accounts/mailer';
+import { tableCosmetics } from './accounts/cosmetics';
 import { AccountService } from './accounts/service';
 import { BlackjackService } from './blackjack/service';
 import { BlackjackTables } from './blackjack/tables';
@@ -76,7 +77,7 @@ const manager = new RoomManager({
       accounts.recordGame(g);
       // Progression commune : le poker nourrit la même XP que le Blackjack.
       for (const p of g.players) if (p.accountId && g.seated.includes(p.playerId)) blackjack.awardXp(p.accountId, 40 + (g.outcome.winner === p.playerId ? 60 : 0));
-    }, canAfford: (id, stake) => accounts.canAfford(id, stake) },
+    }, canAfford: (id, stake) => accounts.canAfford(id, stake), cosmetics: (id) => tableCosmetics(accountsDb.db, id) },
   ...(testTimers ? { timers: { durationMs: phaseSeconds * 1000, warningMs: 10_000 } } : {}),
 });
 await manager.restoreFromStore();

@@ -115,6 +115,8 @@ export interface BjSeatDto {
   open: boolean;
   nickname: string;
   avatar: string | null;
+  /** Titre, cadre et emblème équipés, absents quand le joueur ne porte rien. */
+  cosmetics: import('../accounts/cosmetics').Equipped | null;
   /** Solde affiché (jetons virtuels). */
   chips: number;
   ready: boolean;

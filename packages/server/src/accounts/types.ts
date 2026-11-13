@@ -144,11 +144,8 @@ export interface Career {
   feats: number;
   seasons: SeasonResult[];
 }
-export interface Equipped {
-  title: string | null;
-  frame: string | null;
-  emblem: string | null;
-}
+import type { Equipped } from './cosmetics';
+export type { Equipped };
 export type ProgressionReply = import('./xp').Progression & { rank: number | null; players: number; season: import('./rankings').Season; career: Career; equipped: Equipped };
 export interface RewardsReply {
   items: import('./rewards').RewardStatus[];

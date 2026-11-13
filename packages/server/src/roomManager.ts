@@ -82,6 +82,8 @@ export interface AccountHooks {
   onGameFinished(game: FinishedGame): void;
   /** Le compte a-t-il assez de jetons pour miser ? (portefeuille persistant, recharge différée). */
   canAfford?(accountId: string, stake: number): boolean;
+  /** Récompenses équipées d'un compte (titre, cadre, emblème), affichées à la table. */
+  cosmetics?(accountId: string): import('./accounts/cosmetics').Equipped | null;
 }
 export interface BotConfig {
   minDelayMs: number;
@@ -786,6 +788,7 @@ export class RoomManager {
       nickname: p.nickname,
       avatar: p.avatar,
       registered: p.accountId !== null,
+      cosmetics: p.accountId ? (this.deps.accounts?.cosmetics?.(p.accountId) ?? null) : null,
       connected: p.connected,
       state: p.state,
       isHost: p.id === room.hostId,

@@ -14,7 +14,8 @@ import { variantProgress, type RoundFact } from './progress';
 import { computeEngagement, type Engagement } from './engagement';
 import { computeProgression, leagueFor, type LeagueId, type Progression, type XpFacts } from './xp';
 import { evaluateRewards, REWARD_BY_ID, REWARD_KINDS, type RewardKind, type RewardStatus } from './rewards';
-import type { Career, Equipped, ProgressionReply, RewardsReply, XpRankRow } from './types';
+import type { Career, ProgressionReply, RewardsReply, XpRankRow } from './types';
+import { equippedOf, forgetEquipped, type Equipped } from './cosmetics';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LeaderboardRow, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
@@ -518,8 +519,7 @@ export class AccountService {
   }
 
   private equipped(userId: string): Equipped {
-    const r = this.db.prepare('SELECT title, frame, emblem FROM cosmetics WHERE user_id = ?').get(userId) as { title: string | null; frame: string | null; emblem: string | null } | undefined;
-    return { title: r?.title ?? null, frame: r?.frame ?? null, emblem: r?.emblem ?? null };
+    return equippedOf(this.db, userId);
   }
 
   /** Expérience, grade et hauts faits de la saison en cours, historique des saisons et cumul de carrière. */
@@ -549,6 +549,7 @@ export class AccountService {
       if (!status.unlocked) throw new ServerError('FORBIDDEN', 'Cette récompense n’est pas encore débloquée');
     }
     this.db.prepare(`INSERT INTO cosmetics (user_id, ${q.slot}) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET ${q.slot} = excluded.${q.slot}`).run(userId, q.id);
+    forgetEquipped(this.db, userId);
     this.ladderCache = null;
     return this.equipped(userId);
   }

@@ -3,7 +3,7 @@ import { PlayingCard } from '../components/Card';
 import { CoinRain, SpinTrophy } from '../components/Scene3D';
 import { LeagueBadge, ProgressPanel } from '../components/tableau/Progress';
 import { ColumnStack, MiniHand, ResultsTable, VerdictRow } from '../components/tableau/Board';
-import { Avatar, Badge, Button, CountdownRing, Eyebrow, Modal, Panel, Segmented, inputClass } from '../components/ui';
+import { Badge, Button, CountdownRing, Eyebrow, Modal, Panel, Segmented, inputClass } from '../components/ui';
 import type { AccountClient } from '../lib/account';
 import { useAccount, useAccountClient } from '../lib/context';
 import { useSettings } from '../lib/settings';
@@ -14,7 +14,8 @@ import { VictoryTitle, WinnerSpotlight } from '../components/Winner';
 import { announce, clockSkew, COMBOS, inviteUrl, LEVELS, outcomeKey, ROMAN, secondsLeft, VARIANT_OPTIONS } from '../lib/tableau';
 import { adviceText, columnLabel, errorText, handLabel } from '../lib/tbText';
 import { useI18n, type Key } from '../i18n';
-import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbQueueDto } from '../lib/types';
+import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbPlayerDto, TbHistoryEntry, TbQueueDto } from '../lib/types';
+import { FramedAvatar, EmblemBadge, TitleTag } from '../components/Cosmetics';
 
 const NICK_KEY = 'poker.tb.nick.v1';
 const CONFIRM_KEY = 'poker.tb.confirm.v1';
@@ -585,7 +586,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
 
       {/* Adversaire */}
       <div className="lg:col-start-1 lg:row-start-1">
-      <PlayerBar name={oppName} avatar={opponent?.avatar ?? null} badge={`${opponent?.kind === 'cpu' ? t('tb.badge.level', { level: t(`tb.level.${opponent.level ?? 'intermediate'}` as Key) }) : opponent?.rating != null ? t('tb.badge.rated', { r: opponent.rating }) : t('tb.badge.friend')}${hand5 ? t('tb.badge.hand', { n: view.handCount[opp] }) : ''}`} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
+      <PlayerBar name={oppName} avatar={opponent?.avatar ?? null} cosmetics={opponent?.cosmetics ?? null} badge={`${opponent?.kind === 'cpu' ? t('tb.badge.level', { level: t(`tb.level.${opponent.level ?? 'intermediate'}` as Key) }) : opponent?.rating != null ? t('tb.badge.rated', { r: opponent.rating }) : t('tb.badge.friend')}${hand5 ? t('tb.badge.hand', { n: view.handCount[opp] }) : ''}`} remaining={view.remaining[opp]} score={theirScore} active={view.turn === opp} />
       </div>
 
       <div className="lg:col-start-1 lg:row-start-2">
@@ -679,7 +680,7 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
         </div>
       )}
       <div className="lg:col-start-1 lg:row-start-4">
-        <PlayerBar name={mine?.nickname ?? t('tb.you')} avatar={mine?.avatar ?? null} badge={t('tb.you')} remaining={view.remaining[you]} score={myScore} active={myTurn} />
+        <PlayerBar name={mine?.nickname ?? t('tb.you')} avatar={mine?.avatar ?? null} cosmetics={mine?.cosmetics ?? null} badge={t('tb.you')} remaining={view.remaining[you]} score={myScore} active={myTurn} />
       </div>
 
       <div className="lg:col-span-2 lg:row-start-5">
@@ -717,14 +718,18 @@ function GameScreen({ client, initial, onExit }: { client: AccountClient; initia
   );
 }
 
-function PlayerBar({ name, avatar, badge, remaining, score, active }: { name: string; avatar: string | null; badge: string; remaining: number; score: number; active: boolean }) {
+function PlayerBar({ name, avatar, cosmetics, badge, remaining, score, active }: { name: string; avatar: string | null; cosmetics: TbPlayerDto['cosmetics']; badge: string; remaining: number; score: number; active: boolean }) {
   const { t } = useI18n();
   return (
     <div className={`flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 max-lg:py-0.5 ${active ? 'border-gold-400/70 bg-gold-500/10' : 'border-ivory-100/10 bg-ink-800/70'}`}>
       <div className="flex min-w-0 items-center gap-2">
-        <Avatar nickname={name} avatar={avatar} size={30} />
+        <FramedAvatar nickname={name} avatar={avatar} size={30} frame={cosmetics?.frame} />
         <div className="min-w-0 max-lg:flex max-lg:items-center max-lg:gap-2">
-          <p className="truncate text-sm font-semibold text-ivory-50">{name}</p>
+          <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-ivory-50">
+            <span className="truncate">{name}</span>
+            {cosmetics?.emblem && <EmblemBadge id={cosmetics.emblem} size={16} />}
+            {cosmetics?.title && <span className="max-lg:hidden"><TitleTag id={cosmetics.title} /></span>}
+          </p>
           <span className="max-lg:hidden"><Badge tone={active ? 'gold' : 'neutral'}>{badge}</Badge></span>
         </div>
       </div>
@@ -753,7 +758,7 @@ function Board({ dto, seat, side, look, owner, selectable, pending, onPick }: { 
   const cols = view.columns[seat]!;
   const finished = dto.status === 'finished';
   return (
-    <div className="mat grid grid-cols-5 gap-1 p-2 sm:gap-2 sm:p-3 max-lg:p-1.5" style={feltVars} data-testid={`tb-board-${side}`}>
+    <div className="mat mat-rail grid grid-cols-5 gap-1 p-2 sm:gap-2 sm:p-3 max-lg:p-1" style={feltVars} data-testid={`tb-board-${side}`}>
       {cols.map((cards, i) => (
         <ColumnStack
           key={i}

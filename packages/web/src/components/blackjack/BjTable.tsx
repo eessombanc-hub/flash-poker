@@ -171,7 +171,7 @@ export function BjTable({ active, result, chips, speed, pedagogy, help, busy, er
         </p>
       </div>
 
-      <div className="felt relative overflow-hidden rounded-[32px] px-3 py-3 sm:px-8 sm:py-4" style={feltVars}>
+      <div className="felt felt-bj relative overflow-hidden rounded-[32px] px-3 py-3 sm:px-8 sm:py-4" style={feltVars}>
         {/* Croupier */}
         <div className="flex flex-col items-center">
           <div className="mb-2 flex items-center gap-2 rounded-full border border-gold-500/40 bg-black/35 px-3.5 py-1 text-xs text-gold-200">

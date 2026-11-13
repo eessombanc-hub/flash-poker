@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Avatar, Badge, Button, Eyebrow, Field, inputClass, Panel, Segmented } from '../ui';
+import { Badge, Button, Eyebrow, Field, inputClass, Panel, Segmented } from '../ui';
 import { PlayingCard } from '../Card';
+import { EmblemBadge, FramedAvatar, TitleTag } from '../Cosmetics';
 import { ChipStack, HandView, type HelpData } from './BjTable';
 import { FairnessProof } from './Panels';
 import { ApiError } from '../../lib/api';
@@ -411,7 +412,7 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
 
       {/* Table en jeu */}
       {rv && (t.status === 'PLAYING' || t.status === 'DONE') && (
-        <div className="felt relative rounded-[32px] px-3 py-5 sm:px-6" style={{ ['--felt-a' as string]: '#0f4a37', ['--felt-b' as string]: '#093327', ['--felt-c' as string]: '#04170f' }}>
+        <div className="felt felt-bj relative rounded-[32px] px-3 py-5 sm:px-6" style={{ ['--felt-a' as string]: '#0f4a37', ['--felt-b' as string]: '#093327', ['--felt-c' as string]: '#04170f' }}>
           <div className="flex flex-col items-center">
             <div className="mb-2 rounded-full border border-gold-500/40 bg-black/35 px-3.5 py-1 text-xs text-gold-200">{tr('bjmulti.croupier')} {t.rules.dealerHitsSoft17 ? tr('bjmulti.tire_sur_17') : tr('bjmulti.reste_sur_tous')}</div>
             <div className="flex min-h-[5.6rem] items-center [&>*:not(:first-child)]:-ml-6 sm:[&>*:not(:first-child)]:-ml-8" data-testid="dealer-cards">
@@ -430,8 +431,10 @@ function SharedTable({ code, pedagogy, speed, onClose, onSettled }: { code: stri
                 <li key={p} className={`rounded-2xl border p-2 ${turn ? 'border-gold-400 bg-black/30' : 'border-ivory-100/10 bg-black/15'}`} aria-label={tr('bjmulti.place_de', { nickname: seat.nickname })}>
                   <div className="mb-1.5 flex items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1.5 text-sm text-ivory-50">
-                      <Avatar nickname={seat.nickname} avatar={seat.avatar} size={24} />
+                      <FramedAvatar nickname={seat.nickname} avatar={seat.avatar} size={24} frame={seat.cosmetics?.frame} />
                       <span className="truncate">{seat.nickname}</span>
+                      {seat.cosmetics?.emblem && <EmblemBadge id={seat.cosmetics.emblem} size={16} />}
+                      {seat.cosmetics?.title && <span className="hidden truncate sm:inline"><TitleTag id={seat.cosmetics.title} /></span>}
                       {seat.kind === 'cpu' && <Badge>{tr('bjmulti.cpu')}</Badge>}
                       {seat.you && <Badge tone="gold">{tr('bjmulti.vous')}</Badge>}
                     </span>
@@ -534,13 +537,15 @@ function SeatCard({ s }: { s: BjSeatDto }) {
   const { t, tp } = useI18n();
   return (
     <li className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${s.you ? 'border-gold-500/50 bg-gold-500/10' : 'border-ivory-100/12 bg-ink-900/60'}`}>
-      {s.open ? <span className="grid h-8 w-8 place-items-center rounded-full border border-dashed border-ivory-100/30 text-ivory-300/60" aria-hidden="true">+</span> : <Avatar nickname={s.nickname || '?'} avatar={s.avatar} size={32} />}
+      {s.open ? <span className="grid h-8 w-8 place-items-center rounded-full border border-dashed border-ivory-100/30 text-ivory-300/60" aria-hidden="true">+</span> : <FramedAvatar nickname={s.nickname || '?'} avatar={s.avatar} size={32} frame={s.cosmetics?.frame} />}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm text-ivory-50">
           {s.open ? t('bjmulti.place_libre_humain') : s.nickname}
+          {!s.open && s.cosmetics?.emblem && <span className="ml-1.5 inline-block align-middle"><EmblemBadge id={s.cosmetics.emblem} size={16} /></span>}
           {s.kind === 'cpu' && <span className="ml-1.5"><Badge>{t('bjmulti.cpu')}</Badge></span>}
           {s.you && <span className="ml-1.5"><Badge tone="gold">{t('bjmulti.vous')}</Badge></span>}
         </span>
+        {!s.open && s.cosmetics?.title && <span className="block truncate"><TitleTag id={s.cosmetics.title} /></span>}
         {!s.open && <span className="text-xs text-ivory-300/75">{formatChips(s.chips)}{s.ready ? `, mise ${formatChips(s.bet)}` : ''}</span>}
       </span>
       {!s.open && s.ready && <Badge tone="green">{t('bjmulti.pret')}</Badge>}
