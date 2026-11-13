@@ -1,6 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import { ApiError, createRoom, fetchStats, joinRoom, listOpenTables, listRooms, spectateRoom, type OpenTable, type LiveStats, type CreateRoomInput, type JoinRoomInput, type RoomSummary } from './api';
+import { ApiError, createRoom, fetchChat, postChat, type PublicChatMessage, fetchStats, joinRoom, listOpenTables, listRooms, spectateRoom, type OpenTable, type LiveStats, type CreateRoomInput, type JoinRoomInput, type RoomSummary } from './api';
 import { describeEvent, type Tone } from './events';
 import { currentI18n } from '../i18n';
 import { errorText as localizedError } from './tbText';
@@ -133,6 +133,14 @@ export class GameClient {
     this.opts.beforeNewTable?.();
     const res = await spectateRoom(this.baseUrl, code, input, this.opts.fetchFn, this.opts.accountToken?.());
     this.begin({ code: code.trim().toUpperCase(), token: res.token, playerId: res.spectatorId, nickname: input.nickname });
+  }
+
+  /** Chat public de l'accueil : lecture des nouveaux messages et envoi (un compte parle sous son pseudo). */
+  chatList(since: number): Promise<{ messages: PublicChatMessage[]; last: number }> {
+    return fetchChat(this.baseUrl, since, this.opts.fetchFn);
+  }
+  chatPost(input: { text: string; nickname?: string; avatar?: string }): Promise<PublicChatMessage> {
+    return postChat(this.baseUrl, input, this.opts.fetchFn, this.opts.accountToken?.());
   }
 
   /** Liste publique des parties ouvertes (accueil) : aucun effet sur la session en cours. */

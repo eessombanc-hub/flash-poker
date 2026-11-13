@@ -30,7 +30,7 @@ export function Seat({ player, isMe, target, shown, hiddenCount, active, validat
   if (compact) return <CompactSeat {...{ player, isMe, target, shown, active, validated, folded, insured, isChooser, score, out, fourColor }} />;
   return (
     <div
-      className={`flex ${compact ? 'min-w-0 gap-1 px-2 py-1.5' : 'min-w-[9.5rem] gap-1.5 px-3 py-2.5'} flex-col items-center rounded-2xl border text-center transition ${active ? 'border-gold-400 bg-ink-800/95 shadow-gold' : 'border-ivory-100/15 bg-ink-900/80'} ${out || folded ? 'opacity-60' : ''}`}
+      className={`flex ${compact ? 'min-w-0 gap-1 px-2 py-1.5' : 'min-w-[9.5rem] gap-1.5 px-3 py-2.5'} flex-col items-center rounded-2xl border text-center transition ${active ? 'seat-card seat-card-active' : 'seat-card'} ${out || folded ? 'opacity-60' : ''}`}
       data-testid={`seat-${player.id}`}
       data-seat={player.id}
       aria-label={t('seat.txt', { nickname: player.nickname, v: isMe ? t('seat.vous_suffixe') : '', v2: player.bot ? t('seat.cpu_suffixe') : '', t: player.position ?? t('seat.sans_position'), pointsLabel: pointsLabel(score) })}
@@ -82,7 +82,7 @@ function CompactSeat({ player, isMe, target, shown, active, validated, folded, i
   const rare = out || !player.connected || folded || isChooser || insured;
   return (
     <div
-      className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1 transition ${active ? 'border-gold-400 bg-ink-800/95 shadow-gold' : 'border-ivory-100/15 bg-ink-900/80'} ${out || folded ? 'opacity-60' : ''}`}
+      className={`flex min-w-0 flex-col gap-0.5 rounded-xl border px-1.5 py-1 transition ${active ? 'seat-card seat-card-active' : 'seat-card'} ${out || folded ? 'opacity-60' : ''}`}
       data-testid={`seat-${player.id}`}
       data-seat={player.id}
       aria-label={t('seat.txt', { nickname: player.nickname, v: isMe ? t('seat.vous_suffixe') : '', v2: player.bot ? t('seat.cpu_suffixe') : '', t: player.position ?? t('seat.sans_position'), pointsLabel: pointsLabel(score) })}

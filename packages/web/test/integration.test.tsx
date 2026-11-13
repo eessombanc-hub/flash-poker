@@ -209,7 +209,7 @@ describe('intégration : interface complète dans le DOM, pilotée comme un util
     // le second joueur valide : la manche se termine et le récapitulatif s'affiche chez l'hôte
     await alice.client.command({ type: 'VALIDATE' });
     const dialog = await screen.findByRole('dialog', { name: 'Résultat de la manche 1' }, { timeout: 5000 });
-    expect(within(dialog).getByRole('list', { name: 'Mains dévoilées' }).querySelectorAll('li')).toHaveLength(2);
+    expect(within(dialog).queryByRole('list', { name: 'Mains dévoilées' })).toBeNull();
     expect(within(dialog).getByRole('heading', { level: 2 }).textContent).toMatch(/remporte la manche|Hold’em de départage|Aucun point/);
   });
 

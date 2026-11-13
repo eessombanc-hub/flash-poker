@@ -145,3 +145,25 @@ export async function fetchStats(baseUrl: string, visitor: string, fetchFn: type
 /** Regarder une partie publique en cours : un jeton de spectateur, sans siège ni cartes. */
 export const spectateRoom = (baseUrl: string, code: string, input: JoinRoomInput, fetchFn: typeof fetch = fetch, accountToken?: string | null): Promise<{ spectatorId: string; token: string }> =>
   post(baseUrl, `/rooms/${encodeURIComponent(code.trim().toUpperCase())}/spectate`, input, fetchFn, accountToken);
+
+/** Chat public de l'accueil. */
+export interface PublicChatMessage {
+  id: number;
+  at: number;
+  nickname: string;
+  avatar: string | null;
+  registered: boolean;
+  text: string;
+}
+export async function fetchChat(baseUrl: string, since: number, fetchFn: typeof fetch = fetch): Promise<{ messages: PublicChatMessage[]; last: number }> {
+  let res: Response;
+  try {
+    res = await fetchFn(`${baseUrl}/chat?since=${since}`);
+  } catch {
+    throw new ApiError('NETWORK', 'Impossible de joindre le serveur.');
+  }
+  if (!res.ok) throw new ApiError('HTTP', `Erreur serveur (${res.status})`);
+  return (await res.json()) as { messages: PublicChatMessage[]; last: number };
+}
+export const postChat = (baseUrl: string, input: { text: string; nickname?: string; avatar?: string }, fetchFn: typeof fetch = fetch, accountToken?: string | null): Promise<PublicChatMessage> =>
+  post<PublicChatMessage>(baseUrl, '/chat', input, fetchFn, accountToken);

@@ -11,6 +11,8 @@ import type { FeedItem } from '../lib/client';
 import { deNom, formatChips, formatSignedChips, pointsLabel, STARTING_CHIPS } from '../lib/format';
 import { categoryLabel, describeRank, INSURANCE_LABELS, variantName, VICTORY_LABELS, winningCards, winningCombination } from '../lib/labels';
 import { nick } from '../lib/selectors';
+import { straightFlushes } from '../lib/roundInfo';
+import { StraightFlushFeast } from '../components/Feast';
 import { useAccount } from '../lib/context';
 import { useSettings } from '../lib/settings';
 import type { LineResult, RoomView, RoundEvent, RoundRecord, TiebreakOutcome } from '../lib/types';
@@ -227,7 +229,8 @@ export function finalBoard(known: readonly (string | null)[], events: readonly R
 export function RoundResultModal({ record, events, board, view, onClose, final }: { record: RoundRecord; events: RoundEvent[]; board: readonly (string | null)[]; view: RoomView; onClose: () => void; final: boolean }) {
   const { t, tp } = useI18n();
   const { fourColor } = useSettings();
-  const showdown = [...events].reverse().find((e) => e.type === 'SHOWDOWN')?.data.hands as Record<string, { cards: string[]; category: number; rank?: number }> | undefined;
+  // Aucune combinaison n'est détaillée dans le résultat, sauf la quinte flush, qui a droit à sa fête.
+  const flushes = straightFlushes(record);
   const shownBoard = record.variant === 'AVIATION' || record.variant === 'AVIA_6' || record.variant === 'V6_1' ? finalBoard(board, events) : [];
   const lines = events.filter((e) => e.type === 'LINE_RESOLVED').map((e) => e.data as unknown as LineResult);
   const winner = record.award.kind === 'POINTS' || record.award.kind === 'INSTANT_VICTORY' ? record.award.winner : null;
@@ -272,23 +275,10 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
           ))}
         </ul>
       )}
-      {showdown && (
-        <ul className="mt-2 grid gap-1.5 md:grid-cols-2" aria-label={t('overlays.mains_devoilees')}>
-          {Object.entries(showdown).map(([pid, h]) => (
-            <li key={pid} className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-3 py-1 ${pid === winner ? 'animate-winGlow bg-gold-500/15 ring-1 ring-gold-400' : 'bg-ink-900/60'}`}>
-              <span className="w-16 truncate font-medium text-ivory-50">{nick(view, pid)}</span>
-              <span className="flex -space-x-2">
-                {h.cards.map((c, i) => (
-                  <RevealCard key={c} code={c} size="xs" index={i} />
-                ))}
-              </span>
-              <span className="text-sm text-ivory-200/85">{(h.rank !== undefined ? describeRank(h.rank) : null) ?? categoryLabel(h.category)}</span>
-              {pid === winner && <Badge tone="gold">{t('overlays.gagnant')}</Badge>}
-            </li>
-          ))}
-        </ul>
-      )}
-      {lines.length > 0 && <LinesRecap lines={lines} view={view} scale={60} />}
+      {flushes.map((f) => (
+        <StraightFlushFeast key={f.player} name={nick(view, f.player)} cards={f.cards} line={f.line} />
+      ))}
+      {lines.length > 0 && <LinesRecap lines={lines} view={view} scale={60} showCombos={false} />}
 
       <h3 className="mb-1 mt-3 text-xs font-semibold uppercase tracking-widest text-gold-400">{t('overlays.scores')}</h3>
       <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
@@ -502,9 +492,10 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
   const { t } = useI18n();
   const a = record.award;
   const winner = a.kind === 'POINTS' || a.kind === 'INSTANT_VICTORY' ? a.winner : null;
-  const combo = winningCombination(record);
-  if (!winner || !combo) return null;
-  const cards = winningCards(record);
+  if (!winner) return null;
+  const isFlush = straightFlushes(record).some((f) => f.player === winner);
+  const combo = isFlush ? winningCombination(record) : null;
+  const cards = isFlush ? winningCards(record) : [];
   return (
     <div className="relative mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/50 bg-gradient-to-r from-gold-500/20 to-transparent px-3 py-1.5" data-testid="vainqueur-manche">
       <Shine />
@@ -512,7 +503,7 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
       <div className="min-w-[10rem] flex-1">
         <p className="text-xs uppercase tracking-widest text-gold-300">{t('overlays.vainqueur_de_la')}</p>
         <p className="font-display text-xl text-ivory-50">
-          {nick(view, winner)} <span className="text-gold-300">({combo})</span>
+          {nick(view, winner)}{combo && <span className="text-gold-300"> ({combo})</span>}
         </p>
       </div>
       {cards.length > 0 && (
@@ -553,7 +544,7 @@ export function RoundList({ history, nameOf, star }: { history: readonly RoundRe
     <ol className="mt-3 space-y-2">
       {history.map((r) => {
         const winner = r.award.kind === 'POINTS' || r.award.kind === 'INSTANT_VICTORY' ? r.award.winner : null;
-        const combo = winningCombination(r);
+        const combo = straightFlushes(r).length > 0 ? winningCombination(r) : null;
         const pts = r.award.kind === 'POINTS' ? r.award.points : null;
         const on = star?.isOn(r.roundNo) ?? false;
         return (

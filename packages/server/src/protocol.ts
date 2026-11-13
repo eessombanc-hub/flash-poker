@@ -80,6 +80,10 @@ export const socialSchema = z.discriminatedUnion('kind', [
 ]);
 export type SocialInput = z.infer<typeof socialSchema>;
 
+/** Chat public de l'accueil : texte seul (le pseudo n'est demandé qu'aux invités ; un compte parle sous son pseudo). */
+export const publicChatSchema = z.object({ text: chatText, nickname: nickname.optional(), avatar });
+export type PublicChatInput = z.infer<typeof publicChatSchema>;
+
 export const authSchema = z.object({ code: z.string().min(1).max(16), token: z.string().min(16).max(128) });
 
 // ---------- Sorties serveur ----------

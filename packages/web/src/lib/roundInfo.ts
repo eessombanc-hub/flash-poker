@@ -141,3 +141,23 @@ export function hasStraightFlush(record: RoundRecord): boolean {
   if (hands && Object.values(hands).some((h) => h.category === STRAIGHT_FLUSH)) return true;
   return record.summary?.tiebreak?.category === STRAIGHT_FLUSH;
 }
+
+/** Quinte flush réalisée dans une manche : le joueur, ses cartes quand on les connaît, et la ligne pour le 6-3. */
+export interface StraightFlushHand {
+  player: string;
+  cards: string[];
+  line?: number;
+}
+export function straightFlushes(record: RoundRecord): StraightFlushHand[] {
+  const out: StraightFlushHand[] = [];
+  const s = record.summary;
+  for (const [player, h] of Object.entries(s?.hands ?? {})) if (h.category === STRAIGHT_FLUSH) out.push({ player, cards: h.best ?? h.cards });
+  const a = record.award;
+  if (a.kind === 'POINTS' && s?.tiebreak?.category === STRAIGHT_FLUSH && !out.some((x) => x.player === a.winner)) out.push({ player: a.winner, cards: s.tiebreak.cards });
+  if (a.kind === 'INSTANT_VICTORY') {
+    const d = s?.lines?.find((l) => l.line === a.line)?.designations[a.winner];
+    out.push({ player: a.winner, cards: d?.pair ?? [], line: a.line });
+  }
+  return out;
+}
+export const isStraightFlushCategory = (category: number): boolean => category === STRAIGHT_FLUSH;

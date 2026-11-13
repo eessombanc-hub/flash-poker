@@ -1823,6 +1823,20 @@ export const fr = {
   'err.TB_ALREADY_PLAYING': 'Vous avez déjà une partie en cours ({code}).',
   'err.TB_NOT_JOINABLE': 'Cette partie n’accepte plus de joueur.',
   'err.TB_ADVICE_TRAINING': 'Les conseils sont réservés au mode Entraînement.',
+  'feast.title': 'Quinte flush !',
+  'feast.by': '{name} réalise une quinte flush.',
+  'feast.by_line': '{name} réalise une quinte flush sur la ligne {line}.',
+  'chat.title': 'Salon public',
+  'chat.live': 'en direct',
+  'chat.log': 'Messages du salon public',
+  'chat.empty': 'Personne n’a encore écrit. Lancez la conversation !',
+  'chat.placeholder': 'Votre message',
+  'chat.nick': 'Votre pseudo',
+  'chat.send': 'Envoyer',
+  'chat.as': 'Vous écrivez sous le pseudo {name}.',
+  'chat.rules': 'Restez courtois. Les liens sont refusés. Les derniers messages seulement sont conservés.',
+  'chat.offline': 'Connexion perdue : message non envoyé.',
+  'chat.error': 'Message non envoyé.',
 } as const;
 
 export type Key = keyof typeof fr;

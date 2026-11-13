@@ -348,7 +348,7 @@ describe('table : résultat de manche et routage des panneaux', () => {
   const item = (id: number, type: string, data: Record<string, unknown>): FeedItem => ({ id, version: id, event: { type, visibility: 'PUBLIC', data } });
   const pick = (over = {}) => roomView({}, game({ phase: 'VARIANT_SELECTION', round: null, ...over }));
 
-  it('une manche qui se termine ouvre le récapitulatif (mains dévoilées, plateau complété)', async () => {
+  it('une manche qui se termine ouvre le récapitulatif (sans détail des combinaisons, plateau complété)', async () => {
     const { client } = renderWith(<Table />, pick({ roundNo: 1 }));
     expect(screen.queryByRole('dialog')).toBeNull();
     // manche en cours : plateau connu (flop + turn), puis fin de manche avec showdown et river révélée
@@ -361,10 +361,24 @@ describe('table : résultat de manche et routage des panneaux', () => {
     );
     const dialog = await screen.findByRole('dialog', { name: 'Résultat de la manche 1' });
     expect(within(dialog).getByText('Alice remporte la manche (+1 point)')).toBeInTheDocument();
-    expect(within(dialog).getByRole('list', { name: 'Mains dévoilées' })).toBeInTheDocument();
-    expect(within(dialog).getByText('Brelan')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('list', { name: 'Mains dévoilées' })).toBeNull();
+    expect(within(dialog).queryByText('Brelan')).toBeNull();
+    expect(within(dialog).queryByTestId('quinte-flush')).toBeNull();
     expect(within(dialog).getByRole('group', { name: 'Cartes communes' }).querySelectorAll('[role=img]')).toHaveLength(5);
     expect(within(dialog).getByRole('img', { name: 'Dame de trèfle (Q)' })).toBeInTheDocument(); // river révélée à la clôture
+  });
+  it('une quinte flush au showdown déclenche l’animation festive', async () => {
+    const { client } = renderWith(<Table />, pick({ roundNo: 1 }));
+    const sf: RoundRecord = { ...record, summary: { hands: { p1: { cards: ['As', 'Kd'], category: 0 }, p2: { cards: ['9h', '8h', '7h', '6h', '5h'], category: 8 } } } };
+    act(() =>
+      client.store.setState({
+        feed: [item(1, 'VARIANT_CHOSEN', { roundNo: 1, variant: 'AVIATION', chooser: 'p1' })],
+        view: roomView({}, game({ roundNo: 2, phase: 'VARIANT_SELECTION', round: null, history: [sf] })),
+      }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Résultat de la manche 1' });
+    expect(within(dialog).getByTestId('quinte-flush')).toBeInTheDocument();
+    expect(within(dialog).getByText('Quinte flush !')).toBeInTheDocument();
   });
   it('rien à l’ouverture d’une partie déjà entamée (l’historique n’est pas rejoué)', () => {
     renderWith(<Table />, pick({ roundNo: 2, history: [record] }));

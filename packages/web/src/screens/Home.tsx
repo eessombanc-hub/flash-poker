@@ -6,6 +6,7 @@ import { ApiError, type LiveStats, type OpenTable, type RoomSummary } from '../l
 import { Badge, Button, Eyebrow, Modal, Panel } from '../components/ui';
 import { BrandMark } from '../components/BrandMark';
 import { InfoTile, RailGroup, RailTile, SidePanel } from '../components/Lobby';
+import { HomeChat } from '../components/HomeChat';
 import { GameShowcase, type Showcase } from '../components/GameShowcase';
 import { BlackjackArt, ClosedArt, HoldemArt, OmahaArt, PokerArt, TableauArt } from '../components/GameArt';
 import { TablePreview } from '../components/TablePreview';
@@ -139,6 +140,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
 
         <SidePanel live={live} me={me} onProfile={me && onSpace ? () => onSpace('profil') : undefined} onJoin={(c) => onJoin(c)}>
           {me && onChallenges && <DailyStrip onOpen={onChallenges} />}
+          <HomeChat />
         </SidePanel>
       </main>
       {rules && <RulesModal onClose={() => setRules(false)} />}

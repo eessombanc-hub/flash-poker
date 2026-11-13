@@ -65,7 +65,8 @@ export function Line63Panel() {
 }
 
 /** Lignes déjà closes : désignations dévoilées ensemble, gagnant et points de ligne. */
-export function LinesRecap({ lines, view, scale }: { lines: LineResult[]; view: RoomView; scale: number }) {
+/** `showCombos` faux (résultat de manche) : seules les quintes flush gardent leur nom de combinaison. */
+export function LinesRecap({ lines, view, scale, showCombos = true }: { lines: LineResult[]; view: RoomView; scale: number; showCombos?: boolean }) {
   const { t, tp } = useI18n();
   const { fourColor } = useSettings();
   return (
@@ -86,7 +87,7 @@ export function LinesRecap({ lines, view, scale }: { lines: LineResult[]; view: 
                         <PlayingCard key={c} code={c} size="xs" fourColor={fourColor} />
                       ))}
                     </span>
-                    <span className="text-ivory-200/85">{categoryLabel(d.category)}</span>
+                    {(showCombos || d.category === 8) && <span className={d.category === 8 ? 'font-semibold text-gold-200' : 'text-ivory-200/85'}>{categoryLabel(d.category)}</span>}
                   </>
                 ) : (
                   <span className="text-amber-200/90">{t('line63.ligne_perdue')}</span>

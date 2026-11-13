@@ -4,7 +4,9 @@ import { resolve } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { Server as IOServer, type Socket } from 'socket.io';
 import { ServerError } from './errors';
-import { authSchema, excludeSchema, approveAssistanceSchema, type Outgoing } from './protocol';
+import { authSchema, excludeSchema, approveAssistanceSchema, publicChatSchema, type Outgoing } from './protocol';
+import { PublicChat } from './publicChat';
+import { AVATAR_IMAGE_ID } from './accounts/avatarImage';
 import { RateLimiter } from './rateLimiter';
 import { clientIp, securityHeaders } from './netSecurity';
 import { optionalAccount, registerAccountRoutes, registerPresence } from './accounts/routes';
@@ -248,6 +250,31 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     for (const at of seen.values()) if (t - at <= ONLINE_MS) online++;
     return reply.header('Cache-Control', 'no-store').send({ online, rooms: opts.manager.listOpen().filter((r) => r.seatsLeft > 0).length });
   });
+  // Chat public de l'accueil : lecture par interrogation régulière (jamais de donnée de compte hors pseudo et avatar).
+  const chat = new PublicChat(now);
+  const chatRead = new RateLimiter(60, 60_000, now);
+  const chatWrite = new RateLimiter(30, 60_000, now);
+  app.get<{ Querystring: { since?: string } }>('/chat', async (req, reply) => {
+    if (!chatRead.hit(req.ip)) throw new ServerError('RATE_LIMITED', 'Trop de requêtes, ralentissez');
+    const since = Number.parseInt(req.query.since ?? '0', 10);
+    return reply.header('Cache-Control', 'no-store').send(chat.since(Number.isFinite(since) && since > 0 ? since : 0));
+  });
+  app.post('/chat', async (req, reply) => {
+    if (!chatWrite.hit(req.ip)) throw new ServerError('RATE_LIMITED', 'Trop de messages, ralentissez');
+    const parsed = publicChatSchema.safeParse(req.body);
+    if (!parsed.success) throw new ServerError('BAD_REQUEST', parsed.error.issues[0]?.message ?? 'Message invalide');
+    const account = opts.accounts ? optionalAccount(opts.accounts, req) : null;
+    let author: { key: string; nickname: string; avatar: string | null; registered: boolean };
+    if (account) author = { key: `a:${account.id}`, nickname: account.nickname, avatar: account.avatar ?? null, registered: true };
+    else {
+      const nick = parsed.data.nickname;
+      if (!nick) throw new ServerError('BAD_REQUEST', 'Choisissez un pseudo pour écrire dans le chat');
+      if (opts.accounts?.isReservedNickname(nick)) throw new ServerError('NICKNAME_RESERVED', 'Ce pseudo appartient à un joueur inscrit. Connectez-vous ou choisissez-en un autre');
+      const avatarId = parsed.data.avatar && !AVATAR_IMAGE_ID.test(parsed.data.avatar) ? parsed.data.avatar : null;
+      author = { key: `g:${req.ip}:${nick.toLowerCase()}`, nickname: nick, avatar: avatarId, registered: false };
+    }
+    return reply.status(201).send(chat.post(author, parsed.data.text));
+  });
   app.get('/rooms', async (req, reply) => {
     guard('list', req.ip); // limite le polling de la liste, distinct de la création/arrivée
     return reply.send({ rooms: opts.manager.listOpen() });
@@ -271,7 +298,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
   if (opts.accounts && opts.tableau) registerTableauRoutes(app, opts.tableau, opts.accounts, { now });
   if (opts.accounts && opts.blackjack) registerBlackjackRoutes(app, opts.blackjack, opts.accounts, { now, tables: opts.blackjackTables });
 
-  const isApiPath = (url: string): boolean => ['/rooms', '/stats', '/socket.io', '/health', '/auth/', '/me', '/avatars', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
+  const isApiPath = (url: string): boolean => ['/rooms', '/chat', '/stats', '/socket.io', '/health', '/auth/', '/me', '/avatars', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
 
   if (opts.webDist && existsSync(opts.webDist)) {
     // Fichiers avec hash dans leur nom (assets Vite) : cache long ; `index.html` : jamais mis en cache (sert

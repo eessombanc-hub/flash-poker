@@ -372,7 +372,8 @@ export function Table({ onRegister }: { onRegister?: () => void } = {}) {
     <NewsContext.Provider value={news}>
     <ThrowLayer />
     <ChatDock canThrow={!spectator} />
-    <main className="relative mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-2 py-1.5 sm:px-3 sm:py-2 lg:max-w-[100rem]">
+    <div className="room-stage fixed inset-0 -z-0 pointer-events-none" aria-hidden="true" />
+    <main className="relative z-10 mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-2 py-1.5 sm:px-3 sm:py-2 lg:max-w-[100rem]">
       <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} onBack={() => (over || spectator ? client.leave() : setModal('quit'))} />
       {/* Téléphone et tablette : table au-dessus, actions en dessous. Écran large : côte à côte, pour que la table,
           votre main et les boutons tiennent ensemble dans la hauteur de l'écran, sans défiler. */}
