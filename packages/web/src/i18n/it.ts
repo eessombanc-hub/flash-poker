@@ -1924,4 +1924,12 @@ export const it: Record<Key, string> = {
   'chat.rules': 'Siate cortesi. I link non sono ammessi. Vengono conservati solo gli ultimi messaggi.',
   'chat.offline': 'Connessione persa: messaggio non inviato.',
   'chat.error': 'Messaggio non inviato.',
+  'legal.retour': '← Indietro',
+  'legal.nav': 'Pagine legali',
+  'legal.fr_only': 'Questi testi legali sono redatti in francese, che prevale.',
+  'legal.mentions': 'Note legali',
+  'legal.privacy': 'Privacy',
+  'legal.cookies': 'Cookie',
+  'auth.legal.avant': 'Creando un account, confermi di aver letto l’',
+  'auth.legal.lien': 'informativa sulla privacy',
 };

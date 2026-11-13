@@ -44,7 +44,7 @@ function PasswordInput({ id, value, onChange, autoComplete }: { id: string; valu
  * Connexion, inscription, mot de passe oublié et nouveau mot de passe (lien reçu par e-mail).
  * `onDone` est appelé une fois connecté.
  */
-export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDone }: { mode: AuthMode; resetToken?: string; invite?: string; onBack: () => void; onDone: () => void }) {
+export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDone, onLegal }: { mode: AuthMode; resetToken?: string; invite?: string; onBack: () => void; onDone: () => void; onLegal?: () => void }) {
   const { t } = useI18n();
   const account = useAccountClient();
   const recovery = useAccount((s) => s.passwordRecovery);
@@ -225,6 +225,12 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
                 <AvatarUpload deferred current={avatar} upload={async (jpeg) => setPhoto(jpeg)} onRemove={async () => setPhoto(null)} />
               </Field>
               </>
+            )}
+            {mode === 'register' && onLegal && (
+              <p className="text-xs text-ivory-300/80">
+                {t('auth.legal.avant')}
+                <button type="button" onClick={onLegal} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('auth.legal.lien')}</button>.
+              </p>
             )}
             {error && <ErrorBox>{error}</ErrorBox>}
             {busy && slow && <p role="status" className="text-sm text-ivory-300/80">{t('auth.wake')}</p>}

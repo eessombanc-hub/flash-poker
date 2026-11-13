@@ -1934,6 +1934,14 @@ export const fr = {
   'chat.rules': 'Restez courtois. Les liens sont refusés. Les derniers messages seulement sont conservés.',
   'chat.offline': 'Connexion perdue : message non envoyé.',
   'chat.error': 'Message non envoyé.',
+  'legal.retour': '← Retour',
+  'legal.nav': 'Pages légales',
+  'legal.fr_only': 'Ces textes juridiques sont rédigés en français, qui fait foi.',
+  'legal.mentions': 'Mentions légales',
+  'legal.privacy': 'Confidentialité',
+  'legal.cookies': 'Cookies',
+  'auth.legal.avant': 'En créant un compte, vous reconnaissez avoir pris connaissance de la ',
+  'auth.legal.lien': 'politique de confidentialité',
 } as const;
 
 export type Key = keyof typeof fr;

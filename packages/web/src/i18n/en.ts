@@ -1924,4 +1924,12 @@ export const en: Record<Key, string> = {
   'chat.rules': 'Stay polite. Links are not allowed. Only the latest messages are kept.',
   'chat.offline': 'Connection lost: message not sent.',
   'chat.error': 'Message not sent.',
+  'legal.retour': '← Back',
+  'legal.nav': 'Legal pages',
+  'legal.fr_only': 'These legal texts are written in French, which prevails.',
+  'legal.mentions': 'Legal notice',
+  'legal.privacy': 'Privacy',
+  'legal.cookies': 'Cookies',
+  'auth.legal.avant': 'By creating an account, you acknowledge the ',
+  'auth.legal.lien': 'privacy policy',
 };

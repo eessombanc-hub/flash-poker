@@ -1,3 +1,4 @@
+import type { LegalPage } from '../legal/config';
 import { COMMON_RULES } from '../lib/rulesText';
 import { VARIANTS, variantName } from '../lib/labels';
 import { useClient } from '../lib/context';
@@ -21,7 +22,7 @@ import type { VariantId } from '../lib/types';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, me, live, langSelect, notice, account }: { onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, onLegal, me, live, langSelect, notice, account }: { onLegal?: (p: LegalPage) => void; onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -135,6 +136,15 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           <footer className="space-y-2 pt-4 text-center text-xs text-ivory-100/80">
             <p className="font-semibold text-ivory-100">{t('home.footer')}</p>
             <button type="button" onClick={() => setRules(true)} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('home.rules.title')}</button>
+            {onLegal && (
+              <nav aria-label={t('legal.nav')} className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1 text-ivory-300/80">
+                {(['mentions', 'privacy', 'cookies'] as const).map((p) => (
+                  <button key={p} type="button" onClick={() => onLegal(p)} className="underline-offset-4 hover:text-gold-300 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
+                    {t(`legal.${p}` as const)}
+                  </button>
+                ))}
+              </nav>
+            )}
           </footer>
         </div>
 

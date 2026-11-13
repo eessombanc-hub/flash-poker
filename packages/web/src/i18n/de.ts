@@ -1924,4 +1924,12 @@ export const de: Record<Key, string> = {
   'chat.rules': 'Bleib höflich. Links sind nicht erlaubt. Nur die letzten Nachrichten bleiben erhalten.',
   'chat.offline': 'Verbindung verloren: Nachricht nicht gesendet.',
   'chat.error': 'Nachricht nicht gesendet.',
+  'legal.retour': '← Zurück',
+  'legal.nav': 'Rechtliche Seiten',
+  'legal.fr_only': 'Diese Rechtstexte sind auf Französisch verfasst; maßgeblich ist die französische Fassung.',
+  'legal.mentions': 'Impressum',
+  'legal.privacy': 'Datenschutz',
+  'legal.cookies': 'Cookies',
+  'auth.legal.avant': 'Mit der Kontoerstellung bestätigen Sie, die ',
+  'auth.legal.lien': 'Datenschutzerklärung',
 };
