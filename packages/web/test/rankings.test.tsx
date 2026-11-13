@@ -20,19 +20,21 @@ function renderPanel(answer: (g: RankGame, p: RankPeriod) => Ranking) {
 }
 
 describe('onglet Classements', () => {
-  it('affiche la semaine par défaut, souligne le joueur et change de période et de jeu', async () => {
+  it('affiche la saison par défaut, souligne le joueur et change de période et de jeu', async () => {
     const rankings = renderPanel((game, period) => ({
       game, period, since: T0, until: T0 + 7 * 86_400_000,
       rows: game === 'blackjack' ? [row(1, 'Ana', 3, 5, false, 120), row(2, 'Bea', 1, 4, true, -30)] : [row(1, 'Ana', 4, 6), row(2, 'Bea', 2, 3, true)],
       mine: null,
     }));
     const user = userEvent.setup();
-    const list = await screen.findByRole('list', { name: /Parties de poker .* — Semaine/ });
-    expect(rankings).toHaveBeenLastCalledWith('poker', 'week');
+    const list = await screen.findByRole('list', { name: /Parties de poker .* — Saison/ });
+    expect(rankings).toHaveBeenLastCalledWith('poker', 'season');
     expect(within(list).getAllByRole('listitem')).toHaveLength(2);
     expect(within(list).getByText('4 victoires')).toBeInTheDocument();
     expect(within(list).getByText('vous').closest('li')).toHaveAttribute('aria-current', 'true');
 
+    await user.click(screen.getByRole('radio', { name: 'Semaine' }));
+    await waitFor(() => expect(rankings).toHaveBeenLastCalledWith('poker', 'week'));
     await user.click(screen.getByRole('radio', { name: 'Mois' }));
     await waitFor(() => expect(rankings).toHaveBeenLastCalledWith('poker', 'month'));
     await user.click(screen.getByRole('radio', { name: 'Total' }));

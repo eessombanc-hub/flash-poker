@@ -124,11 +124,42 @@ export interface InviteOverview {
 export type { DailyChallenge, Engagement, Trophy } from './engagement';
 export type { AchievementStatus, AchievementTier, LeagueId, LeagueStatus, Progression } from './xp';
 
-export type ProgressionReply = import('./xp').Progression & { rank: number | null; players: number };
+export type { Season } from './rankings';
+export type { Need, RewardKind, RewardStatus } from './rewards';
+/** Une saison jouée : expérience gagnée, grade final et hauts faits obtenus. */
+export interface SeasonResult {
+  id: string;
+  year: number;
+  quarter: 1 | 2 | 3 | 4;
+  xp: number;
+  league: import('./xp').LeagueId;
+  feats: number;
+  current: boolean;
+}
+/** Cumul de toutes les saisons (les plus récentes d'abord) : c'est lui qui débloque les récompenses. */
+export interface Career {
+  xp: number;
+  /** Rang du meilleur grade atteint (0 = Bronze). */
+  bestLeague: number;
+  feats: number;
+  seasons: SeasonResult[];
+}
+export interface Equipped {
+  title: string | null;
+  frame: string | null;
+  emblem: string | null;
+}
+export type ProgressionReply = import('./xp').Progression & { rank: number | null; players: number; season: import('./rankings').Season; career: Career; equipped: Equipped };
+export interface RewardsReply {
+  items: import('./rewards').RewardStatus[];
+  equipped: Equipped;
+  career: Career;
+}
 export interface XpRanking {
   rows: XpRankRow[];
   mine: XpRankRow | null;
   players: number;
+  season: import('./rankings').Season;
 }
 
 /** Ligne du classement général à l'expérience. */
@@ -138,6 +169,9 @@ export interface XpRankRow {
   avatar: string | null;
   xp: number;
   league: import('./xp').LeagueId;
+  title: string | null;
+  frame: string | null;
+  emblem: string | null;
   you: boolean;
 }
 

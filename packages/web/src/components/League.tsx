@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useI18n } from '../i18n';
+import { EmblemBadge, FramedAvatar, TitleTag } from './Cosmetics';
+import { useAccount } from '../lib/context';
 import { useAccountClient } from '../lib/context';
 import type { LeagueId, ProgressionReply } from '../lib/types';
 
@@ -69,17 +71,27 @@ export function useProgression(): ProgressionReply | null {
 
 /** Carte de ligue : écusson, points d'expérience, avancement vers la ligue suivante et position générale. */
 export function LeagueCard({ data }: { data: ProgressionReply }) {
-  const { t } = useI18n();
+  const { t, tp } = useI18n();
+  const me = useAccount((s) => s.account);
+  const days = Math.max(1, Math.ceil((data.season.end - Date.now()) / 86_400_000));
   const { league } = data;
   const tone = TONE[league.id];
   const left = league.next ? league.next.floor - data.xp : 0;
   return (
     <section aria-labelledby="lg-title" className="relative overflow-hidden rounded-2xl border border-gold-500/40 bg-gradient-to-br from-felt-800 via-ink-900 to-ink-950 p-4 sm:p-5">
       <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full opacity-25 blur-2xl" style={{ background: tone.a }} />
+      <p className="relative mb-3 flex flex-wrap items-center justify-between gap-x-3 text-xs text-ivory-300/85">
+        <span className="font-semibold text-gold-300">{t('season.label', { n: data.season.quarter, year: data.season.year })}</span>
+        <span>{tp('season.left', days)}</span>
+      </p>
       <div className="relative flex items-center gap-4">
         <LeagueBadge league={league.id} size={76} />
         <div className="min-w-0 flex-1">
-          <h2 id="lg-title" className="font-display text-2xl text-ivory-50">{t(LEAGUE_KEY[league.id])}</h2>
+          <h2 id="lg-title" className="flex items-center gap-2 font-display text-2xl text-ivory-50">
+            {t(LEAGUE_KEY[league.id])}
+            {data.equipped.emblem && <EmblemBadge id={data.equipped.emblem} size={22} />}
+          </h2>
+          {data.equipped.title && <p><TitleTag id={data.equipped.title} /></p>}
           <p className="text-sm text-ivory-200/85">
             <span className="font-semibold tabular-nums text-gold-300">{data.xp.toLocaleString()}</span> {t('xp.unit')}
             {data.rank !== null && <span className="text-ivory-300/80"> · {t('xp.rank', { rank: data.rank, total: data.players })}</span>}
@@ -92,9 +104,13 @@ export function LeagueCard({ data }: { data: ProgressionReply }) {
         </div>
         <p className="mt-1.5 text-xs text-ivory-300/80">{league.next ? t('xp.next', { n: left.toLocaleString(), league: t(LEAGUE_KEY[league.next.id]) }) : t('xp.top')}</p>
       </div>
+      {data.equipped.frame && me && (
+        <div className="absolute right-4 top-4"><FramedAvatar nickname={me.nickname} avatar={me.avatar} size={36} frame={data.equipped.frame} /></div>
+      )}
       <p className="relative mt-3 text-xs text-ivory-300/70">
         {t('xp.breakdown', { games: data.breakdown.games.toLocaleString(), challenges: data.breakdown.challenges.toLocaleString(), feats: data.breakdown.achievements.toLocaleString() })}
       </p>
+      <p className="relative mt-1 text-xs text-ivory-300/60">{t('season.reset')}</p>
     </section>
   );
 }

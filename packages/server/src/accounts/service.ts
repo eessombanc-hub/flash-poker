@@ -9,11 +9,12 @@ import { mail, type Mailer } from './mailer';
 import { DUMMY_HASH, hashPassword, needsRehash, newToken, tokenHash, verifyPassword } from './password';
 import { maskEmail } from '../netSecurity';
 import { RateLimiter } from '../rateLimiter';
-import { computeRanking, logRank, pokerEntries, RANK_GAMES, RANK_PERIODS, type Ranking } from './rankings';
+import { computeRanking, logRank, pokerEntries, RANK_GAMES, RANK_PERIODS, seasonAt, seasonsBetween, type Ranking, type Season } from './rankings';
 import { variantProgress, type RoundFact } from './progress';
 import { computeEngagement, type Engagement } from './engagement';
-import { computeProgression, leagueFor, type Progression } from './xp';
-import type { XpRankRow } from './types';
+import { computeProgression, leagueFor, type LeagueId, type Progression, type XpFacts } from './xp';
+import { evaluateRewards, REWARD_BY_ID, REWARD_KINDS, type RewardKind, type RewardStatus } from './rewards';
+import type { Career, Equipped, ProgressionReply, RewardsReply, XpRankRow } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LeaderboardRow, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
@@ -51,6 +52,16 @@ export const emailChangeSchema = z.object({ email, password: z.string().min(1).m
 export const passwordChangeSchema = z.object({ current: z.string().min(1).max(128), next: password });
 export const forgotSchema = z.object({ email });
 export const deleteSchema = z.object({ password: z.string().min(1).max(128) });
+export const equipSchema = z.object({ slot: z.enum(REWARD_KINDS as [RewardKind, ...RewardKind[]]), id: z.string().max(40).nullable() });
+interface LadderRow {
+  id: string;
+  nickname: string;
+  avatar: string | null;
+  title: string | null;
+  frame: string | null;
+  emblem: string | null;
+  xp: number;
+}
 export const rankingQuerySchema = z.object({ game: z.enum(RANK_GAMES).default('poker'), period: z.enum(RANK_PERIODS).default('week') });
 export const recoverySchema = z.object({
   login: z.string().trim().min(1).max(254),
@@ -241,7 +252,7 @@ export class AccountService {
   // ---------- Données personnelles : export et suppression ----------
 
   /** Tables du Blackjack et du Tableau dont les lignes portent `user_id` (hors partie en cours, qui n'a pas d'intérêt à l'export). */
-  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log'] as const;
+  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log', 'cosmetics'] as const;
 
   /** Copie de toutes les données rattachées au compte, pour son titulaire (droit d'accès et de portabilité). */
   exportData(userId: string): Record<string, unknown> {
@@ -452,17 +463,13 @@ export class AccountService {
     return computeEngagement(rows.map((r) => ({ endedAt: r.ended_at as number, won: r.won === 1 })), this.now());
   }
 
-  /** Points d'expérience, ligue et hauts faits d'un joueur, calculés à la lecture. */
-  progression(userId: string): Progression & { rank: number | null; players: number } {
-    const p = this.progressionOf(userId);
-    const ladder = this.xpLadder();
-    const i = ladder.findIndex((r) => r.id === userId);
-    return { ...p, rank: i >= 0 ? i + 1 : null, players: ladder.length };
-  }
-
-  private progressionOf(userId: string): Progression {
-    const games = this.db.prepare('SELECT ended_at, won FROM user_games WHERE user_id = ?').all(userId) as Row[];
-    const byGame = this.db.prepare('SELECT game, SUM(played) AS played, SUM(won) AS won FROM rank_log WHERE user_id = ? GROUP BY game').all(userId) as { game: string; played: number; won: number }[];
+  // ---------- Saisons, expérience, récompenses ----------
+  /** Faits d'un joueur sur une fenêtre de dates (une saison). `legacy` : y rattache les parties de Tableau sans date. */
+  private factsIn(userId: string, start: number, end: number, legacy: boolean): XpFacts {
+    const games = this.db.prepare('SELECT ended_at, won FROM user_games WHERE user_id = ? AND ended_at >= ? AND ended_at < ?').all(userId, start, end) as Row[];
+    const byGame = this.db
+      .prepare('SELECT game, SUM(played) AS played, SUM(won) AS won FROM rank_log WHERE user_id = ? AND ((ended_at >= ? AND ended_at < ?) OR (? = 1 AND ended_at = 0)) GROUP BY game')
+      .all(userId, start, end, legacy ? 1 : 0) as { game: string; played: number; won: number }[];
     let bjHands = 0;
     let bjWins = 0;
     let tbGames = 0;
@@ -474,28 +481,100 @@ export class AccountService {
       else if (r.game.startsWith('tableau:')) (tbGames += r.played), (tbWins += r.won);
       else if (r.game !== 'poker') (variants += r.played > 0 ? 1 : 0), (variantWins += r.won > 0 ? 1 : 0);
     }
-    return computeProgression({ games: games.map((r) => ({ endedAt: r.ended_at as number, won: r.won === 1 })), bjHands, bjWins, tbGames, tbWins, variants, variantWins });
+    return { games: games.map((r) => ({ endedAt: r.ended_at as number, won: r.won === 1 })), bjHands, bjWins, tbGames, tbWins, variants, variantWins };
   }
 
-  private ladderCache: { at: number; rows: { id: string; nickname: string; avatar: string | null; xp: number }[] } | null = null;
-  /** Tous les joueurs ayant déjà joué, du plus au moins expérimenté. Recalculé au plus une fois par demi-minute. */
-  private xpLadder(): { id: string; nickname: string; avatar: string | null; xp: number }[] {
+  /** Première saison jouée par le joueur (la saison en cours s'il n'a encore rien joué). */
+  private firstSeason(userId: string): Season {
+    const r = this.db
+      .prepare('SELECT MIN(t) AS t FROM (SELECT MIN(ended_at) AS t FROM user_games WHERE user_id = ? AND ended_at > 0 UNION ALL SELECT MIN(ended_at) FROM rank_log WHERE user_id = ? AND ended_at > 0)')
+      .get(userId, userId) as { t: number | null };
+    return seasonAt(r.t ?? this.now());
+  }
+
+  private seasonProgress(userId: string, season: Season, first: Season): Progression {
+    return computeProgression(this.factsIn(userId, season.start, season.end, season.id === first.id));
+  }
+
+  /** Cumul de toutes les saisons : base des récompenses, qui restent acquises après chaque remise à zéro. */
+  private careerOf(userId: string): { career: Career; featIds: Set<string> } {
+    const first = this.firstSeason(userId);
+    const list = seasonsBetween(first.start, this.now());
+    const current = seasonAt(this.now()).id;
+    const featIds = new Set<string>();
+    let xp = 0;
+    let best = 0;
+    let feats = 0;
+    const seasons = list.map((s) => {
+      const p = this.seasonProgress(userId, s, first);
+      const done = p.achievements.filter((a) => a.unlocked);
+      for (const a of done) featIds.add(a.id);
+      xp += p.xp;
+      feats += done.length;
+      best = Math.max(best, p.league.index);
+      return { id: s.id, year: s.year, quarter: s.quarter, xp: p.xp, league: p.league.id as LeagueId, feats: done.length, current: s.id === current };
+    });
+    return { career: { xp, bestLeague: best, feats, seasons: seasons.reverse() }, featIds };
+  }
+
+  private equipped(userId: string): Equipped {
+    const r = this.db.prepare('SELECT title, frame, emblem FROM cosmetics WHERE user_id = ?').get(userId) as { title: string | null; frame: string | null; emblem: string | null } | undefined;
+    return { title: r?.title ?? null, frame: r?.frame ?? null, emblem: r?.emblem ?? null };
+  }
+
+  /** Expérience, grade et hauts faits de la saison en cours, historique des saisons et cumul de carrière. */
+  progression(userId: string): ProgressionReply {
+    const season = seasonAt(this.now());
+    const p = this.seasonProgress(userId, season, this.firstSeason(userId));
+    const ladder = this.xpLadder();
+    const i = ladder.findIndex((r) => r.id === userId);
+    const { career } = this.careerOf(userId);
+    return { ...p, rank: i >= 0 ? i + 1 : null, players: ladder.length, season, career, equipped: this.equipped(userId) };
+  }
+
+  /** Galerie de récompenses : état de chacune, et ce que le joueur porte. */
+  rewards(userId: string): RewardsReply {
+    const { career, featIds } = this.careerOf(userId);
+    const items = evaluateRewards({ xp: career.xp, bestLeague: career.bestLeague, feats: career.feats, seasons: career.seasons.length, featIds });
+    return { items, equipped: this.equipped(userId), career };
+  }
+
+  /** Équipe (ou retire, avec `id` nul) une récompense débloquée sur l'emplacement correspondant. */
+  equip(userId: string, input: unknown): Equipped {
+    const q = parse(equipSchema, input);
+    if (q.id !== null) {
+      const def = REWARD_BY_ID.get(q.id);
+      if (!def || def.kind !== q.slot) throw new ServerError('BAD_REQUEST', 'Récompense inconnue');
+      const status = this.rewards(userId).items.find((x) => x.id === q.id) as RewardStatus;
+      if (!status.unlocked) throw new ServerError('FORBIDDEN', 'Cette récompense n’est pas encore débloquée');
+    }
+    this.db.prepare(`INSERT INTO cosmetics (user_id, ${q.slot}) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET ${q.slot} = excluded.${q.slot}`).run(userId, q.id);
+    this.ladderCache = null;
+    return this.equipped(userId);
+  }
+
+  private ladderCache: { at: number; season: string; rows: LadderRow[] } | null = null;
+  /** Joueurs actifs sur la saison en cours, du plus au moins expérimenté. Recalculé au plus une fois par demi-minute. */
+  private xpLadder(): LadderRow[] {
     const now = this.now();
-    if (this.ladderCache && now - this.ladderCache.at < 30_000) return this.ladderCache.rows;
-    const users = this.db.prepare('SELECT DISTINCT u.id, u.nickname, u.avatar FROM users u JOIN rank_log l ON l.user_id = u.id').all() as { id: string; nickname: string; avatar: string | null }[];
-    const rows = users.map((u) => ({ id: u.id, nickname: u.nickname, avatar: u.avatar ?? null, xp: this.progressionOf(u.id).xp }));
+    const season = seasonAt(now);
+    if (this.ladderCache && this.ladderCache.season === season.id && now - this.ladderCache.at < 30_000) return this.ladderCache.rows;
+    const users = this.db
+      .prepare('SELECT DISTINCT u.id, u.nickname, u.avatar, c.title, c.frame, c.emblem FROM users u JOIN rank_log l ON l.user_id = u.id LEFT JOIN cosmetics c ON c.user_id = u.id WHERE l.ended_at >= ? AND l.ended_at < ?')
+      .all(season.start, season.end) as { id: string; nickname: string; avatar: string | null; title: string | null; frame: string | null; emblem: string | null }[];
+    const rows = users.map((u) => ({ id: u.id, nickname: u.nickname, avatar: u.avatar ?? null, title: u.title, frame: u.frame, emblem: u.emblem, xp: this.seasonProgress(u.id, season, this.firstSeason(u.id)).xp }));
     rows.sort((a, b) => b.xp - a.xp || a.nickname.localeCompare(b.nickname));
-    this.ladderCache = { at: now, rows };
+    this.ladderCache = { at: now, season: season.id, rows };
     return rows;
   }
 
-  /** Haut du classement général à l'expérience, avec la position du joueur s'il n'en fait pas partie. */
-  xpRanking(userId: string): { rows: XpRankRow[]; mine: XpRankRow | null; players: number } {
+  /** Haut du classement de la saison, avec la position du joueur s'il n'en fait pas partie. */
+  xpRanking(userId: string): { rows: XpRankRow[]; mine: XpRankRow | null; players: number; season: Season } {
     const ladder = this.xpLadder();
-    const toRow = (r: (typeof ladder)[number], i: number): XpRankRow => ({ rank: i + 1, nickname: r.nickname, avatar: r.avatar, xp: r.xp, league: leagueFor(r.xp).id, you: r.id === userId });
+    const toRow = (r: LadderRow, i: number): XpRankRow => ({ rank: i + 1, nickname: r.nickname, avatar: r.avatar, xp: r.xp, league: leagueFor(r.xp).id, title: r.title, frame: r.frame, emblem: r.emblem, you: r.id === userId });
     const top = ladder.slice(0, 20).map(toRow);
     const i = ladder.findIndex((r) => r.id === userId);
-    return { rows: top, mine: i >= 20 ? toRow(ladder[i]!, i) : null, players: ladder.length };
+    return { rows: top, mine: i >= 20 ? toRow(ladder[i]!, i) : null, players: ladder.length, season: seasonAt(this.now()) };
   }
 
   /** Classement des sept derniers jours entre le joueur et ses favoris : victoires, puis parties jouées (moins = mieux). */

@@ -2,19 +2,19 @@ import { VARIANT_IDS } from '@poker/engine';
 import { parisDay, type GameFact } from './engagement';
 
 /**
- * Points d'expérience, ligues et hauts faits. Tout est calculé à la lecture à partir de l'historique (parties de
+ * Points d'expérience, grades et hauts faits, par saison de trois mois (voir `seasonAt`). Tout est calculé à la lecture à partir de l'historique (parties de
  * poker, mains de blackjack, parties de Tableau) : aucun compteur à stocker, donc rien à resynchroniser, et un
  * joueur retrouve exactement sa progression après une restauration de sauvegarde.
  */
 
 export const LEAGUES = [
   { id: 'bronze', floor: 0 },
-  { id: 'silver', floor: 400 },
-  { id: 'gold', floor: 1200 },
-  { id: 'platinum', floor: 3000 },
-  { id: 'diamond', floor: 6500 },
-  { id: 'master', floor: 12000 },
-  { id: 'legend', floor: 25000 },
+  { id: 'silver', floor: 300 },
+  { id: 'gold', floor: 900 },
+  { id: 'platinum', floor: 2000 },
+  { id: 'diamond', floor: 4000 },
+  { id: 'master', floor: 9000 },
+  { id: 'legend', floor: 12000 },
 ] as const;
 export type LeagueId = (typeof LEAGUES)[number]['id'];
 

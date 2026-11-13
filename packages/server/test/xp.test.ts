@@ -13,14 +13,14 @@ describe('ligues', () => {
   it('Bronze au départ, puis une ligue à chaque seuil, jusqu’à Légende', () => {
     expect(LEAGUES.map((l) => l.id)).toEqual(['bronze', 'silver', 'gold', 'platinum', 'diamond', 'master', 'legend']);
     expect(leagueFor(0).id).toBe('bronze');
-    expect(leagueFor(399).id).toBe('bronze');
-    expect(leagueFor(400).id).toBe('silver');
-    expect(leagueFor(25_000).id).toBe('legend');
+    expect(leagueFor(299).id).toBe('bronze');
+    expect(leagueFor(300).id).toBe('silver');
+    expect(leagueFor(12_000).id).toBe('legend');
     expect(leagueFor(99_999).next).toBeNull();
     expect(leagueFor(99_999).progress).toBe(1);
   });
   it('avancement vers la ligue suivante', () => {
-    expect(leagueFor(200)).toMatchObject({ id: 'bronze', progress: 0.5, next: { id: 'silver', floor: 400 } });
+    expect(leagueFor(150)).toMatchObject({ id: 'bronze', progress: 0.5, next: { id: 'silver', floor: 300 } });
   });
 });
 
@@ -81,7 +81,7 @@ describe('progression et classement général', () => {
     expect([ana.rank, bea.rank, ana.players]).toEqual([1, 2, 2]);
     const board = accounts.xpRanking(ids.Bea!);
     expect(board.rows.map((r) => [r.nickname, r.you])).toEqual([['Ana', false], ['Bea', true]]);
-    expect(board.rows[0]!.league).toBe('bronze'); // 350 points : encore sous le seuil d'Argent (400)
+    expect(board.rows[0]!.league).toBe('silver'); // 350 points : au-dessus du seuil d'Argent (300)
     expect(board.mine).toBeNull();
   });
 });

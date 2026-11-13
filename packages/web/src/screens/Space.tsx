@@ -10,14 +10,16 @@ import { variantName } from '../lib/labels';
 import type { AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats, Wallet } from '../lib/types';
 import { RoundList } from './Overlays';
 import { EngagementPanel } from '../components/Engagement';
+import { RewardsPanel } from '../components/Rewards';
 import { RankingsPanel } from '../components/Rankings';
 import { VariantProgress } from '../components/VariantProgress';
 import { currentI18n, locale, tr, useI18n } from '../i18n';
 import { errorText } from '../lib/tbText';
 
-export type SpaceTab = 'classement' | 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter' | 'defis';
+export type SpaceTab = 'classement' | 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter' | 'defis' | 'recompenses';
 const TABS: { id: SpaceTab; label: string; icon: (size: number) => ReactNode }[] = [
   { id: 'defis', get label() { return tr('eg.tab'); }, icon: (s) => <TrophyIcon size={s} /> },
+  { id: 'recompenses', get label() { return tr('rw.tab'); }, icon: (s) => <TrophyIcon size={s} /> },
   { id: 'classement', get label() { return tr('rk.tab'); }, icon: (s) => <TrophyIcon size={s} /> },
   { id: 'profil', get label() { return tr('space.tab.profil'); }, icon: (s) => <ProfileIcon size={s} /> },
   { id: 'historique', get label() { return tr('space.tab.historique'); }, icon: (s) => <TrophyIcon size={s} /> },
@@ -123,6 +125,7 @@ export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; i
           </div>
           <Panel className="min-w-0 p-5 sm:p-6" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`}>
             {tab === 'defis' && <EngagementPanel />}
+            {tab === 'recompenses' && <RewardsPanel />}
             {tab === 'classement' && <RankingsPanel />}
             {tab === 'profil' && <ProfileTab />}
             {tab === 'historique' && <HistoryTab />}

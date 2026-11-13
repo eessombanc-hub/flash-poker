@@ -166,6 +166,12 @@ export class AccountDb {
         code_hash TEXT NOT NULL,
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS cosmetics (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT,
+        frame TEXT,
+        emblem TEXT
+      );
       CREATE TABLE IF NOT EXISTS rank_log (
         user_id TEXT NOT NULL,
         game TEXT NOT NULL,

@@ -6,7 +6,7 @@ import type { FinishedGame } from './types';
  * Classements par type de jeu (semaine, mois, total). Un journal de résultats daté (table rank_log) alimente tout :
  * une ligne par joueur, par jeu et par événement (partie de poker, main de blackjack, partie de Tableau).
  */
-export const RANK_PERIODS = ['week', 'month', 'all'] as const;
+export const RANK_PERIODS = ['week', 'month', 'season', 'all'] as const;
 export type RankPeriod = (typeof RANK_PERIODS)[number];
 /** `poker` = parties de poker (victoires de partie) ; `V6_3`… = manches gagnées dans une variante ; puis blackjack et Tableau. */
 export const RANK_GAMES = ['poker', ...VARIANT_IDS, 'blackjack', 'tableau:classic', 'tableau:hand5'] as const;
@@ -50,12 +50,47 @@ function parisMidnight(y: number, m: number, d: number): number {
 /** Début de la semaine (lundi 00 h) ou du mois (le 1er, 00 h), heure de Paris, et début de la suivante. */
 export function periodBounds(now: number, period: RankPeriod): { since: number; until: number | null } {
   if (period === 'all') return { since: 0, until: null };
+  if (period === 'season') {
+    const s = seasonAt(now);
+    return { since: s.start, until: s.end };
+  }
   const p = parts(now);
   if (period === 'week') {
     const since = parisMidnight(p.y, p.m, p.d - p.dow);
     return { since, until: parisMidnight(p.y, p.m, p.d - p.dow + 7) };
   }
   return { since: parisMidnight(p.y, p.m, 1), until: parisMidnight(p.y, p.m + 1, 1) };
+}
+
+/**
+ * Saison : un trimestre civil, heure de Paris (janvier-mars, avril-juin, juillet-septembre, octobre-décembre).
+ * Les points, les hauts faits et les classements de saison repartent de zéro à chaque changement de trimestre.
+ */
+export interface Season {
+  /** Ex. « 2026-T4 ». */
+  id: string;
+  year: number;
+  quarter: 1 | 2 | 3 | 4;
+  start: number;
+  end: number;
+}
+export function seasonAt(ms: number): Season {
+  const p = parts(ms);
+  const quarter = (Math.floor(p.m / 3) + 1) as Season['quarter'];
+  const m0 = (quarter - 1) * 3;
+  return { id: `${p.y}-T${quarter}`, year: p.y, quarter, start: parisMidnight(p.y, m0, 1), end: parisMidnight(p.y, m0 + 3, 1) };
+}
+/** Saisons de celle qui contient `firstMs` jusqu'à celle qui contient `nowMs`, de la plus ancienne à la plus récente. */
+export function seasonsBetween(firstMs: number, nowMs: number): Season[] {
+  const out: Season[] = [];
+  let s = seasonAt(Math.min(firstMs, nowMs));
+  const last = seasonAt(nowMs).id;
+  for (let guard = 0; guard < 400; guard++) {
+    out.push(s);
+    if (s.id === last) break;
+    s = seasonAt(s.end);
+  }
+  return out;
 }
 
 export interface RankEntry {

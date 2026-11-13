@@ -3,10 +3,11 @@ import { useI18n } from '../i18n';
 import { useAccountClient } from '../lib/context';
 import type { AchievementTier, Engagement as EngagementData, LeaderboardRow, XpRanking } from '../lib/types';
 import { LEAGUE_KEY, LeagueBadge, LeagueCard, useProgression } from './League';
+import { EmblemBadge, FramedAvatar, TitleTag } from './Cosmetics';
 import { Avatar } from './ui';
 
 const CHALLENGE = { play1: 'eg.play1', play3: 'eg.play3', win1: 'eg.win1' } as const;
-const ACHIEVEMENT = {
+export const ACHIEVEMENT = {
   first_game: 'eg.trophy.first_game',
   games_10: 'eg.trophy.games_10',
   games_50: 'eg.trophy.games_50',
@@ -139,6 +140,7 @@ export function EngagementPanel() {
       <section aria-labelledby="eg-xpboard">
         <h2 id="eg-xpboard" className="font-display text-2xl text-ivory-50">{t('xp.board')}</h2>
         <p className="mt-1 text-sm text-ivory-300/75">{t('xp.board.hint')}</p>
+        {xpBoard && <p className="mt-0.5 text-xs text-ivory-300/65">{t('season.label', { n: xpBoard.season.quarter, year: xpBoard.season.year })}</p>}
         {xpBoard && xpBoard.rows.length === 0 ? (
           <p className="mt-3 rounded-xl border border-dashed border-ivory-100/15 px-4 py-6 text-center text-sm text-ivory-300/75">{t('xp.board.empty')}</p>
         ) : (
@@ -147,10 +149,11 @@ export function EngagementPanel() {
               <li key={`${r.rank}-${r.nickname}`} className={`flex items-center gap-3 px-3 py-2 ${r.you ? 'bg-gold-500/10' : ''}`}>
                 <span className="w-6 text-right text-xs tabular-nums text-ivory-300/70">{r.rank}</span>
                 <LeagueBadge league={r.league} size={28} />
-                <Avatar nickname={r.nickname} avatar={r.avatar} size={28} />
+                <FramedAvatar nickname={r.nickname} avatar={r.avatar} size={28} frame={r.frame} />
                 <span className="min-w-0 flex-1 truncate font-medium text-ivory-50">
                   {r.nickname}{r.you && <span className="ml-1.5 text-xs text-gold-300">({t('eg.you')})</span>}
-                  <span className="ml-2 text-xs font-normal text-ivory-300/70">{t(LEAGUE_KEY[r.league])}</span>
+                  {r.emblem && <span className="ml-1.5 inline-flex align-middle"><EmblemBadge id={r.emblem} size={16} /></span>}
+                  <span className="ml-2 text-xs font-normal text-ivory-300/70">{r.title ? <TitleTag id={r.title} /> : t(LEAGUE_KEY[r.league])}</span>
                 </span>
                 <span className="tabular-nums text-sm text-ivory-50">{r.xp.toLocaleString()} <span className="text-xs text-ivory-300/70">{t('xp.unit')}</span></span>
               </li>

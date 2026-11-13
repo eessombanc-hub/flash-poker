@@ -8,7 +8,7 @@ import type { RankGame, RankPeriod, Ranking, RankRow } from '../lib/types';
 import { VARIANTS } from '../lib/labels';
 import { Avatar, Segmented } from './ui';
 
-const PERIODS: readonly RankPeriod[] = ['week', 'month', 'all'];
+const PERIODS: readonly RankPeriod[] = ['week', 'month', 'season', 'all'];
 const POKER_VARIANTS: RankGame[] = VARIANTS.map((v) => v.id);
 const MEDAL = ['🥇', '🥈', '🥉'];
 
@@ -44,7 +44,7 @@ export function RankingsPanel() {
   const { t } = useI18n();
   const account = useAccountClient();
   const [game, setGame] = useState<RankGame>('poker');
-  const [period, setPeriod] = useState<RankPeriod>('week');
+  const [period, setPeriod] = useState<RankPeriod>('season');
   const [data, setData] = useState<Ranking | null>(null);
   const [error, setError] = useState<string | null>(null);
 
