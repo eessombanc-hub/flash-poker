@@ -48,6 +48,13 @@ export type {
   Ranking,
   SentInvite,
   Trophy,
+  AchievementStatus,
+  AchievementTier,
+  LeagueId,
+  LeagueStatus,
+  ProgressionReply,
+  XpRankRow,
+  XpRanking,
   VariantStats,
   Wallet,
 } from '@poker/server/src/accounts/types';

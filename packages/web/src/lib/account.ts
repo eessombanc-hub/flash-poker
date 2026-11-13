@@ -3,7 +3,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
 import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
 import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbQueueDto, TbStatus } from './types';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow, RankGame, RankPeriod, Ranking } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow, RankGame, RankPeriod, Ranking, ProgressionReply, XpRanking } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
 const KEY = 'poker.account.v1';
@@ -222,6 +222,8 @@ export class AccountClient {
   stats = () => this.request<{ variants: VariantStats[]; games: number; gamesWon: number }>('GET', '/me/stats');
   wallet = () => this.request<Wallet>('GET', '/me/wallet');
   engagement = () => this.request<Engagement>('GET', '/me/engagement');
+  progression = () => this.request<ProgressionReply>('GET', '/me/progression');
+  xpRanking = () => this.request<XpRanking>('GET', '/me/xp-ranking');
   rankings = (game: RankGame, period: RankPeriod) => this.request<Ranking>('GET', `/me/rankings?game=${encodeURIComponent(game)}&period=${period}`);
   leaderboard = () => this.request<{ rows: LeaderboardRow[] }>('GET', '/me/leaderboard').then((r) => r.rows);
   bankroll = () => this.request<Bankroll>('GET', '/me/bankroll');

@@ -154,6 +154,8 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
   app.get<{ Params: { id: string } }>('/me/games/:id', async (req) => accounts.game(me(req).id, req.params.id));
   app.get('/me/stats', async (req) => accounts.stats(me(req).id));
   app.get('/me/engagement', async (req) => accounts.engagement(me(req).id));
+  app.get('/me/progression', async (req) => accounts.progression(me(req).id));
+  app.get('/me/xp-ranking', async (req) => accounts.xpRanking(me(req).id));
   app.get('/me/leaderboard', async (req) => ({ rows: accounts.leaderboard(me(req).id) }));
   app.get('/me/wallet', async (req) => accounts.wallet(me(req).id));
   app.get('/me/bankroll', async (req) => accounts.bankroll(me(req).id));

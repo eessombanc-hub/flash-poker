@@ -12,6 +12,8 @@ import { RateLimiter } from '../rateLimiter';
 import { computeRanking, logRank, pokerEntries, RANK_GAMES, RANK_PERIODS, type Ranking } from './rankings';
 import { variantProgress, type RoundFact } from './progress';
 import { computeEngagement, type Engagement } from './engagement';
+import { computeProgression, leagueFor, type Progression } from './xp';
+import type { XpRankRow } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LeaderboardRow, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
@@ -448,6 +450,52 @@ export class AccountService {
   engagement(userId: string): Engagement {
     const rows = this.db.prepare('SELECT ended_at, won FROM user_games WHERE user_id = ?').all(userId) as Row[];
     return computeEngagement(rows.map((r) => ({ endedAt: r.ended_at as number, won: r.won === 1 })), this.now());
+  }
+
+  /** Points d'expérience, ligue et hauts faits d'un joueur, calculés à la lecture. */
+  progression(userId: string): Progression & { rank: number | null; players: number } {
+    const p = this.progressionOf(userId);
+    const ladder = this.xpLadder();
+    const i = ladder.findIndex((r) => r.id === userId);
+    return { ...p, rank: i >= 0 ? i + 1 : null, players: ladder.length };
+  }
+
+  private progressionOf(userId: string): Progression {
+    const games = this.db.prepare('SELECT ended_at, won FROM user_games WHERE user_id = ?').all(userId) as Row[];
+    const byGame = this.db.prepare('SELECT game, SUM(played) AS played, SUM(won) AS won FROM rank_log WHERE user_id = ? GROUP BY game').all(userId) as { game: string; played: number; won: number }[];
+    let bjHands = 0;
+    let bjWins = 0;
+    let tbGames = 0;
+    let tbWins = 0;
+    let variants = 0;
+    let variantWins = 0;
+    for (const r of byGame) {
+      if (r.game === 'blackjack') (bjHands = r.played), (bjWins = r.won);
+      else if (r.game.startsWith('tableau:')) (tbGames += r.played), (tbWins += r.won);
+      else if (r.game !== 'poker') (variants += r.played > 0 ? 1 : 0), (variantWins += r.won > 0 ? 1 : 0);
+    }
+    return computeProgression({ games: games.map((r) => ({ endedAt: r.ended_at as number, won: r.won === 1 })), bjHands, bjWins, tbGames, tbWins, variants, variantWins });
+  }
+
+  private ladderCache: { at: number; rows: { id: string; nickname: string; avatar: string | null; xp: number }[] } | null = null;
+  /** Tous les joueurs ayant déjà joué, du plus au moins expérimenté. Recalculé au plus une fois par demi-minute. */
+  private xpLadder(): { id: string; nickname: string; avatar: string | null; xp: number }[] {
+    const now = this.now();
+    if (this.ladderCache && now - this.ladderCache.at < 30_000) return this.ladderCache.rows;
+    const users = this.db.prepare('SELECT DISTINCT u.id, u.nickname, u.avatar FROM users u JOIN rank_log l ON l.user_id = u.id').all() as { id: string; nickname: string; avatar: string | null }[];
+    const rows = users.map((u) => ({ id: u.id, nickname: u.nickname, avatar: u.avatar ?? null, xp: this.progressionOf(u.id).xp }));
+    rows.sort((a, b) => b.xp - a.xp || a.nickname.localeCompare(b.nickname));
+    this.ladderCache = { at: now, rows };
+    return rows;
+  }
+
+  /** Haut du classement général à l'expérience, avec la position du joueur s'il n'en fait pas partie. */
+  xpRanking(userId: string): { rows: XpRankRow[]; mine: XpRankRow | null; players: number } {
+    const ladder = this.xpLadder();
+    const toRow = (r: (typeof ladder)[number], i: number): XpRankRow => ({ rank: i + 1, nickname: r.nickname, avatar: r.avatar, xp: r.xp, league: leagueFor(r.xp).id, you: r.id === userId });
+    const top = ladder.slice(0, 20).map(toRow);
+    const i = ladder.findIndex((r) => r.id === userId);
+    return { rows: top, mine: i >= 20 ? toRow(ladder[i]!, i) : null, players: ladder.length };
   }
 
   /** Classement des sept derniers jours entre le joueur et ses favoris : victoires, puis parties jouées (moins = mieux). */

@@ -122,6 +122,24 @@ export interface InviteOverview {
 
 
 export type { DailyChallenge, Engagement, Trophy } from './engagement';
+export type { AchievementStatus, AchievementTier, LeagueId, LeagueStatus, Progression } from './xp';
+
+export type ProgressionReply = import('./xp').Progression & { rank: number | null; players: number };
+export interface XpRanking {
+  rows: XpRankRow[];
+  mine: XpRankRow | null;
+  players: number;
+}
+
+/** Ligne du classement général à l'expérience. */
+export interface XpRankRow {
+  rank: number;
+  nickname: string;
+  avatar: string | null;
+  xp: number;
+  league: import('./xp').LeagueId;
+  you: boolean;
+}
 
 /** Ligne du classement hebdomadaire entre favoris : parties gagnées sur les sept derniers jours. */
 export interface LeaderboardRow extends AccountPublic {
