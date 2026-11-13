@@ -5,6 +5,8 @@ import { useLiveStats } from './lib/liveStats';
 import { useAccount, useAccountClient, useClient, useGame } from './lib/context';
 import { SettingsProvider, useSettings } from './lib/settings';
 import { Sound } from './lib/sound';
+import { useSlots } from './lib/slots';
+import { TableDock } from './components/TableDock';
 import type { AuthMode } from './screens/Auth';
 import { CreateRoom, JoinRoom, TrainingRoom } from './screens/Forms';
 import { Home } from './screens/Home';
@@ -182,6 +184,19 @@ function AppContent() {
   const [guided, setGuided] = useState(false);
   const [spaceTab, setSpaceTab] = useState<SpaceTab>('profil');
   const [joinCode, setJoinCode] = useState<string>(initialCode);
+  // Plusieurs tables : le joueur peut quitter l'écran de sa table pour naviguer (elle reste ouverte et surveillée).
+  const slots = useSlots();
+  const [away, setAway] = useState(false);
+  const activeSlot = slots ? slots.active : 0;
+  useEffect(() => { if (!session) setAway(false); }, [session]);
+  /** Ouvrir ou rejoindre une table de poker : on prend un emplacement libre, dans la limite de quatre tables. */
+  const enter = (to: 'create' | 'join' | 'train') => {
+    if (slots && !slots.focusFree()) {
+      client.toast('warning', t('err.TABLE_LIMIT'));
+      return;
+    }
+    setScreen(to);
+  };
 
   useEffect(() => {
     if (!account) return;
@@ -191,17 +206,19 @@ function AppContent() {
   }, [account, client]);
 
   useEffect(() => {
+    if (slots) return; // avec plusieurs emplacements, la reprise et la fermeture sont gérées pour chacun d'eux
     client.resume(); // reprise automatique après un rechargement (jeton conservé)
     return () => client.dispose();
-  }, [client]);
+  }, [client, slots]);
   useEffect(() => {
     // Écrans de compte préchargés en tâche de fond, une fois l'accueil affiché : ils s'ouvrent ensuite sans attente.
     const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace(), loadBlackjack(), loadTableau(), loadVariants()]).catch(() => undefined), 1500);
     return () => clearTimeout(t);
   }, []);
 
+  const tableShown = !!session && !away;
   let content;
-  if (session) {
+  if (tableShown) {
     if (!view) {
       content = (
         <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
@@ -213,7 +230,7 @@ function AppContent() {
           </Panel>
         </main>
       );
-    } else if (view.status === 'WAITING' || view.status === 'CANCELLED') content = <Lobby />;
+    } else if (view.status === 'WAITING' || view.status === 'CANCELLED') content = <Lobby onAway={slots ? () => { setAway(true); setScreen('home'); } : undefined} />;
     else content = <Table onRegister={() => setScreen({ auth: 'register' })} />;
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} />;
@@ -225,11 +242,11 @@ function AppContent() {
         onBack={() => setScreen('home')}
         onPlaySolo={(v) => {
           setTrainVariant(v);
-          setScreen('train');
+          enter('train');
         }}
         onCreate={(v) => {
           setCreateVariant(v);
-          setScreen('create');
+          enter('create');
         }}
         onLogin={() => setScreen({ auth: 'login' })}
       />
@@ -241,7 +258,7 @@ function AppContent() {
         onBack={() => setScreen('home')}
         onPick={(v) => {
           setTrainVariant(v ?? undefined);
-          setScreen('train');
+          enter('train');
         }}
         onBlackjack={() => setScreen('blackjack')}
         onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
@@ -254,11 +271,11 @@ function AppContent() {
       <Home
         onCreate={(v) => {
           setCreateVariant(v);
-          setScreen('create');
+          enter('create');
         }}
         onTrain={() => setScreen('solo')}
         onChallenges={me ? () => { setSpaceTab('defis'); setScreen('space'); } : undefined}
-        onQuickStart={() => { setTrainVariant('CLOSED_1'); setGuided(true); setScreen('train'); }}
+        onQuickStart={() => { setTrainVariant('CLOSED_1'); setGuided(true); enter('train'); }}
         onVariants={() => setScreen('variants')}
         me={me}
         live={live}
@@ -268,7 +285,7 @@ function AppContent() {
         onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
         onJoin={(code) => {
           setJoinCode(code ?? '');
-          setScreen('join');
+          enter('join');
         }}
         onJoinTable={(game, code, variant) => {
           if (game === 'blackjack') { setBjJoin(code); setScreen('blackjack'); }
@@ -283,8 +300,24 @@ function AppContent() {
     <SettingsProvider>
       <SoundBridge />
       <ConnectionBanner />
-      {!(session && view && view.status !== 'WAITING' && view.status !== 'CANCELLED') && screen !== 'home' && <TopBar />}
+      {!(tableShown && view && view.status !== 'WAITING' && view.status !== 'CANCELLED') && screen !== 'home' && <TopBar />}
       <Suspense fallback={<p className="p-8 text-center text-sm text-ivory-300/70" role="status">{t('common.loading')}</p>}>{content}</Suspense>
+      {slots && (
+        <TableDock
+          slots={slots}
+          account={account}
+          signedIn={!!me}
+          trigger={`${typeof screen === 'string' ? screen : 'auth'}:${away ? 1 : 0}`}
+          compact={tableShown || screen === 'blackjack' || screen === 'tableau'}
+          shownSlot={tableShown ? activeSlot : -1}
+          onOpenPoker={(i) => { slots.setActive(i); setAway(false); }}
+          onOpenExternal={(game, code) => {
+            setAway(true);
+            if (game === 'blackjack') { setBjJoin(''); setScreen('blackjack'); }
+            else { setTableauCode(''); setScreen('tableau'); }
+          }}
+        />
+      )}
       <ToastHost toasts={toasts} onDismiss={client.dismissToast} />
     </SettingsProvider>
   );

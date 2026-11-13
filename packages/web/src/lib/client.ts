@@ -77,6 +77,8 @@ export interface ClientOptions {
   socketFactory?: (url: string, opts: Record<string, unknown>) => Socket;
   /** Jeton du compte connecté (joueur inscrit), transmis à la création et à l'arrivée. */
   accountToken?: () => string | null;
+  /** Appelé avant d'ouvrir ou de rejoindre une table : peut refuser (plafond de tables atteint). */
+  beforeNewTable?: () => void;
 }
 
 type Ack = { ok: true } | { ok: false; error: { code: string; message: string; ruleCode?: string } };
@@ -115,11 +117,13 @@ export class GameClient {
   // ---------- Accès ----------
 
   async createRoom(input: CreateRoomInput): Promise<void> {
+    this.opts.beforeNewTable?.();
     const res = await createRoom(this.baseUrl, input, this.opts.fetchFn, this.opts.accountToken?.());
     this.begin({ ...res, nickname: input.nickname });
   }
 
   async joinRoom(code: string, input: JoinRoomInput): Promise<void> {
+    this.opts.beforeNewTable?.();
     const res = await joinRoom(this.baseUrl, code, input, this.opts.fetchFn, this.opts.accountToken?.());
     this.begin({ code: code.trim().toUpperCase(), token: res.token, playerId: res.playerId, nickname: input.nickname });
   }

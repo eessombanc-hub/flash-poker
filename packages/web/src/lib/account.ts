@@ -31,6 +31,8 @@ export interface AccountOptions {
   socketFactory?: (url: string, opts: Record<string, unknown>) => Socket;
   /** Un joueur favori vient de se connecter (notification dans l'application). */
   onFavoriteOnline?: (who: AccountPublic) => void;
+  /** Appelé avant d'ouvrir ou de rejoindre une table de Blackjack ou de Tableau : peut refuser (plafond de tables). */
+  beforeNewTable?: () => void;
 }
 
 /** Compte du joueur : connexion, profil, espace personnel, présence (favoris). */
@@ -247,9 +249,21 @@ export class AccountClient {
     return this.request<T>(method, path, body, { 'x-bj-guest': this.guestId() });
   }
   // ----- Le Tableau -----
-  tbCreate = (input: { mode: 'training' | 'friendly' | 'ranked'; level?: AiLevel; variant?: TableauVariant; public?: boolean; nickname?: string }) => this.bj<TbGameDto>('POST', '/tableau/games', input);
+  /** Même accès au plafond pour les tables de Blackjack et de Tableau. */
+  set beforeNewTable(fn: (() => void) | undefined) {
+    this.opts.beforeNewTable = fn;
+  }
+  private guardNew = <T,>(f: () => Promise<T>): Promise<T> => {
+    try {
+      this.opts.beforeNewTable?.();
+    } catch (e) {
+      return Promise.reject(e);
+    }
+    return f();
+  };
+  tbCreate = (input: { mode: 'training' | 'friendly' | 'ranked'; level?: AiLevel; variant?: TableauVariant; public?: boolean; nickname?: string }) => this.guardNew(() => this.bj<TbGameDto>('POST', '/tableau/games', input));
   tbGet = (code: string) => this.bj<TbGameDto>('GET', `/tableau/games/${encodeURIComponent(code)}`);
-  tbJoin = (code: string, nickname?: string) => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/join`, { nickname });
+  tbJoin = (code: string, nickname?: string) => this.guardNew(() => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/join`, { nickname }));
   tbPlace = (code: string, col: number, card?: string) => this.bj<TbGameDto>('POST', `/tableau/games/${encodeURIComponent(code)}/place`, { col, card });
   tbAdvice = (code: string) => this.bj<{ col: number; card: string; kind: 'improve' | 'empty' | 'dump'; after: ColumnHand | null; text: string }>('GET', `/tableau/games/${encodeURIComponent(code)}/advice`);
   tbLeave = (code: string) => this.bj<{ left: true; forfeit: boolean }>('POST', `/tableau/games/${encodeURIComponent(code)}/leave`, {});
@@ -262,9 +276,9 @@ export class AccountClient {
   tbHistory = () => this.bj<{ history: TbHistoryEntry[] }>('GET', '/me/tableau/history').then((r) => r.history);
   blackjack = () => this.bj<BjOverview>('GET', '/me/blackjack');
   // ----- Tables à plusieurs -----
-  bjTableCreate = (input: { table: string; seats: SeatKind[]; bet?: number; rules?: TableRules; public?: boolean; nickname?: string }) => this.bj<BjTableDto>('POST', '/blackjack/tables', input);
+  bjTableCreate = (input: { table: string; seats: SeatKind[]; bet?: number; rules?: TableRules; public?: boolean; nickname?: string }) => this.guardNew(() => this.bj<BjTableDto>('POST', '/blackjack/tables', input));
   bjTableGet = (code: string, version?: number) => this.bj<BjTableReply>('GET', `/blackjack/tables/${encodeURIComponent(code)}${version === undefined ? '' : `?v=${version}`}`);
-  bjTableJoin = (code: string, nickname?: string) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/join`, { nickname });
+  bjTableJoin = (code: string, nickname?: string) => this.guardNew(() => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/join`, { nickname }));
   bjTableLeave = (code: string) => this.bj<{ left: true }>('POST', `/blackjack/tables/${encodeURIComponent(code)}/leave`, {});
   bjTableStart = (code: string) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/start`, {});
   bjTableBet = (code: string, bet: number) => this.bj<BjTableDto>('POST', `/blackjack/tables/${encodeURIComponent(code)}/bet`, { bet });

@@ -7,7 +7,7 @@ import { useI18n } from '../i18n';
 import { VARIANTS } from '../lib/labels';
 import { ChatDock } from '../components/Social';
 
-export function Lobby() {
+export function Lobby({ onAway }: { onAway?: () => void } = {}) {
   const { t, tp } = useI18n();
   const client = useClient();
   const view = useGame((s) => s.view)!;
@@ -105,6 +105,12 @@ export function Lobby() {
         <p className="mt-1 text-center text-sm text-ivory-200/85" aria-live="polite">
           {t('lobby.joueurs_presents', { n, max: view.config.maxPlayers })}
         </p>
+        {onAway && (
+          <div className="mt-4 rounded-xl border border-jade-500/30 bg-jade-500/10 p-3 text-center">
+            <Button variant="secondary" onClick={onAway}>{t('lobby.naviguer')}</Button>
+            <p className="mt-2 text-xs text-ivory-200/85">{t('lobby.naviguer.hint')}</p>
+          </div>
+        )}
         {fixed && (
           <details className="mt-4 rounded-xl border border-ivory-100/12 bg-ink-900/40 px-4 py-3 text-sm text-ivory-100/90">
             <summary className="cursor-pointer font-semibold text-gold-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('lobby.rappel_regles', { name: fixed.name })}</summary>
