@@ -23,7 +23,7 @@ import type { VariantId } from '../lib/types';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, onLegal, onFeedback, onFaq, onStaff, me, live, langSelect, notice, account }: { onStaff?: () => void; onFaq?: () => void; onFeedback?: () => void; onLegal?: (p: LegalPage) => void; onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onMultiplayer, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, onLegal, onFeedback, onFaq, onStaff, me, live, langSelect, notice, account }: { onMultiplayer?: () => void; onStaff?: () => void; onFaq?: () => void; onFeedback?: () => void; onLegal?: (p: LegalPage) => void; onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -63,7 +63,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           <RailTile icon={<JoinIcon size={38} />} title={t('home.join.title')} onClick={() => onJoin()} tone="felt" suit="♥" />
           <RailGroup label={t('lob.group.poker')} />
           <RailTile icon={<TrophyIcon size={38} />} title={t('home.solo.title')} onClick={onTrain} tone="ink" suit="♦" />
-          {onVariants && <RailTile icon={<ChipsIcon size={38} />} title={t('home.variants.title')} onClick={onVariants} tone="ink" suit="♣" />}
+          {(onMultiplayer ?? onVariants) && <RailTile icon={<ChipsIcon size={38} />} title={onMultiplayer ? t('home.multi.title') : t('home.variants.title')} onClick={(onMultiplayer ?? onVariants)!} tone="ink" suit="♣" />}
           {(onBlackjack || onTableau) && <RailGroup label={t('lob.group.other')} />}
           {onBlackjack && <RailTile icon={<CoinIcon size={38} />} title={t('home.blackjack')} onClick={onBlackjack} tone="ink" suit="♠" />}
           {onTableau && <RailTile icon={<CardsIcon size={38} />} title={t('tb.variant.classic')} onClick={() => onTableau('classic')} tone="ink" suit="♦" />}
@@ -179,7 +179,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
 }
 
 /** Liste publique des parties ouvertes : actualisée en continu, on les rejoint en un clic. */
-function OpenRooms({ onSelect, onWatch, onSelectTable, onCreate }: { onSelect: (code: string) => void; onWatch?: (code: string) => void; onSelectTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onCreate: () => void }) {
+export function OpenRooms({ onSelect, onWatch, onSelectTable, onCreate }: { onSelect: (code: string) => void; onWatch?: (code: string) => void; onSelectTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onCreate: () => void }) {
   const { t, tp } = useI18n();
   const client = useClient();
   const [rooms, setRooms] = useState<RoomSummary[] | null>(null);

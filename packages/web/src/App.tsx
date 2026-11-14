@@ -28,14 +28,16 @@ const loadSpace = () => import('./screens/Space');
 const loadBlackjack = () => import('./screens/Blackjack');
 const loadTableau = () => import('./screens/Tableau');
 const loadVariants = () => import('./screens/Variants');
+const loadMultiplayer = () => import('./screens/Multiplayer');
 const AuthScreen = lazy(() => loadAuth().then((m) => ({ default: m.AuthScreen })));
 const Blackjack = lazy(() => loadBlackjack().then((m) => ({ default: m.Blackjack })));
 const Tableau = lazy(() => loadTableau().then((m) => ({ default: m.Tableau })));
+const Multiplayer = lazy(() => loadMultiplayer().then((m) => ({ default: m.Multiplayer })));
 const Variants = lazy(() => loadVariants().then((m) => ({ default: m.Variants })));
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 import type { SpaceTab } from './screens/Space';
 
-type Screen = 'home' | 'legal' | 'feedback' | 'staff' | 'faq' | 'create' | 'join' | 'watch' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | { auth: AuthMode };
+type Screen = 'home' | 'legal' | 'feedback' | 'staff' | 'faq' | 'create' | 'join' | 'watch' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | 'multi' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -183,6 +185,7 @@ function AppContent() {
   const [invite] = useState(takeInviteCode);
   const [tableauCode, setTableauCode] = useState(takeTableauCode);
   const [bjJoin, setBjJoin] = useState('');
+  const [bjTab, setBjTab] = useState<'plusieurs' | undefined>(undefined);
   const [tableauVariant, setTableauVariant] = useState<'classic' | 'hand5'>('classic');
   const [screen, setScreen] = useState<Screen>(() => (window.location.hash === ADMIN_HASH || window.location.hash === STAFF_HASH ? 'staff' : window.location.hash === FEEDBACK_HASH ? 'feedback' : window.location.hash === FAQ_HASH ? 'faq' : legalFromHash(window.location.hash) ? 'legal' : resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
   const [legalPage, setLegalPage] = useState<LegalPage>(() => legalFromHash(window.location.hash) ?? 'mentions');
@@ -226,7 +229,7 @@ function AppContent() {
   }, [client, slots]);
   useEffect(() => {
     // Écrans de compte préchargés en tâche de fond, une fois l'accueil affiché : ils s'ouvrent ensuite sans attente.
-    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace(), loadBlackjack(), loadTableau(), loadVariants()]).catch(() => undefined), 1500);
+    const t = setTimeout(() => void Promise.all([loadAuth(), loadSpace(), loadBlackjack(), loadTableau(), loadVariants(), loadMultiplayer()]).catch(() => undefined), 1500);
     return () => clearTimeout(t);
   }, []);
 
@@ -252,8 +255,33 @@ function AppContent() {
   else if (screen === 'staff') content = <StaffScreen onBack={leaveHash} initialTab={window.location.hash === ADMIN_HASH ? 'messages' : 'chat'} />;
   else if (screen === 'legal') content = <LegalScreen page={legalPage} onPage={setLegalPage} onBack={() => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setScreen('home'); }} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} onStaff={openStaff} />;
-  else if (screen === 'blackjack') content = <Blackjack onBack={() => { setBjJoin(''); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialJoin={bjJoin || undefined} />;
+  else if (screen === 'blackjack') content = <Blackjack onBack={() => { setBjJoin(''); setBjTab(undefined); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialJoin={bjJoin || undefined} initialTab={bjTab} />;
   else if (screen === 'tableau') content = <Tableau onBack={() => { setTableauCode(''); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} initialVariant={tableauVariant} />;
+  else if (screen === 'multi')
+    content = (
+      <Multiplayer
+        onBack={() => setScreen('home')}
+        onCreate={(v) => {
+          setCreateVariant(v);
+          enter('create');
+        }}
+        onJoin={(code) => {
+          setJoinCode(code ?? '');
+          enter('join');
+        }}
+        onWatch={(code) => {
+          setWatchCode(code);
+          enter('watch');
+        }}
+        onJoinTable={(game, code, variant) => {
+          if (game === 'blackjack') { setBjJoin(code); setScreen('blackjack'); }
+          else { setTableauCode(code); if (variant) setTableauVariant(variant); setScreen('tableau'); }
+        }}
+        onBlackjack={() => { setBjTab('plusieurs'); setScreen('blackjack'); }}
+        onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}
+        onVariants={() => setScreen('variants')}
+      />
+    );
   else if (screen === 'variants')
     content = (
       <Variants
@@ -296,6 +324,7 @@ function AppContent() {
         onChallenges={me ? () => { setSpaceTab('defis'); setScreen('space'); } : undefined}
         onQuickStart={() => { setTrainVariant('CLOSED_1'); setGuided(true); enter('train'); }}
         onVariants={() => setScreen('variants')}
+        onMultiplayer={() => setScreen('multi')}
         me={me}
         live={live}
         onSpace={(tab) => { setSpaceTab(tab); setScreen('space'); }}

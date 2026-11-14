@@ -13,7 +13,7 @@ import type { BjAction, BjActive, BjOverview, BjResult, TablePreset, TableRules 
 import { currentI18n, locale, tr, useI18n } from '../i18n';
 import { errorText } from '../lib/tbText';
 
-type Tab = 'jouer' | 'plusieurs' | 'progression' | 'classement' | 'historique';
+export type Tab = 'jouer' | 'plusieurs' | 'progression' | 'classement' | 'historique';
 const TABS: readonly Tab[] = ['jouer', 'plusieurs', 'progression', 'classement', 'historique'];
 const TAB_LABEL: Record<Tab, string> = {
   get jouer() { return tr('bj.tab.jouer'); },
@@ -28,7 +28,7 @@ const FREE_LIMITS = { minBet: 1, maxBet: 1000 };
 const rulesLine = rulesSummary;
 
 /** Point d'entrée : ouvert à tous. Invité ou connecté, jetons, niveau et manche en cours sont enregistrés côté serveur. */
-export function Blackjack({ onBack, onLogin, initialJoin }: { onBack: () => void; onLogin: () => void; initialJoin?: string }) {
+export function Blackjack({ onBack, onLogin, initialJoin, initialTab }: { onBack: () => void; onLogin: () => void; initialJoin?: string; initialTab?: Tab }) {
   const { t } = useI18n();
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
@@ -61,7 +61,7 @@ export function Blackjack({ onBack, onLogin, initialJoin }: { onBack: () => void
                   {t('blackjack.se_connecter')}</button>
               </p>
             )}
-            <Game onPlaying={setPlaying} stepBack={stepBack} initialJoin={initialJoin} />
+            <Game onPlaying={setPlaying} stepBack={stepBack} initialJoin={initialJoin} initialTab={initialTab} />
           </>
         )}
       </main>
@@ -69,12 +69,12 @@ export function Blackjack({ onBack, onLogin, initialJoin }: { onBack: () => void
   );
 }
 
-function Game({ onPlaying, stepBack, initialJoin }: { onPlaying?: (playing: boolean) => void; stepBack?: { current: (() => boolean) | null }; initialJoin?: string } = {}) {
+function Game({ onPlaying, stepBack, initialJoin, initialTab }: { onPlaying?: (playing: boolean) => void; stepBack?: { current: (() => boolean) | null }; initialJoin?: string; initialTab?: Tab } = {}) {
   const { t } = useI18n();
   const account = useAccountClient()!;
   const { sound } = useSettings();
   const [prefs, setPrefs] = useState<BjPrefs>(loadPrefs);
-  const [tab, setTab] = useState<Tab>(initialJoin ? 'plusieurs' : 'jouer');
+  const [tab, setTab] = useState<Tab>(initialJoin ? 'plusieurs' : initialTab ?? 'jouer');
   const [overview, setOverview] = useState<BjOverview | null>(null);
   const [active, setActive] = useState<BjActive | null>(null);
   const [result, setResult] = useState<BjResult | null>(null);
