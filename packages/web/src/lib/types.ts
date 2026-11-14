@@ -107,3 +107,6 @@ export interface StaffUser {
 export interface StaffChatMessage { id: number; at: number; nickname: string; registered: boolean; text: string; authorId: string | null }
 export interface StaffLogItem { id: number; at: number; actor: string; action: string; target: string; detail: string }
 export interface StaffStats { accounts: number; newThisWeek: number; staff: number; mutes: number; bans: number; feedbackOpen: number }
+
+/** Appareil connecté à un compte (session de confiance ou non). */
+export interface Device { id: string; label: string; createdAt: number; lastSeen: number; expiresAt: number; trusted: boolean; current: boolean }

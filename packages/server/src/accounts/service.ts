@@ -47,9 +47,9 @@ function newRecoveryCode(): string {
 }
 const normalizeCode = (raw: string): string => raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-export const registerSchema = z.object({ nickname, email, password, avatar, invite: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/).optional() });
+export const registerSchema = z.object({ nickname, email, password, avatar, remember: z.boolean().optional(), invite: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/).optional() });
 export const inviteEmailSchema = z.object({ email });
-export const loginSchema = z.object({ login: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) });
+export const loginSchema = z.object({ login: z.string().trim().min(1).max(254), password: z.string().min(1).max(128), remember: z.boolean().optional() });
 export const profileSchema = z.object({ nickname: nickname.optional(), avatar, notifyEmail: z.boolean().optional(), club: z.string().max(60).nullable().optional() });
 export const emailChangeSchema = z.object({ email, password: z.string().min(1).max(128) });
 export const passwordChangeSchema = z.object({ current: z.string().min(1).max(128), next: password });
@@ -83,7 +83,21 @@ function parse<S extends z.ZodType>(schema: S, input: unknown): z.output<S> {
 export type { Wallet } from './types';
 export type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, SentInvite, VariantStats } from './types';
 
-const SESSION_MS = 30 * 24 * 3_600_000;
+/** Appareil de confiance : 90 jours, prolongés à chaque usage. Sans confiance : une journée, sans prolongation. */
+const TRUSTED_MS = 90 * 24 * 3_600_000;
+const SHORT_MS = 24 * 3_600_000;
+const SEEN_EVERY_MS = 3_600_000;
+const MAX_DEVICES = 20;
+
+/** Libellé lisible d'un appareil, tiré de l'en-tête User-Agent (« Chrome sur Windows »). Aucune donnée brute n'est conservée. */
+export function deviceLabel(ua: string | undefined): string {
+  const u = ua ?? '';
+  const browser = /Edg\//.test(u) ? 'Edge' : /OPR\/|Opera/.test(u) ? 'Opera' : /Firefox\//.test(u) ? 'Firefox' : /Chrome\/|CriOS/.test(u) ? 'Chrome' : /Safari\//.test(u) ? 'Safari' : 'Navigateur';
+  const os = /Windows/.test(u) ? 'Windows' : /Android/.test(u) ? 'Android' : /iPhone|iPad|iOS/.test(u) ? 'iOS' : /Mac OS X|Macintosh/.test(u) ? 'macOS' : /Linux/.test(u) ? 'Linux' : '';
+  return os ? `${browser} sur ${os}` : browser;
+}
+
+export interface Device { id: string; label: string; createdAt: number; lastSeen: number; expiresAt: number; trusted: boolean; current: boolean }
 /** Invitations par e-mail : 10 par jour et par joueur, et pas deux fois la même adresse en 7 jours (anti-abus). */
 const INVITES_PER_DAY = 10;
 const REINVITE_MS = 7 * 24 * 3_600_000;
@@ -124,7 +138,7 @@ export class AccountService {
 
   // ---------- Inscription, connexion, sessions ----------
 
-  async register(input: unknown): Promise<{ token: string; account: AccountPrivate; recoveryCode: string }> {
+  async register(input: unknown, ua?: string): Promise<{ token: string; account: AccountPrivate; recoveryCode: string }> {
     const data = parse(registerSchema, input);
     if (this.findBy('nickname', data.nickname)) throw new ServerError('NICKNAME_TAKEN', 'Ce pseudo est déjà utilisé par un autre compte');
     if (this.findBy('email', data.email)) throw new ServerError('EMAIL_TAKEN', 'Un compte existe déjà avec cette adresse e-mail');
@@ -133,10 +147,10 @@ export class AccountService {
       .prepare('INSERT INTO users (id, nickname, email, pass_hash, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(id, data.nickname, data.email, await hashPassword(data.password), data.avatar && AVATAR_IMAGE_ID.test(data.avatar) ? null : (data.avatar ?? null), this.now());
     if (data.invite) this.acceptInvite(data.invite, id, data.email);
-    return { token: this.openSession(id), account: this.account(id)!, recoveryCode: await this.issueRecoveryCode(id) };
+    return { token: this.openSession(id, data.remember ?? true, ua), account: this.account(id)!, recoveryCode: await this.issueRecoveryCode(id) };
   }
 
-  async login(input: unknown): Promise<{ token: string; account: AccountPrivate }> {
+  async login(input: unknown, ua?: string): Promise<{ token: string; account: AccountPrivate }> {
     const data = parse(loginSchema, input);
     const row = this.findBy(data.login.includes('@') ? 'email' : 'nickname', data.login);
     // Même message et même travail de calcul que le compte existe ou non : rien n'indique lequel des deux est faux.
@@ -144,7 +158,7 @@ export class AccountService {
     if (!row || !ok) throw new ServerError('UNAUTHORIZED', 'Pseudo, e-mail ou mot de passe incorrect');
     // Migration transparente vers les paramètres de hachage actuels.
     if (needsRehash(row.pass_hash as string)) this.db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?').run(await hashPassword(data.password), row.id as string);
-    return { token: this.openSession(row.id as string), account: this.account(row.id as string)! };
+    return { token: this.openSession(row.id as string, data.remember ?? true, ua), account: this.account(row.id as string)! };
   }
 
   logout(token: string): void {
@@ -154,11 +168,16 @@ export class AccountService {
   /** Compte rattaché à une session valide, sinon null. */
   userBySession(token: string | undefined | null): AccountPrivate | null {
     if (!token) return null;
-    const row = this.db.prepare('SELECT user_id, expires_at FROM sessions WHERE token_hash = ?').get(tokenHash(token)) as Row | undefined;
+    const row = this.db.prepare('SELECT user_id, expires_at, last_seen, trusted FROM sessions WHERE token_hash = ?').get(tokenHash(token)) as Row | undefined;
     if (!row) return null;
-    if ((row.expires_at as number) < this.now()) {
+    const now = this.now();
+    if ((row.expires_at as number) < now) {
       this.logout(token);
       return null;
+    }
+    // Appareil de confiance : la session se prolonge à l'usage (au plus une écriture par heure).
+    if (now - (row.last_seen as number) > SEEN_EVERY_MS) {
+      this.db.prepare('UPDATE sessions SET last_seen = ?, expires_at = ? WHERE token_hash = ?').run(now, row.trusted ? now + TRUSTED_MS : (row.expires_at as number), tokenHash(token));
     }
     return this.account(row.user_id as string);
   }
@@ -179,11 +198,34 @@ export class AccountService {
     return Math.ceil((Math.max(...rows.map((r) => r.until as number)) - now) / 1000);
   }
 
-  private openSession(userId: string): string {
+  /** Appareils connectés au compte (le plus récemment utilisé d'abord) ; l'identifiant n'est pas le jeton. */
+  devices(userId: string, currentToken?: string | null): Device[] {
+    const cur = currentToken ? tokenHash(currentToken) : '';
+    const rows = this.db.prepare('SELECT token_hash, label, created_at, last_seen, expires_at, trusted FROM sessions WHERE user_id = ? AND expires_at >= ? ORDER BY last_seen DESC').all(userId, this.now()) as Row[];
+    return rows.map((r) => ({ id: (r.token_hash as string).slice(0, 16), label: (r.label as string) || 'Appareil', createdAt: r.created_at as number, lastSeen: r.last_seen as number, expiresAt: r.expires_at as number, trusted: r.trusted === 1, current: r.token_hash === cur }));
+  }
+
+  revokeDevice(userId: string, id: string): void {
+    if (!/^[0-9a-f]{16}$/.test(id)) throw new ServerError('BAD_REQUEST', 'Appareil inconnu');
+    const r = this.db.prepare("DELETE FROM sessions WHERE user_id = ? AND substr(token_hash, 1, 16) = ?").run(userId, id);
+    if (r.changes === 0) throw new ServerError('NOT_FOUND', 'Appareil introuvable');
+  }
+
+  /** Déconnecte tous les appareils sauf celui d'où la demande est faite. */
+  revokeOtherDevices(userId: string, keepToken: string): number {
+    return Number(this.db.prepare('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?').run(userId, tokenHash(keepToken)).changes);
+  }
+
+  private openSession(userId: string, remember = true, ua?: string): string {
     if (this.banLeft(userId) > 0) throw new ServerError('FORBIDDEN', 'Ce compte est suspendu. Écrivez à l’éditeur pour en savoir plus.');
     const token = newToken();
     this.db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(this.now());
-    this.db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)').run(tokenHash(token), userId, this.now() + SESSION_MS);
+    const now = this.now();
+    // Au plus 20 appareils par compte : le moins récemment utilisé cède sa place.
+    this.db.prepare('DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE user_id = ? ORDER BY last_seen DESC LIMIT -1 OFFSET ?)').run(userId, MAX_DEVICES - 1);
+    this.db
+      .prepare('INSERT INTO sessions (token_hash, user_id, expires_at, label, created_at, last_seen, trusted) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(tokenHash(token), userId, now + (remember ? TRUSTED_MS : SHORT_MS), deviceLabel(ua), now, now, remember ? 1 : 0);
     return token;
   }
 

@@ -4,6 +4,7 @@ import { ApiError } from './api';
 import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
 import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbQueueDto, TbStatus } from './types';
 import type { FeedbackItem, FeedbackKind } from './types';
+import type { Device } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow, RankGame, RankPeriod, Ranking, ProgressionReply, XpRanking, ClubRanking, RewardsReply, RewardKind, Equipped } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
@@ -12,6 +13,14 @@ type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem' | 'removeItem'> | 
 const defaultStorage = (): Storage => {
   try {
     return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+};
+
+const defaultSessionStorage = (): Storage => {
+  try {
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage;
   } catch {
     return null;
   }
@@ -29,6 +38,8 @@ export interface AccountOptions {
   baseUrl?: string;
   fetchFn?: typeof fetch;
   storage?: Storage;
+  /** Stockage de la session « appareil non reconnu » (effacé à la fermeture de l'onglet). */
+  sessionStorage?: Storage;
   socketFactory?: (url: string, opts: Record<string, unknown>) => Socket;
   /** Un joueur favori vient de se connecter (notification dans l'application). */
   onFavoriteOnline?: (who: AccountPublic) => void;
@@ -41,12 +52,14 @@ export class AccountClient {
   readonly store: StoreApi<AccountState>;
   private presence: Socket | null = null;
   private readonly storage: Storage;
+  private readonly shortStorage: Storage;
 
   constructor(private readonly opts: AccountOptions = {}) {
     this.storage = opts.storage === undefined ? defaultStorage() : opts.storage;
+    this.shortStorage = opts.sessionStorage === undefined ? (opts.storage === undefined ? defaultSessionStorage() : null) : opts.sessionStorage;
     let token: string | null = null;
     try {
-      token = this.storage?.getItem(KEY) ?? null;
+      token = this.storage?.getItem(KEY) ?? this.shortStorage?.getItem(KEY) ?? null;
     } catch {
       token = null;
     }
@@ -107,9 +120,13 @@ export class AccountClient {
     }
   }
 
-  private signedIn(res: { token: string; account: AccountPrivate }): AccountPrivate {
+  private signedIn(res: { token: string; account: AccountPrivate }, remember = true): AccountPrivate {
     try {
-      this.storage?.setItem(KEY, res.token);
+      // Appareil de confiance : jeton conservé durablement. Sinon : le temps de l'onglet seulement.
+      const keep = remember ? this.storage : this.shortStorage ?? this.storage;
+      const drop = remember ? this.shortStorage : this.storage;
+      keep?.setItem(KEY, res.token);
+      if (drop && drop !== keep) drop.removeItem(KEY);
     } catch {
       /* navigation privée : la session reste en mémoire */
     }
@@ -121,6 +138,7 @@ export class AccountClient {
   private forget(): void {
     try {
       this.storage?.removeItem(KEY);
+      this.shortStorage?.removeItem(KEY);
     } catch {
       /* rien */
     }
@@ -137,10 +155,10 @@ export class AccountClient {
     return c;
   }
 
-  register(input: { nickname: string; email: string; password: string; avatar?: string; invite?: string }): Promise<AccountPrivate> {
+  register(input: { nickname: string; email: string; password: string; avatar?: string; invite?: string; remember?: boolean }): Promise<AccountPrivate> {
     return this.request<{ token: string; account: AccountPrivate; recoveryCode?: string }>('POST', '/auth/register', input).then((r) => {
       this.issuedCode = r.recoveryCode ?? null;
-      return this.signedIn(r);
+      return this.signedIn(r, input.remember ?? true);
     });
   }
   /** Nouveau mot de passe sans e-mail, grâce au code de secours ; un nouveau code est délivré. */
@@ -156,8 +174,18 @@ export class AccountClient {
   newRecoveryCode(password: string): Promise<string> {
     return this.request<{ recoveryCode: string }>('POST', '/me/recovery-code', { password }).then((r) => r.recoveryCode);
   }
-  login(login: string, password: string): Promise<AccountPrivate> {
-    return this.request<{ token: string; account: AccountPrivate }>('POST', '/auth/login', { login, password }).then((r) => this.signedIn(r));
+  login(login: string, password: string, remember = true): Promise<AccountPrivate> {
+    return this.request<{ token: string; account: AccountPrivate }>('POST', '/auth/login', { login, password, remember }).then((r) => this.signedIn(r, remember));
+  }
+  /** Appareils connectés au compte (jamais leurs jetons). */
+  devices(): Promise<Device[]> {
+    return this.request<{ devices: Device[] }>('GET', '/me/devices').then((r) => r.devices);
+  }
+  revokeDevice(id: string): Promise<unknown> {
+    return this.request('DELETE', `/me/devices/${encodeURIComponent(id)}`);
+  }
+  revokeOtherDevices(): Promise<{ revoked: number }> {
+    return this.request('POST', '/me/devices/revoke-others');
   }
   async logout(): Promise<void> {
     await this.request('POST', '/auth/logout').catch(() => undefined);

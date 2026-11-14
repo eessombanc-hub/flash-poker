@@ -46,20 +46,27 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
   app.get('/auth/config', async () => ({ passwordRecovery: accounts.mailEnabled, recoveryCode: true }));
   app.post('/auth/register', async (req, reply) => {
     guard('register', req.ip);
-    return reply.status(201).send(await accounts.register(req.body));
+    return reply.status(201).send(await accounts.register(req.body, req.headers['user-agent']));
   });
   app.post('/auth/login', async (req) => {
     guard('login', req.ip);
     const who = String((req.body as { login?: unknown } | null)?.login ?? '').trim().toLowerCase().slice(0, 254);
     if (who && !failedLogins.allows(who)) throw new ServerError('RATE_LIMITED', 'Trop de tentatives sur ce compte, réessayez dans quelques minutes');
     try {
-      const r = await accounts.login(req.body);
+      const r = await accounts.login(req.body, req.headers['user-agent']);
       failedLogins.clear(who);
       return r;
     } catch (e) {
       if (who && e instanceof ServerError && e.code === 'UNAUTHORIZED') failedLogins.hit(who);
       throw e;
     }
+  });
+  // ---------- Appareils de confiance ----------
+  app.get('/me/devices', async (req) => ({ devices: accounts.devices(me(req).id, bearer(req)) }));
+  app.post('/me/devices/revoke-others', async (req) => ({ revoked: accounts.revokeOtherDevices(me(req).id, bearer(req)!) }));
+  app.delete('/me/devices/:id', async (req) => {
+    accounts.revokeDevice(me(req).id, String((req.params as { id: string }).id));
+    return { ok: true };
   });
   app.post('/auth/logout', async (req) => {
     const t = bearer(req);

@@ -62,6 +62,7 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
   const [code, setCode] = useState('');
   const [issued, setIssued] = useState<string | null>(null); // code de secours à montrer avant de poursuivre
   const [saved, setSaved] = useState(false);
+  const [trust, setTrust] = useState(true); // appareil de confiance : session de 90 jours
   const [slow, setSlow] = useState(false); // l'hébergement gratuit met jusqu'à une minute à se réveiller
 
   useEffect(() => {
@@ -96,9 +97,9 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
     setError(null);
     const wake = setTimeout(() => setSlow(true), 4000);
     try {
-      if (mode === 'login') await account.login(login.trim(), password);
+      if (mode === 'login') await account.login(login.trim(), password, trust);
       else if (mode === 'register') {
-        await account.register({ nickname: nickname.trim(), email: email.trim(), password, avatar, ...(invite ? { invite } : {}) });
+        await account.register({ nickname: nickname.trim(), email: email.trim(), password, avatar, remember: trust, ...(invite ? { invite } : {}) });
         // Photo choisie à l'inscription : envoyée maintenant que le compte existe. Un échec n'empêche pas l'inscription
         // (la photo se change à tout moment dans « Mon espace »).
         if (photo) await account.uploadAvatar(photo).catch(() => undefined);
@@ -215,6 +216,15 @@ export function AuthScreen({ mode: initialMode, resetToken, invite, onBack, onDo
               <Field label={mode === 'reset' || mode === 'recover' ? t('auth.nouveau_mot_de') : t('auth.mot_de_passe3')} htmlFor="password" hint={mode === 'login' ? undefined : t('auth.au_moins_8')} error={mode === 'login' || password === '' ? '' : errors.password}>
                 <PasswordInput id="password" value={password} onChange={setPassword} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
               </Field>
+            )}
+            {(mode === 'login' || mode === 'register') && (
+              <label className="flex items-start gap-3 text-sm text-ivory-100">
+                <input type="checkbox" className="mt-1 h-4 w-4 accent-gold-400" checked={trust} onChange={(e) => setTrust(e.target.checked)} />
+                <span>
+                  {t('auth.trust')}
+                  <span className="block text-xs text-ivory-300/75">{t('auth.trust.hint')}</span>
+                </span>
+              </label>
             )}
             {mode === 'register' && (
               <>

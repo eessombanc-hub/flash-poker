@@ -8,7 +8,7 @@ import { ApiError } from '../lib/api';
 import { useAccount, useAccountClient } from '../lib/context';
 import { formatChips, formatSignedChips } from '../lib/format';
 import { variantName } from '../lib/labels';
-import type { AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats, Wallet } from '../lib/types';
+import type { Device, AccountPublic, Bankroll, InviteOverview, FavoritePlayer, FavoriteRound, GameDetail, GameSummary, VariantStats, Wallet } from '../lib/types';
 import { RoundList } from './Overlays';
 import { EngagementPanel } from '../components/Engagement';
 import { RewardsPanel } from '../components/Rewards';
@@ -151,6 +151,72 @@ const H2 = ({ children }: { children: ReactNode }) => <h2 className="font-displa
 const H3 = ({ children }: { children: ReactNode }) => <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gold-400">{children}</h3>;
 
 // ---------- Profil ----------
+/** Appareils de confiance : où le compte est connecté, avec déconnexion à distance. */
+function DevicesSection() {
+  const { t } = useI18n();
+  const account = useAccountClient()!;
+  const [list, setList] = useState<Device[] | null>(null);
+  const [state, setState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const load = useCallback(() => {
+    account.devices().then(setList, () => setList([]));
+  }, [account]);
+  useEffect(load, [load]);
+  const fmt = (ms: number) => new Date(ms).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
+  async function revoke(id: string) {
+    setState(null);
+    try {
+      await account.revokeDevice(id);
+      setState({ tone: 'ok', text: t('dev.revoked') });
+      load();
+    } catch (err) {
+      setState({ tone: 'error', text: message(err) });
+    }
+  }
+  async function revokeOthers() {
+    setState(null);
+    try {
+      await account.revokeOtherDevices();
+      setState({ tone: 'ok', text: t('dev.revoked') });
+      load();
+    } catch (err) {
+      setState({ tone: 'error', text: message(err) });
+    }
+  }
+  return (
+    <section className="space-y-3 border-t border-ivory-100/10 pt-6" aria-labelledby="sp-dev">
+      <H3>{t('dev.title')}</H3>
+      <p id="sp-dev" className="text-sm text-ivory-200/80">{t('dev.intro')}</p>
+      {list && (
+        <ul className="space-y-2" aria-label={t('dev.title')}>
+          {list.map((d) => (
+            <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ivory-100/10 bg-ink-900/40 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-ivory-50">
+                  {d.label} {d.current && <Badge>{t('dev.current')}</Badge>}
+                </p>
+                <p className="text-xs text-ivory-300/80">
+                  {t('dev.lastSeen', { date: fmt(d.lastSeen || d.createdAt) })} · {d.trusted ? t('dev.trusted', { date: fmt(d.expiresAt) }) : t('dev.short')}
+                </p>
+              </div>
+              {!d.current && (
+                <Button variant="secondary" onClick={() => void revoke(d.id)} aria-label={`${t('dev.revoke')} ${d.label}`}>
+                  {t('dev.revoke')}
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {state && <Notice tone={state.tone}>{state.text}</Notice>}
+      {list && list.length > 1 && (
+        <Button variant="secondary" onClick={() => void revokeOthers()}>
+          {t('dev.revokeOthers')}
+        </Button>
+      )}
+    </section>
+  );
+}
+
 function ProfileTab() {
   const { t, tp } = useI18n();
   const account = useAccountClient()!;
@@ -319,6 +385,8 @@ function ProfileTab() {
         <Button type="submit" variant="secondary" disabled={!pwd.current || pwd.next.length < 8}>
           {t('space.changer_le_mot')}</Button>
       </form>
+
+      <DevicesSection />
 
       <form onSubmit={newCode} className="space-y-4 border-t border-ivory-100/10 pt-6" aria-labelledby="sp-rec">
         <H3>{t('rec.space_title')}</H3>

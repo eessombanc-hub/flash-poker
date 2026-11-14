@@ -88,6 +88,9 @@ function Privacy() {
           <strong>Invitations.</strong> Si vous invitez un proche, son adresse électronique est utilisée pour lui envoyer l’invitation et en limiter la fréquence. Ne saisissez que l’adresse de personnes qui acceptent d’être invitées.
         </Li>
         <Li>
+          <strong>Appareils connectés.</strong> Pour chaque session ouverte, le navigateur et le système détectés (par exemple « Chrome sur Windows »), les dates de création et de dernière activité. Ils s’affichent dans « Mon espace » afin que vous puissiez déconnecter un appareil ; l’adresse IP et l’en-tête complet ne sont pas conservés. Ces informations sont supprimées à la déconnexion, à l’expiration de la session ou avec votre compte.
+        </Li>
+        <Li>
           <strong>Messages « Un bug ? ».</strong> Le texte que vous envoyez, votre adresse électronique si vous choisissez de l’indiquer, l’écran affiché et le type d’appareil. Si vous êtes connecté, le message est rattaché à votre pseudonyme. Ces informations servent à corriger le défaut ou à vous répondre. Elles sont conservées le temps du traitement, puis supprimées, et disparaissent avec votre compte. Évitez d’y mentionner des informations sensibles. Base légale : intérêt légitime d’amélioration du service.
         </Li>
         <Li>
@@ -136,7 +139,7 @@ function Cookies() {
       <H>Stockage local de votre navigateur</H>
       <P>Le site utilise le stockage local de votre navigateur (« localStorage »), uniquement pour son bon fonctionnement. Ces données restent sur votre appareil. Elles ne sont pas des traceurs au sens de la réglementation, car elles sont strictement nécessaires au service que vous demandez.</P>
       <ul className="mt-2 space-y-2">
-        <Li>Votre session de connexion, pour vous éviter de saisir vos identifiants à chaque visite.</Li>
+        <Li>Votre session de connexion, pour vous éviter de saisir vos identifiants à chaque visite (90 jours si vous faites confiance à l’appareil, le temps de l’onglet sinon).</Li>
         <Li>Vos préférences : langue, couleur du tapis, dos de carte, sons, accessibilité, vitesse des animations, options du Blackjack.</Li>
         <Li>Le pseudonyme que vous avez utilisé pour discuter ou rejoindre une table, et le code des tables en cours pour vous y ramener après un rechargement.</Li>
         <Li>Pour un joueur sans compte, sa progression au Blackjack sur cet appareil.</Li>

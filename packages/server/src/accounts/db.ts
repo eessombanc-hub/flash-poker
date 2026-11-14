@@ -282,6 +282,14 @@ export class AccountDb {
     // Rôle du compte (utilisateur, modérateur, administrateur) : colonne ajoutée aux bases existantes.
     const cols = this.db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
     if (!cols.some((c) => c.name === 'role')) this.db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
+    // Appareils de confiance : libellé, dates et mode de la session (les sessions existantes étaient déjà de longue durée).
+    const sc = this.db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
+    if (!sc.some((c) => c.name === 'label')) {
+      this.db.exec("ALTER TABLE sessions ADD COLUMN label TEXT NOT NULL DEFAULT ''");
+      this.db.exec('ALTER TABLE sessions ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0');
+      this.db.exec('ALTER TABLE sessions ADD COLUMN last_seen INTEGER NOT NULL DEFAULT 0');
+      this.db.exec('ALTER TABLE sessions ADD COLUMN trusted INTEGER NOT NULL DEFAULT 1');
+    }
     this.migrateBlackjack();
     backfillRankLog(this.db);
   }

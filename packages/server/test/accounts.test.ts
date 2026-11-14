@@ -51,16 +51,16 @@ describe('comptes : inscription, connexion, sessions', () => {
     await rejects(accounts.login({ login: 'Inconnu', password: 'tapis-vert-42' }), 'UNAUTHORIZED');
   });
 
-  it('le mot de passe n’est jamais stocké en clair ; la session expire après 30 jours ; déconnexion', async () => {
+  it('le mot de passe n’est jamais stocké en clair ; la session inutilisée expire après 90 jours ; déconnexion', async () => {
     let t = 1_000;
     const { accounts } = service({ now: () => t });
     const r = await accounts.register({ nickname: 'Ana', email: 'ana@x.fr', password: 'tapis-vert-42' });
     const row = accounts['store'].db.prepare('SELECT pass_hash FROM users').get() as { pass_hash: string };
     expect(row.pass_hash).toMatch(/^scrypt\$/);
     expect(row.pass_hash).not.toContain('tapis-vert-42');
-    t += 29 * 86_400_000;
+    t += 89 * 86_400_000;
     expect(accounts.userBySession(r.token)).not.toBeNull();
-    t += 2 * 86_400_000;
+    t += 91 * 86_400_000;
     expect(accounts.userBySession(r.token)).toBeNull();
     const s = await accounts.login({ login: 'Ana', password: 'tapis-vert-42' });
     accounts.logout(s.token);
