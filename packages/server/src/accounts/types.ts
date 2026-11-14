@@ -6,8 +6,15 @@ export interface AccountPublic {
   nickname: string;
   avatar: string | null;
 }
+export type Role = 'user' | 'moderator' | 'admin';
+export const ROLES: readonly Role[] = ['user', 'moderator', 'admin'];
+/** Niveau d'autorité : une sanction ou un changement de rôle ne s'applique qu'à un rôle strictement inférieur. */
+export const ROLE_RANK: Record<Role, number> = { user: 0, moderator: 1, admin: 2 };
+
 export interface AccountPrivate extends AccountPublic {
   email: string;
+  /** Rôle dans l'équipe du site ; « user » pour un joueur ordinaire. */
+  role: Role;
   notifyEmail: boolean;
   createdAt: number;
   /** Club indiqué par le joueur (nom affiché du club), ou null. */

@@ -4,6 +4,7 @@ import { AccountDb } from '../src/accounts/db';
 import { FeedbackService } from '../src/accounts/feedback';
 import { LogMailer } from '../src/accounts/mailer';
 import { AccountService } from '../src/accounts/service';
+import { StaffService } from '../src/accounts/staff';
 import { buildServer } from '../src/http';
 import { RoomManager } from '../src/roomManager';
 import { ManualScheduler } from '../src/scheduler';
@@ -20,7 +21,8 @@ async function setup(adminToken: string | null = TOKEN, to?: string) {
   const mailer = new LogMailer(true, () => undefined);
   const accounts = new AccountService(db, mailer, { log: () => undefined });
   const feedback = new FeedbackService(db, mailer, { to });
-  const server = await buildServer({ manager: new RoomManager({ rng: new SeededRng(7), scheduler: new ManualScheduler() }), accounts, feedback, adminToken: adminToken ?? undefined, onError: () => undefined });
+  const staff = new StaffService(db, accounts, { adminToken: adminToken ?? undefined });
+  const server = await buildServer({ manager: new RoomManager({ rng: new SeededRng(7), scheduler: new ManualScheduler() }), accounts, feedback, staff, onError: () => undefined });
   cleanup.push(() => server.close());
   const send = (payload: unknown, headers: Record<string, string> = {}) => server.app.inject({ method: 'POST', url: '/feedback', payload: payload as object, headers });
   const admin = (method: 'GET' | 'POST' | 'DELETE', url: string, token: string | null = TOKEN, payload?: object) =>
@@ -88,10 +90,10 @@ describe('« Un bug ? »', () => {
     expect((await admin('GET', '/admin/feedback')).statusCode).toBe(429);
   });
 
-  it('sans jeton (ou jeton trop court), les routes d’administration n’existent pas', async () => {
+  it('sans jeton (ou avec un jeton trop court), aucun accès : la session d’un compte ordinaire ne suffit pas', async () => {
     for (const t of [null, 'court']) {
       const { admin } = await setup(t);
-      expect((await admin('GET', '/admin/feedback', t ?? 'x')).statusCode).toBe(404);
+      expect((await admin('GET', '/admin/feedback', t ?? 'x')).statusCode).toBe(401);
     }
   });
 });

@@ -9,6 +9,7 @@ import { BlackjackService } from './blackjack/service';
 import { BlackjackTables } from './blackjack/tables';
 import { TableauService } from './tableau/service';
 import { FeedbackService } from './accounts/feedback';
+import { StaffService } from './accounts/staff';
 import { buildServer } from './http';
 import { resolveTrustProxy } from './netSecurity';
 import { RoomManager } from './roomManager';
@@ -78,7 +79,7 @@ const manager = new RoomManager({
       accounts.recordGame(g);
       // Progression commune : le poker nourrit la même XP que le Blackjack.
       for (const p of g.players) if (p.accountId && g.seated.includes(p.playerId)) blackjack.awardXp(p.accountId, 40 + (g.outcome.winner === p.playerId ? 60 : 0));
-    }, canAfford: (id, stake) => accounts.canAfford(id, stake), cosmetics: (id) => tableCosmetics(accountsDb.db, id) },
+    }, canAfford: (id, stake) => accounts.canAfford(id, stake), muteLeft: (id) => accounts.muteLeft(id), cosmetics: (id) => tableCosmetics(accountsDb.db, id) },
   ...(testTimers ? { timers: { durationMs: phaseSeconds * 1000, warningMs: 10_000 } } : {}),
 });
 await manager.restoreFromStore();
@@ -91,11 +92,12 @@ const httpMax = Number(process.env.HTTP_RATE_LIMIT ?? 30);
 // « Un bug ? » : FEEDBACK_TO (facultatif) reçoit chaque message par e-mail ; ADMIN_TOKEN (16 caractères minimum) ouvre la lecture.
 const feedback = new FeedbackService(accountsDb, mailer, { to: process.env.FEEDBACK_TO });
 if (process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN.length < 16) console.log('ADMIN_TOKEN trop court (16 caractères minimum) : consultation des messages « Un bug ? » désactivée');
+const staff = new StaffService(accountsDb, accounts, { adminToken: process.env.ADMIN_TOKEN });
 const server = await buildServer({
   manager,
   accounts,
   feedback,
-  adminToken: process.env.ADMIN_TOKEN,
+  staff,
   blackjack,
   blackjackTables,
   tableau,

@@ -162,6 +162,29 @@ export class AccountDb {
         status TEXT NOT NULL DEFAULT 'open'
       );
       CREATE INDEX IF NOT EXISTS feedback_user ON feedback(user_id);
+      CREATE TABLE IF NOT EXISTS sanction (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        until INTEGER,
+        reason TEXT NOT NULL DEFAULT '',
+        by TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        lifted_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS sanction_user ON sanction(user_id, kind);
+      CREATE TABLE IF NOT EXISTS mod_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        at INTEGER NOT NULL,
+        actor TEXT NOT NULL,
+        action TEXT NOT NULL,
+        target TEXT NOT NULL DEFAULT '',
+        detail TEXT NOT NULL DEFAULT ''
+      );
+      CREATE TABLE IF NOT EXISTS site_setting (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS avatar_images (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -256,6 +279,9 @@ export class AccountDb {
         PRIMARY KEY (user_id, fav_id, day)
       );
     `);
+    // Rôle du compte (utilisateur, modérateur, administrateur) : colonne ajoutée aux bases existantes.
+    const cols = this.db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === 'role')) this.db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
     this.migrateBlackjack();
     backfillRankLog(this.db);
   }

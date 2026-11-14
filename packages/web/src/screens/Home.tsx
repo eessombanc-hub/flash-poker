@@ -1,3 +1,4 @@
+import { AnnouncementBanner } from './Staff';
 import type { LegalPage } from '../legal/config';
 import { COMMON_RULES } from '../lib/rulesText';
 import { VARIANTS, variantName } from '../lib/labels';
@@ -22,7 +23,7 @@ import type { VariantId } from '../lib/types';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, onLegal, onFeedback, onFaq, me, live, langSelect, notice, account }: { onFaq?: () => void; onFeedback?: () => void; onLegal?: (p: LegalPage) => void; onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, onLegal, onFeedback, onFaq, onStaff, me, live, langSelect, notice, account }: { onStaff?: () => void; onFaq?: () => void; onFeedback?: () => void; onLegal?: (p: LegalPage) => void; onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -71,6 +72,7 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
 
         <div className="min-w-0 space-y-6">
           <h1 className="sr-only">{t('home.h1a')} {t('home.h1b')}</h1>
+          <AnnouncementBanner />
           {notice && (
             <p role="alert" className="rounded-lg border border-amber-400/40 bg-amber-950/60 px-4 py-2.5 text-sm text-amber-100">
               {notice}
@@ -136,9 +138,10 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           <footer className="space-y-2 pt-4 text-center text-xs text-ivory-100/80">
             <p className="font-semibold text-ivory-100">{t('home.footer')}</p>
             <button type="button" onClick={() => setRules(true)} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('home.rules.title')}</button>
-            {(onFaq || onFeedback) && (
+            {(onFaq || onFeedback || onStaff) && (
               <p className="flex flex-wrap justify-center gap-x-5 gap-y-1">
                 {onFaq && <button type="button" onClick={onFaq} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('faq.link')}</button>}
+                {onStaff && <button type="button" onClick={onStaff} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">Équipe</button>}
                 {onFeedback && <button type="button" onClick={onFeedback} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('fb.link')}</button>}
               </p>
             )}

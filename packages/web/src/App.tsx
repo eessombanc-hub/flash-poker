@@ -13,7 +13,8 @@ import { Home } from './screens/Home';
 import { LegalScreen } from './screens/Legal';
 import { FaqScreen } from './screens/Faq';
 import { FAQ_HASH } from './faq/content';
-import { ADMIN_HASH, FEEDBACK_HASH, FeedbackAdmin, FeedbackScreen } from './screens/Feedback';
+import { ADMIN_HASH, FEEDBACK_HASH, FeedbackScreen } from './screens/Feedback';
+import { STAFF_HASH, StaffScreen } from './screens/Staff';
 import { LEGAL_HASH, legalFromHash, type LegalPage } from './legal/config';
 import { Solo } from './screens/Solo';
 import type { VariantId } from './lib/types';
@@ -34,7 +35,7 @@ const Variants = lazy(() => loadVariants().then((m) => ({ default: m.Variants })
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 import type { SpaceTab } from './screens/Space';
 
-type Screen = 'home' | 'legal' | 'feedback' | 'bugs-admin' | 'faq' | 'create' | 'join' | 'watch' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | { auth: AuthMode };
+type Screen = 'home' | 'legal' | 'feedback' | 'staff' | 'faq' | 'create' | 'join' | 'watch' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -183,10 +184,11 @@ function AppContent() {
   const [tableauCode, setTableauCode] = useState(takeTableauCode);
   const [bjJoin, setBjJoin] = useState('');
   const [tableauVariant, setTableauVariant] = useState<'classic' | 'hand5'>('classic');
-  const [screen, setScreen] = useState<Screen>(() => (window.location.hash === ADMIN_HASH ? 'bugs-admin' : window.location.hash === FEEDBACK_HASH ? 'feedback' : window.location.hash === FAQ_HASH ? 'faq' : legalFromHash(window.location.hash) ? 'legal' : resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
+  const [screen, setScreen] = useState<Screen>(() => (window.location.hash === ADMIN_HASH || window.location.hash === STAFF_HASH ? 'staff' : window.location.hash === FEEDBACK_HASH ? 'feedback' : window.location.hash === FAQ_HASH ? 'faq' : legalFromHash(window.location.hash) ? 'legal' : resetToken ? { auth: 'reset' } : invite ? { auth: 'register' } : tableauCode ? 'tableau' : initialCode() ? 'join' : 'home'));
   const [legalPage, setLegalPage] = useState<LegalPage>(() => legalFromHash(window.location.hash) ?? 'mentions');
   const [feedbackFrom, setFeedbackFrom] = useState('home');
   const openFeedback = () => { setFeedbackFrom(typeof screen === 'string' ? screen : 'auth'); setScreen('feedback'); window.history.replaceState(null, '', FEEDBACK_HASH); };
+  const openStaff = () => { setScreen('staff'); window.history.replaceState(null, '', STAFF_HASH); };
   const openFaq = () => { setScreen('faq'); window.history.replaceState(null, '', FAQ_HASH); };
   const leaveHash = () => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setScreen('home'); };
   const openLegal = (p: LegalPage) => { setLegalPage(p); setScreen('legal'); window.history.replaceState(null, '', LEGAL_HASH[p]); };
@@ -247,7 +249,7 @@ function AppContent() {
   } else if (typeof screen === 'object') content = <AuthScreen mode={screen.auth} resetToken={resetToken} invite={invite || undefined} onBack={() => setScreen('home')} onDone={() => setScreen('home')} onLegal={() => openLegal('privacy')} />;
   else if (screen === 'feedback') content = <FeedbackScreen from={feedbackFrom} onBack={leaveHash} onLegal={() => openLegal('privacy')} />;
   else if (screen === 'faq') content = <FaqScreen onBack={leaveHash} onFeedback={openFeedback} />;
-  else if (screen === 'bugs-admin') content = <FeedbackAdmin onBack={leaveHash} />;
+  else if (screen === 'staff') content = <StaffScreen onBack={leaveHash} initialTab={window.location.hash === ADMIN_HASH ? 'messages' : 'chat'} />;
   else if (screen === 'legal') content = <LegalScreen page={legalPage} onPage={setLegalPage} onBack={() => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setScreen('home'); }} />;
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => { setBjJoin(''); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialJoin={bjJoin || undefined} />;
@@ -300,6 +302,7 @@ function AppContent() {
         onLegal={openLegal}
         onFeedback={openFeedback}
         onFaq={openFaq}
+        onStaff={me && me.role !== 'user' ? openStaff : undefined}
         langSelect={<LanguageSelect />}
         onBlackjack={() => setScreen('blackjack')}
         onTableau={(v) => { setTableauVariant(v); setScreen('tableau'); }}

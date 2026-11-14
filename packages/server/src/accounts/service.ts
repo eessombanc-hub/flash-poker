@@ -17,6 +17,7 @@ import { evaluateRewards, REWARD_BY_ID, REWARD_KINDS, type RewardKind, type Rewa
 import type { Career, ProgressionReply, RewardsReply, XpRankRow } from './types';
 import { equippedOf, forgetEquipped, type Equipped } from './cosmetics';
 import { canonicalNames, checkClubName, clubOf, rankClubs, setClub, type ClubRanking } from './clubs';
+import type { Role } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LeaderboardRow, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
@@ -162,7 +163,24 @@ export class AccountService {
     return this.account(row.user_id as string);
   }
 
+  /** Secondes restantes d'une suspension de compte (0 si aucune) ; `Infinity` si elle n'a pas de fin. */
+  banLeft(userId: string): number {
+    return this.sanctionLeft(userId, 'ban');
+  }
+  /** Secondes de silence restantes dans les chats (0 si le compte peut écrire). */
+  muteLeft(userId: string): number {
+    return this.sanctionLeft(userId, 'mute');
+  }
+  private sanctionLeft(userId: string, kind: 'mute' | 'ban'): number {
+    const now = this.now();
+    const rows = this.db.prepare('SELECT until FROM sanction WHERE user_id = ? AND kind = ? AND lifted_at IS NULL AND (until IS NULL OR until > ?)').all(userId, kind, now) as Array<{ until: number | null }>;
+    if (rows.length === 0) return 0;
+    if (rows.some((r) => r.until === null)) return Infinity;
+    return Math.ceil((Math.max(...rows.map((r) => r.until as number)) - now) / 1000);
+  }
+
   private openSession(userId: string): string {
+    if (this.banLeft(userId) > 0) throw new ServerError('FORBIDDEN', 'Ce compte est suspendu. Écrivez à l’éditeur pour en savoir plus.');
     const token = newToken();
     this.db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(this.now());
     this.db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)').run(tokenHash(token), userId, this.now() + SESSION_MS);
@@ -175,7 +193,7 @@ export class AccountService {
 
   account(id: string): AccountPrivate | null {
     const r = this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Row | undefined;
-    return r ? { id: r.id as string, nickname: r.nickname as string, avatar: (r.avatar as string | null) ?? null, email: r.email as string, notifyEmail: r.notify_email === 1, createdAt: r.created_at as number, club: clubOf(this.db, r.id as string) } : null;
+    return r ? { id: r.id as string, nickname: r.nickname as string, avatar: (r.avatar as string | null) ?? null, email: r.email as string, role: ((r.role as Role | undefined) ?? 'user'), notifyEmail: r.notify_email === 1, createdAt: r.created_at as number, club: clubOf(this.db, r.id as string) } : null;
   }
 
   /** Un invité ne peut pas emprunter le pseudo d'un compte (usurpation). */
@@ -261,7 +279,7 @@ export class AccountService {
   // ---------- Données personnelles : export et suppression ----------
 
   /** Tables du Blackjack et du Tableau dont les lignes portent `user_id` (hors partie en cours, qui n'a pas d'intérêt à l'export). */
-  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log', 'cosmetics', 'club_member', 'feedback'] as const;
+  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log', 'cosmetics', 'club_member', 'feedback', 'sanction'] as const;
 
   /** Copie de toutes les données rattachées au compte, pour son titulaire (droit d'accès et de portabilité). */
   exportData(userId: string): Record<string, unknown> {

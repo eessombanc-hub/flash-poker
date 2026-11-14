@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { FeedbackAdmin, FeedbackScreen } from '../src/screens/Feedback';
+import { FeedbackList, FeedbackScreen } from '../src/screens/Feedback';
 import { AccountClient } from '../src/lib/account';
 import { render } from '@testing-library/react';
 import { AccountProvider } from '../src/lib/context';
@@ -37,7 +37,7 @@ describe('Un bug ?', () => {
     expect(screen.getByLabelText('Votre message')).toHaveValue('Un message suffisamment long');
   });
 
-  it('administration : jeton saisi, messages listés, marquage traité', async () => {
+  it('administration : messages listés avec le jeton, marquage traité', async () => {
     const item = { id: 'a1', createdAt: 1_700_000_000_000, kind: 'bug', message: 'Écran noir au tour 3', contact: 'ana@x.fr', nickname: 'Ana', context: 'écran table', status: 'open' };
     let status = 'open';
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
@@ -45,9 +45,7 @@ describe('Un bug ?', () => {
       if (init?.method === 'POST') { status = 'done'; return new Response(null, { status: 204 }); }
       return ok({ items: [{ ...item, status }] });
     }) as unknown as typeof fetch;
-    show(<FeedbackAdmin onBack={() => undefined} />, mkClient(fetchFn));
-    await userEvent.type(screen.getByLabelText('Jeton d’administration'), 'jeton-de-test-1234567');
-    await userEvent.click(screen.getByRole('button', { name: 'Ouvrir' }));
+    show(<FeedbackList token="jeton-de-test-1234567" />, mkClient(fetchFn));
     expect(await screen.findByText('Écran noir au tour 3')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Marquer traité' }));
     await waitFor(() => expect(screen.queryByText('Écran noir au tour 3')).not.toBeInTheDocument());

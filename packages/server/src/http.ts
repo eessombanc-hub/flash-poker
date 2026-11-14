@@ -6,6 +6,7 @@ import { Server as IOServer, type Socket } from 'socket.io';
 import { ServerError } from './errors';
 import { authSchema, excludeSchema, approveAssistanceSchema, publicChatSchema, type Outgoing } from './protocol';
 import { PublicChat } from './publicChat';
+import { muteMessage } from './moderation';
 import { AVATAR_IMAGE_ID } from './accounts/avatarImage';
 import { RateLimiter } from './rateLimiter';
 import { clientIp, securityHeaders } from './netSecurity';
@@ -17,6 +18,7 @@ import { registerTableauRoutes } from './tableau/routes';
 import type { TableauService } from './tableau/service';
 import type { AccountService } from './accounts/service';
 import { registerFeedbackRoutes, type FeedbackService } from './accounts/feedback';
+import { registerStaffRoutes, type StaffService } from './accounts/staff';
 import type { RoomManager } from './roomManager';
 import { renderIndex } from './sharePreview';
 
@@ -55,8 +57,8 @@ export interface ServerOptions {
   blackjackTables?: BlackjackTables;
   /** Commentaires et signalements « Un bug ? » (nécessite `accounts`). */
   feedback?: FeedbackService;
-  /** Jeton d'administration pour consulter les messages (16 caractères au moins) ; sans lui, aucune route d'administration. */
-  adminToken?: string;
+  /** Équipe du site : rôles, modération, annonce (nécessite `accounts`). Sans elle, aucune route d'administration. */
+  staff?: StaffService;
   /** Parties du Tableau (nécessite `accounts`). */
   tableau?: TableauService;
   /** Adresse publique du jeu (APP_URL ou celle fournie par Render), pour l'aperçu des liens partagés. */
@@ -269,8 +271,12 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     const parsed = publicChatSchema.safeParse(req.body);
     if (!parsed.success) throw new ServerError('BAD_REQUEST', parsed.error.issues[0]?.message ?? 'Message invalide');
     const account = opts.accounts ? optionalAccount(opts.accounts, req) : null;
-    let author: { key: string; nickname: string; avatar: string | null; registered: boolean };
-    if (account) author = { key: `a:${account.id}`, nickname: account.nickname, avatar: account.avatar ?? null, registered: true };
+    let author: { key: string; nickname: string; avatar: string | null; registered: boolean; userId?: string | null };
+    if (account) {
+      const mute = opts.accounts!.muteLeft(account.id);
+      if (mute > 0) throw new ServerError('FORBIDDEN', muteMessage(mute));
+      author = { key: `a:${account.id}`, nickname: account.nickname, avatar: account.avatar ?? null, registered: true, userId: account.id };
+    }
     else {
       const nick = parsed.data.nickname;
       if (!nick) throw new ServerError('BAD_REQUEST', 'Choisissez un pseudo pour écrire dans le chat');
@@ -300,11 +306,12 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     return reply.status(201).send(opts.manager.spectate(req.params.code, req.body, account));
   });
   if (opts.accounts) registerAccountRoutes(app, opts.accounts, { now, authRateLimit: opts.authRateLimit });
-  if (opts.accounts && opts.feedback) registerFeedbackRoutes(app, opts.accounts, opts.feedback, { now, adminToken: opts.adminToken });
+  if (opts.accounts && opts.feedback) registerFeedbackRoutes(app, opts.accounts, opts.feedback, { now, staff: opts.staff });
+  if (opts.accounts && opts.staff) registerStaffRoutes(app, opts.staff, { chat });
   if (opts.accounts && opts.tableau) registerTableauRoutes(app, opts.tableau, opts.accounts, { now });
   if (opts.accounts && opts.blackjack) registerBlackjackRoutes(app, opts.blackjack, opts.accounts, { now, tables: opts.blackjackTables });
 
-  const isApiPath = (url: string): boolean => ['/rooms', '/chat', '/stats', '/socket.io', '/health', '/auth/', '/me', '/avatars', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
+  const isApiPath = (url: string): boolean => ['/rooms', '/chat', '/stats', '/staff', '/announcement', '/admin', '/feedback', '/socket.io', '/health', '/auth/', '/me', '/avatars', '/users', '/invites', '/blackjack', '/tableau'].some((p) => url === p || url.startsWith(p.endsWith('/') ? p : `${p}/`) || url.startsWith(`${p}?`));
 
   if (opts.webDist && existsSync(opts.webDist)) {
     // Fichiers avec hash dans leur nom (assets Vite) : cache long ; `index.html` : jamais mis en cache (sert

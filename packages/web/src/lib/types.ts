@@ -91,3 +91,19 @@ export interface FeedbackItem {
   context: string;
   status: 'open' | 'done';
 }
+
+export type StaffRole = 'moderator' | 'admin';
+export interface StaffMe { role: StaffRole; name: string; root: boolean }
+export interface StaffUser {
+  id: string;
+  nickname: string;
+  role: 'user' | 'moderator' | 'admin';
+  createdAt: number;
+  club: string | null;
+  muteLeft: number;
+  banned: boolean;
+  email?: string;
+}
+export interface StaffChatMessage { id: number; at: number; nickname: string; registered: boolean; text: string; authorId: string | null }
+export interface StaffLogItem { id: number; at: number; actor: string; action: string; target: string; detail: string }
+export interface StaffStats { accounts: number; newThisWeek: number; staff: number; mutes: number; bans: number; feedbackOpen: number }

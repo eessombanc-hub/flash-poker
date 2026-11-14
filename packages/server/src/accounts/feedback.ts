@@ -1,4 +1,4 @@
-import { randomUUID, timingSafeEqual, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { ServerError } from '../errors';
 import { RateLimiter } from '../rateLimiter';
@@ -6,6 +6,7 @@ import { optionalAccount } from './routes';
 import type { AccountDb } from './db';
 import type { Mailer } from './mailer';
 import type { AccountService } from './service';
+import type { StaffService } from './staff';
 
 export const FEEDBACK_KINDS = ['bug', 'idea', 'comment'] as const;
 export type FeedbackKind = (typeof FEEDBACK_KINDS)[number];
@@ -97,19 +98,15 @@ export class FeedbackService {
   }
 }
 
-const digest = (s: string): Buffer => createHash('sha256').update(s).digest();
-
 export interface FeedbackRouteOptions {
   now?: () => number;
-  /** Jeton d'administration (variable ADMIN_TOKEN) ; absent ou trop court : les routes d'administration n'existent pas. */
-  adminToken?: string;
+  /** Équipe du site : sans elle (ou sans jeton ni compte autorisé), aucune route d'administration n'est ouverte. */
+  staff?: StaffService;
 }
 
 export function registerFeedbackRoutes(app: FastifyInstance, accounts: AccountService, feedback: FeedbackService, opts: FeedbackRouteOptions = {}): void {
   const now = opts.now ?? Date.now;
   const send = new RateLimiter(5, 60 * 60_000, now);
-  const failed = new RateLimiter(10, 15 * 60_000, now);
-  const token = opts.adminToken && opts.adminToken.length >= 16 ? opts.adminToken : null;
 
   app.post('/feedback', async (req, reply) => {
     if (!send.hit(req.ip)) throw new ServerError('RATE_LIMITED', 'Vous avez déjà envoyé plusieurs messages, réessayez dans une heure');
@@ -119,16 +116,9 @@ export function registerFeedbackRoutes(app: FastifyInstance, accounts: AccountSe
     return reply.status(201).send(r);
   });
 
-  if (!token) return;
-  const admin = (req: FastifyRequest): void => {
-    if (!failed.allows(req.ip)) throw new ServerError('RATE_LIMITED', 'Trop de tentatives, réessayez plus tard');
-    const h = req.headers.authorization;
-    const given = h && h.startsWith('Bearer ') ? h.slice(7).trim() : '';
-    if (!given || !timingSafeEqual(digest(given), digest(token))) {
-      failed.hit(req.ip);
-      throw new ServerError('UNAUTHORIZED', 'Jeton d’administration invalide');
-    }
-  };
+  const staff = opts.staff;
+  if (!staff) return;
+  const admin = (req: FastifyRequest): void => void staff.require(req, 'admin');
   app.get<{ Querystring: { status?: string } }>('/admin/feedback', async (req, reply) => {
     admin(req);
     const s = req.query.status;

@@ -81,85 +81,52 @@ export function FeedbackScreen({ from, onBack, onLegal }: { from: string; onBack
 
 const KIND_FR: Record<FeedbackKind, string> = { bug: 'Bug', idea: 'Idée', comment: 'Commentaire' };
 
-/** Lecture des messages reçus, réservée au propriétaire : le jeton reste dans l'onglet (sessionStorage), jamais dans le code. */
-export function FeedbackAdmin({ onBack }: { onBack: () => void }) {
+/** Messages « Un bug ? » reçus (administrateurs). `token` : jeton d'administration saisi, ou null pour la session du compte. */
+export function FeedbackList({ token }: { token: string | null }) {
   const client = useAccountClient();
   const account = client as NonNullable<typeof client>;
-  const read = () => { try { return sessionStorage.getItem('poker.admin') ?? ''; } catch { return ''; } };
-  const [token, setToken] = useState(read);
-  const [typed, setTyped] = useState('');
   const [items, setItems] = useState<FeedbackItem[] | null>(null);
   const [error, setError] = useState('');
   const [show, setShow] = useState<'open' | 'done' | 'all'>('open');
 
-  const load = async (tk: string) => {
+  const load = async () => {
     setError('');
     try {
-      setItems(await account.adminFeedback(tk));
+      setItems(await account.adminFeedback(token));
     } catch (e) {
-      setItems(null);
-      setToken('');
-      try { sessionStorage.removeItem('poker.admin'); } catch { /* ignoré */ }
       setError(e instanceof Error ? e.message : 'Erreur');
     }
   };
-  useEffect(() => { if (token) void load(token); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const enter = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const tk = typed.trim();
-    if (!tk) return;
-    try { sessionStorage.setItem('poker.admin', tk); } catch { /* ignoré */ }
-    setToken(tk);
-    setTyped('');
-    await load(tk);
-  };
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const act = async (fn: () => Promise<unknown>) => {
-    try { await fn(); await load(token); } catch (e) { setError(e instanceof Error ? e.message : 'Erreur'); }
+    try { await fn(); await load(); } catch (e) { setError(e instanceof Error ? e.message : 'Erreur'); }
   };
   const shown = (items ?? []).filter((i) => show === 'all' || i.status === show);
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4 px-1 py-4">
-      <Button variant="secondary" onClick={onBack}>← Retour</Button>
-      <Panel className="p-5 sm:p-8">
-        <Eyebrow>Administration</Eyebrow>
-        <Title className="mt-1">Un bug ? — messages reçus</Title>
-        {!items ? (
-          <form onSubmit={enter} className="mt-5 space-y-4">
-            <Field label="Jeton d’administration" htmlFor="adm-token" hint="Saisi ici uniquement, conservé le temps de l’onglet.">
-              <input id="adm-token" type="password" autoComplete="off" className={inputClass} value={typed} onChange={(e) => setTyped(e.target.value)} />
-            </Field>
-            {error && <p role="alert" className="text-sm text-ruby-300">{error}</p>}
-            <Button type="submit">Ouvrir</Button>
-          </form>
-        ) : (
-          <div className="mt-5 space-y-4">
-            <Segmented value={show} options={['open', 'done', 'all'] as const} onChange={setShow} label="Afficher" format={(v) => (v === 'open' ? 'À traiter' : v === 'done' ? 'Traités' : 'Tous')} />
-            {error && <p role="alert" className="text-sm text-ruby-300">{error}</p>}
-            {shown.length === 0 && <p className="text-sm text-ivory-300/80">Aucun message.</p>}
-            <ul className="space-y-3">
-              {shown.map((i) => (
-                <li key={i.id} className="rounded-2xl border border-ivory-100/10 bg-ink-900/70 p-4">
-                  <p className="text-xs text-ivory-300/80">
-                    <strong className="text-gold-300">{KIND_FR[i.kind]}</strong> · {new Date(i.createdAt).toLocaleString('fr-FR')}
-                    {i.nickname ? ` · ${i.nickname}` : ' · invité'}
-                    {i.contact ? <> · <a className="text-gold-300 underline" href={`mailto:${i.contact}`}>{i.contact}</a></> : null}
-                  </p>
-                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ivory-50">{i.message}</p>
-                  {i.context && <p className="mt-2 break-words text-[11px] text-ivory-300/60">{i.context}</p>}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button variant="secondary" className="!min-h-[36px] !py-1.5" onClick={() => act(() => account.adminFeedbackStatus(token, i.id, i.status === 'open' ? 'done' : 'open'))}>
-                      {i.status === 'open' ? 'Marquer traité' : 'Rouvrir'}
-                    </Button>
-                    <Button variant="ghost" className="!min-h-[36px] !py-1.5" onClick={() => { if (window.confirm('Supprimer ce message ?')) void act(() => account.adminFeedbackDelete(token, i.id)); }}>Supprimer</Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </Panel>
+    <div className="space-y-4">
+      <Segmented value={show} options={['open', 'done', 'all'] as const} onChange={setShow} label="Afficher" format={(v) => (v === 'open' ? 'À traiter' : v === 'done' ? 'Traités' : 'Tous')} />
+      {error && <p role="alert" className="text-sm text-ruby-300">{error}</p>}
+      {items && shown.length === 0 && <p className="text-sm text-ivory-300/80">Aucun message.</p>}
+      <ul className="space-y-3">
+        {shown.map((i) => (
+          <li key={i.id} className="rounded-2xl border border-ivory-100/10 bg-ink-900/70 p-4">
+            <p className="text-xs text-ivory-300/80">
+              <strong className="text-gold-300">{KIND_FR[i.kind]}</strong> · {new Date(i.createdAt).toLocaleString('fr-FR')}
+              {i.nickname ? ` · ${i.nickname}` : ' · invité'}
+              {i.contact ? <> · <a className="text-gold-300 underline" href={`mailto:${i.contact}`}>{i.contact}</a></> : null}
+            </p>
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ivory-50">{i.message}</p>
+            {i.context && <p className="mt-2 break-words text-[11px] text-ivory-300/60">{i.context}</p>}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="secondary" className="!min-h-[36px] !py-1.5" onClick={() => act(() => account.adminFeedbackStatus(token, i.id, i.status === 'open' ? 'done' : 'open'))}>
+                {i.status === 'open' ? 'Marquer traité' : 'Rouvrir'}
+              </Button>
+              <Button variant="ghost" className="!min-h-[36px] !py-1.5" onClick={() => { if (window.confirm('Supprimer ce message ?')) void act(() => account.adminFeedbackDelete(token, i.id)); }}>Supprimer</Button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

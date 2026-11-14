@@ -1,3 +1,4 @@
+import { muteMessage } from './moderation';
 import { createHash, randomBytes } from 'node:crypto';
 import {
   assignPositions,
@@ -84,6 +85,8 @@ export interface AccountHooks {
   canAfford?(accountId: string, stake: number): boolean;
   /** Récompenses équipées d'un compte (titre, cadre, emblème), affichées à la table. */
   cosmetics?(accountId: string): import('./accounts/cosmetics').Equipped | null;
+  /** Secondes de silence restantes (modération) : 0 si le compte peut écrire. */
+  muteLeft?(accountId: string): number;
 }
 export interface BotConfig {
   minDelayMs: number;
@@ -111,6 +114,7 @@ interface PlayerRec {
 /** Spectateur : regarde une partie publique en cours, sans siège ni cartes. Jamais conservé après un redémarrage. */
 interface SpectatorRec {
   id: string;
+  accountId?: string | null;
   nickname: string;
   avatar: string | null;
   tokenHash: string;
@@ -432,6 +436,9 @@ export class RoomManager {
     const key = `${room.code}|${rec.id}`;
     let out: { text: string } | { item: (typeof msg & { kind: 'throw' })['item']; to: string };
     if (msg.kind === 'chat') {
+      const accountId = (rec as { accountId?: string | null }).accountId;
+      const mute = accountId ? (this.deps.accounts?.muteLeft?.(accountId) ?? 0) : 0;
+      if (mute > 0) throw new ServerError('FORBIDDEN', muteMessage(mute));
       if (!this.chatLimit.hit(key)) throw new ServerError('RATE_LIMITED', 'Trop de messages, ralentissez');
       out = { text: msg.text };
     } else {
@@ -473,7 +480,7 @@ export class RoomManager {
     }
     const token = this.deps.tokenFactory ? this.deps.tokenFactory() : randomBytes(24).toString('hex');
     const id = `s_${randomBytes(5).toString('hex')}`;
-    room.spectators.push({ id, nickname, avatar: who.avatar, tokenHash: hashToken(token), connected: false, lastSeenAt: now });
+    room.spectators.push({ id, accountId: who.accountId, nickname, avatar: who.avatar, tokenHash: hashToken(token), connected: false, lastSeenAt: now });
     return { spectatorId: id, token };
   }
 

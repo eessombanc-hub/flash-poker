@@ -212,10 +212,16 @@ export class AccountClient {
   sendFeedback(input: { kind: FeedbackKind; message: string; contact?: string; where?: string }): Promise<{ id: string }> {
     return this.request('POST', '/feedback', input);
   }
-  /** Lecture réservée au propriétaire : le jeton d'administration est saisi dans le navigateur et jamais enregistré. */
-  adminFeedback = (adminToken: string) => this.request<{ items: FeedbackItem[] }>('GET', '/admin/feedback', undefined, { authorization: `Bearer ${adminToken}` }).then((r) => r.items);
-  adminFeedbackStatus = (adminToken: string, id: string, status: 'open' | 'done') => this.request<void>('POST', `/admin/feedback/${encodeURIComponent(id)}`, { status }, { authorization: `Bearer ${adminToken}` });
-  adminFeedbackDelete = (adminToken: string, id: string) => this.request<void>('DELETE', `/admin/feedback/${encodeURIComponent(id)}`, undefined, { authorization: `Bearer ${adminToken}` });
+  /** Équipe du site : appel authentifié par le jeton d'administration saisi (jamais enregistré) ou, à défaut, par la session du compte. */
+  staff<T>(method: string, path: string, body?: unknown, adminToken?: string | null): Promise<T> {
+    return this.request<T>(method, path, body, adminToken ? { authorization: `Bearer ${adminToken}` } : undefined);
+  }
+  announcement(): Promise<{ text: string | null }> {
+    return this.request('GET', '/announcement');
+  }
+  adminFeedback = (adminToken: string | null) => this.staff<{ items: FeedbackItem[] }>('GET', '/admin/feedback', undefined, adminToken).then((r) => r.items);
+  adminFeedbackStatus = (adminToken: string | null, id: string, status: 'open' | 'done') => this.staff<void>('POST', `/admin/feedback/${encodeURIComponent(id)}`, { status }, adminToken);
+  adminFeedbackDelete = (adminToken: string | null, id: string) => this.staff<void>('DELETE', `/admin/feedback/${encodeURIComponent(id)}`, undefined, adminToken);
 
   /** Copie de toutes les données du compte (droit d'accès et de portabilité). */
   exportData(): Promise<unknown> {

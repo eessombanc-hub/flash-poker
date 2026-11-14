@@ -48,3 +48,10 @@ export function isOffensiveName(name: string): boolean {
 }
 
 export const OFFENSIVE_NAME_MESSAGE = 'Ce pseudo n’est pas accepté';
+
+/** Message d'un silence en cours (durée arrondie). */
+export function muteMessage(seconds: number): string {
+  const m = Math.ceil(seconds / 60);
+  const left = m >= 120 ? `${Math.ceil(m / 60)} h` : `${m} min`;
+  return `Un modérateur vous a réduit au silence pour encore environ ${left}.`;
+}

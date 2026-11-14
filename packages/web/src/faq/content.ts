@@ -280,6 +280,10 @@ export const FAQ: readonly FaqSection[] = [
         a: ['Non. Ils sont tenus en mémoire pour la durée de la partie ou du salon, sans archivage dans la base des comptes. Un message contraire aux règles peut être masqué automatiquement.'],
       },
       {
+        q: 'Que se passe-t-il en cas de comportement déplacé ?',
+        a: ['Une équipe de modérateurs veille sur les discussions. Un message contraire aux règles peut être retiré, et son auteur réduit au silence pour une durée limitée, voire son compte suspendu en cas de manquement grave. Un lien est refusé dans le salon d’accueil, et un pseudo offensant est refusé à l’inscription. Pour signaler un comportement, utilisez « Un bug ? » en précisant le pseudo et le moment.'],
+      },
+      {
         q: 'Que se passe-t-il si je me déconnecte en pleine partie ?',
         a: ['Votre place est conservée et vous pouvez reprendre la partie en revenant. Les minuteurs continuent de courir : à l’échéance, la partie avance selon les règles de la variante. Sur le Tableau, trois tours consécutifs expirés valent abandon.'],
       },

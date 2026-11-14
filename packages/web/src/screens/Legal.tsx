@@ -91,6 +91,9 @@ function Privacy() {
           <strong>Messages « Un bug ? ».</strong> Le texte que vous envoyez, votre adresse électronique si vous choisissez de l’indiquer, l’écran affiché et le type d’appareil. Si vous êtes connecté, le message est rattaché à votre pseudonyme. Ces informations servent à corriger le défaut ou à vous répondre. Elles sont conservées le temps du traitement, puis supprimées, et disparaissent avec votre compte. Évitez d’y mentionner des informations sensibles. Base légale : intérêt légitime d’amélioration du service.
         </Li>
         <Li>
+          <strong>Modération.</strong> Les modérateurs et les administrateurs peuvent retirer un message du salon, réduire un compte au silence ou le suspendre en cas de comportement contraire aux règles. La sanction (motif éventuel, durée, auteur) et un journal des actions de modération sont conservés tant que le compte existe. Base légale : intérêt légitime d’assurer un espace de jeu respectueux.
+        </Li>
+        <Li>
           <strong>Discussions.</strong> Les messages du salon d’accueil et des tables ne sont pas archivés dans la base des comptes. Ils sont tenus en mémoire pour la durée de la partie ou du salon, et un message contraire aux règles peut être masqué par la modération automatique.
         </Li>
         <Li>
