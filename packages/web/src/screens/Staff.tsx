@@ -239,6 +239,70 @@ function LogTab({ call }: { call: Call }) {
   );
 }
 
+const PAGE = 50;
+
+/** Menu déroulant : liste de tous les joueurs ayant créé un compte, avec moteur de recherche (pseudo ou e-mail). */
+export function PlayersDirectory({ total }: { total?: number }) {
+  const client = useAccountClient();
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const [users, setUsers] = useState<StaffUser[]>([]);
+  const [count, setCount] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const fetchPage = useCallback(async (query: string, offset: number) => {
+    setLoading(true);
+    try {
+      const r = await client!.staff<{ users: StaffUser[]; total: number }>('GET', `/staff/users?q=${encodeURIComponent(query)}&limit=${PAGE}&offset=${offset}`);
+      setUsers((prev) => (offset === 0 ? r.users : [...prev, ...r.users]));
+      setCount(r.total);
+      setError('');
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [client]);
+
+  useEffect(() => {
+    if (!open) return;
+    const id = setTimeout(() => void fetchPage(q, 0), q ? 250 : 0);
+    return () => clearTimeout(id);
+  }, [open, q, fetchPage]);
+
+  return (
+    <details className="rounded-2xl border border-ivory-100/10 bg-ink-900/50" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-ivory-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
+        Liste des joueurs inscrits{total !== undefined ? ` (${total.toLocaleString('fr-FR')})` : ''} <span aria-hidden="true" className="text-gold-400">▾</span>
+      </summary>
+      <div className="space-y-3 border-t border-ivory-100/10 p-4">
+        <Field label="Rechercher un joueur" htmlFor="dir-q" hint="Par pseudo ou adresse e-mail.">
+          <input id="dir-q" type="search" className={inputClass} value={q} onChange={(e) => setQ(e.target.value)} />
+        </Field>
+        {error && <p role="alert" className="text-sm text-ruby-300">{error}</p>}
+        {count !== null && <p role="status" className="text-xs text-ivory-300/80">{count === 0 ? 'Aucun joueur ne correspond.' : `${count.toLocaleString('fr-FR')} joueur${count > 1 ? 's' : ''}${q ? ' trouvé' + (count > 1 ? 's' : '') : ''}`}</p>}
+        <ul className="max-h-96 divide-y divide-ivory-100/10 overflow-y-auto rounded-xl border border-ivory-100/10" aria-label="Joueurs inscrits">
+          {users.map((u) => (
+            <li key={u.id} className="px-3 py-2 text-sm">
+              <p className="flex flex-wrap items-baseline gap-x-2">
+                <strong className="text-ivory-50">{u.nickname}</strong>
+                {u.role !== 'user' && <span className="text-xs font-semibold text-gold-300">{ROLE_FR[u.role]}</span>}
+                {u.banned && <span className="text-xs text-ruby-300">suspendu</span>}
+                {u.muteLeft > 0 && <span className="text-xs text-amber-300">silence</span>}
+              </p>
+              <p className="text-xs text-ivory-300/70">Inscrit le {new Date(u.createdAt).toLocaleDateString('fr-FR')}{u.club ? ` · club ${u.club}` : ''}{u.email ? ` · ${u.email}` : ''}</p>
+            </li>
+          ))}
+        </ul>
+        {count !== null && users.length < count && (
+          <Button variant="secondary" disabled={loading} onClick={() => void fetchPage(q, users.length)}>Afficher plus</Button>
+        )}
+      </div>
+    </details>
+  );
+}
+
 /** Rubrique « Administration » de Mon espace : nombre de comptes créés et indicateurs clés, avec accès au panneau complet. */
 export function AdminOverview({ onOpenPanel }: { onOpenPanel: () => void }) {
   const client = useAccountClient();
@@ -269,6 +333,7 @@ export function AdminOverview({ onOpenPanel }: { onOpenPanel: () => void }) {
           </div>
         ))}
       </dl>
+      <PlayersDirectory total={stats?.accounts} />
       <Button onClick={onOpenPanel}>Ouvrir le panneau de gestion</Button>
     </section>
   );

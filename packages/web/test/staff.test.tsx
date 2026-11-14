@@ -90,6 +90,32 @@ describe('rubrique Administration de Mon espace', () => {
     expect(onStaff).toHaveBeenCalled();
   });
 
+  it('le menu déroulant liste les comptes créés et filtre avec le moteur de recherche', async () => {
+    const asked: string[] = [];
+    const users = [
+      { id: 'a', nickname: 'Alice', role: 'user', createdAt: 1_700_000_000_000, club: 'Club Paris', muteLeft: 0, banned: false, email: 'alice@x.fr' },
+      { id: 'b', nickname: 'Bruno', role: 'moderator', createdAt: 1_700_000_100_000, club: null, muteLeft: 0, banned: false, email: 'bruno@x.fr' },
+    ];
+    await open('admin', (url) => {
+      if (url === '/staff/stats') return json({ accounts: 2, newThisWeek: 1, staff: 1, mutes: 0, bans: 0, feedbackOpen: 0 });
+      if (url.startsWith('/staff/users')) {
+        asked.push(url);
+        const q = new URL(url, 'http://x').searchParams.get('q') ?? '';
+        const found = users.filter((u) => u.nickname.toLowerCase().includes(q.toLowerCase()));
+        return json({ users: found, total: found.length });
+      }
+      return json({});
+    });
+    await userEvent.click(await screen.findByText(/Liste des joueurs inscrits/));
+    expect(await screen.findByText('Alice')).toBeInTheDocument();
+    expect(screen.getByText('Bruno')).toBeInTheDocument();
+    expect(screen.getByText(/alice@x.fr/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('Rechercher un joueur'), 'bru');
+    await waitFor(() => expect(screen.queryByText('Alice')).toBeNull());
+    expect(screen.getByText('Bruno')).toBeInTheDocument();
+    expect(asked.some((u) => u.includes('q=bru'))).toBe(true);
+  });
+
   it('un joueur ordinaire n’a pas cette rubrique', async () => {
     await open('user', () => json({}));
     expect(screen.getByRole('tab', { name: /Profil/ })).toBeInTheDocument();

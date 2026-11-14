@@ -114,16 +114,20 @@ export class StaffService {
     return u;
   }
 
-  searchUsers(actor: Actor, q: string, limit = 50): StaffUser[] {
+  searchUsers(actor: Actor, q: string, limit = 50, offset = 0): { users: StaffUser[]; total: number } {
     const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const admin = actor.role === 'admin';
+    const where = `(u.nickname LIKE ? ESCAPE '\\' ${admin ? "OR u.email LIKE ? ESCAPE '\\'" : ''})`;
+    const args: Array<string | number> = admin ? [like, like] : [like];
+    const total = Number((this.db.prepare(`SELECT COUNT(*) AS n FROM users u WHERE ${where}`).get(...args) as { n: number }).n);
     const rows = this.db
       .prepare(
         `SELECT u.id, u.nickname, u.email, u.role, u.created_at, c.name AS club FROM users u LEFT JOIN club_member c ON c.user_id = u.id
-         WHERE (u.nickname LIKE ? ESCAPE '\\' ${actor.role === 'admin' ? "OR u.email LIKE ? ESCAPE '\\'" : ''})
-         ORDER BY (u.role = 'admin') DESC, (u.role = 'moderator') DESC, u.created_at DESC LIMIT ?`,
+         WHERE ${where}
+         ORDER BY (u.role = 'admin') DESC, (u.role = 'moderator') DESC, u.created_at DESC LIMIT ? OFFSET ?`,
       )
-      .all(...(actor.role === 'admin' ? [like, like, limit] : [like, limit])) as Array<Record<string, unknown>>;
-    return rows.map((r) => this.view(r, actor.role === 'admin'));
+      .all(...args, Math.min(Math.max(1, limit), 200), Math.max(0, offset)) as Array<Record<string, unknown>>;
+    return { users: rows.map((r) => this.view(r, admin)), total };
   }
 
   setRole(actor: Actor, userId: string, role: unknown): void {
@@ -223,10 +227,11 @@ export function registerStaffRoutes(app: FastifyInstance, staff: StaffService, o
     noStore(reply);
     return reply.send({ role: a.role, name: a.name, root: a.kind === 'root' });
   });
-  app.get<{ Querystring: { q?: string } }>('/staff/users', async (req, reply) => {
+  app.get<{ Querystring: { q?: string; limit?: string; offset?: string } }>('/staff/users', async (req, reply) => {
     const a = staff.authenticate(req);
     noStore(reply);
-    return reply.send({ users: staff.searchUsers(a, cut(req.query.q, 60)) });
+    const n = (v: string | undefined, d: number): number => (Number.isFinite(Number.parseInt(v ?? '', 10)) ? Number.parseInt(v as string, 10) : d);
+    return reply.send(staff.searchUsers(a, cut(req.query.q, 60), n(req.query.limit, 50), n(req.query.offset, 0)));
   });
   app.post('/staff/users/:id/role', async (req, reply) => {
     staff.setRole(staff.require(req, 'admin'), idOf(req), body(req).role);

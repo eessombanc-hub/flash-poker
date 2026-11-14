@@ -77,6 +77,22 @@ describe('équipe du site : rôles et accès', () => {
   });
 });
 
+describe('liste des joueurs', () => {
+  it('pagine, filtre par pseudo ou e-mail et annonce le total', async () => {
+    const { api, user } = await setup();
+    for (const n of ['Alice', 'Alain', 'Bruno', 'Carla']) await user(n);
+    const all = (await api('GET', '/staff/users?q=&limit=2&offset=0', ROOT)).json();
+    expect(all.total).toBe(4);
+    expect(all.users).toHaveLength(2);
+    const next = (await api('GET', '/staff/users?q=&limit=2&offset=2', ROOT)).json();
+    expect(new Set([...all.users, ...next.users].map((u: { id: string }) => u.id)).size).toBe(4);
+    const al = (await api('GET', '/staff/users?q=al', ROOT)).json();
+    expect(al.users.map((u: { nickname: string }) => u.nickname).sort()).toEqual(['Alain', 'Alice']);
+    expect((await api('GET', '/staff/users?q=bruno%40x', ROOT)).json().total).toBe(1);
+    expect((await api('GET', '/staff/users?q=%25', ROOT)).json().total).toBe(0);
+  });
+});
+
 describe('modération des chats', () => {
   it('le silence interdit d’écrire dans le salon, puis expire ; il peut être levé', async () => {
     const { api, user, setRole, advance, server } = await setup();
