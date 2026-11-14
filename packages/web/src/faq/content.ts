@@ -56,7 +56,7 @@ export const FAQ: readonly FaqSection[] = [
       },
       {
         q: 'Peut-on jouer à plusieurs tables à la fois ?',
-        a: ['Oui, jusqu’à quatre tables simultanées. Vous passez de l’une à l’autre sans quitter les autres. Pensez simplement aux minuteurs, qui continuent de courir sur chacune d’elles.'],
+        a: ['Oui, jusqu’à quatre tables simultanées. Vous passez de l’une à l’autre sans quitter les autres. Pensez simplement aux minuteurs, qui continuent de courir sur chacune d’elles.', 'Sur un écran assez large, le bouton « Mosaïque » du bandeau « Mes tables » affiche vos tables côte à côte (poker, blackjack et Tableau mélangés) pour jouer sur toutes en même temps. « Agrandir » ouvre l’une d’elles en plein écran. Sous 900 pixels de large, la mosaïque n’est pas proposée.'],
       },
     ],
   },

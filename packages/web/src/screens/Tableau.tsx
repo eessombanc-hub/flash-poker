@@ -38,13 +38,22 @@ const writeStore = (k: string, v: string): void => {
 const cpuName = (t: (k: Key) => string, level: AiLevel | null): string => t(`tb.cpu.${level ?? 'intermediate'}` as Key);
 
 /** Point d'entrée : menu des modes, puis la partie. Ouvert à tous (invité ou connecté). */
-export function Tableau({ onBack, onLogin, initialCode, initialVariant = 'classic' }: { onBack: () => void; onLogin: () => void; initialCode?: string; initialVariant?: TableauVariant }) {
+export function Tableau({ onBack, onLogin, initialCode, initialVariant = 'classic', resumeCode }: { onBack: () => void; onLogin: () => void; initialCode?: string; initialVariant?: TableauVariant; resumeCode?: string }) {
   const { t } = useI18n();
   const client = useAccountClient();
   const me = useAccount((s) => s.account);
   const ready = useAccount((s) => s.ready);
   const [game, setGame] = useState<TbGameDto | null>(null);
   const inGame = game !== null;
+  // Vue mosaïque : la partie tenue est rouverte directement, sans passer par le menu.
+  useEffect(() => {
+    if (!resumeCode || !client || !ready) return;
+    let off = false;
+    client.tbGet(resumeCode).then((g) => !off && setGame(g)).catch(() => undefined);
+    return () => {
+      off = true;
+    };
+  }, [client, ready, resumeCode]);
   useEffect(() => {
     if (!inGame) return;
     document.body.dataset.tbGame = '1';

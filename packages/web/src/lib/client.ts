@@ -233,6 +233,22 @@ export class GameClient {
     this.store.setState({ ...initialState(null) });
   }
 
+  /**
+   * Après une session tenue dans un autre cadre (vue mosaïque) : si la table a été quittée ailleurs, le stockage
+   * est vide et ce client l'oublie aussi ; sinon il reprend la session conservée.
+   */
+  syncFromStorage(): void {
+    const stored = this.opts.storage.load();
+    if (this.state.session && !stored) {
+      this.leaving = true;
+      this.socket?.disconnect();
+      this.socket = null;
+      this.store.setState({ ...initialState(null) });
+    } else if (!this.state.session && stored) {
+      this.store.setState({ ...initialState(stored) });
+    }
+  }
+
   /** Fermeture de l'onglet / démontage : coupe la connexion sans effacer la session. */
   dispose(): void {
     this.leaving = true;

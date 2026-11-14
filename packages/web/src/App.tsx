@@ -29,15 +29,17 @@ const loadBlackjack = () => import('./screens/Blackjack');
 const loadTableau = () => import('./screens/Tableau');
 const loadVariants = () => import('./screens/Variants');
 const loadMultiplayer = () => import('./screens/Multiplayer');
+const loadMosaic = () => import('./screens/Mosaic');
 const AuthScreen = lazy(() => loadAuth().then((m) => ({ default: m.AuthScreen })));
 const Blackjack = lazy(() => loadBlackjack().then((m) => ({ default: m.Blackjack })));
 const Tableau = lazy(() => loadTableau().then((m) => ({ default: m.Tableau })));
+const Mosaic = lazy(() => loadMosaic().then((m) => ({ default: m.Mosaic })));
 const Multiplayer = lazy(() => loadMultiplayer().then((m) => ({ default: m.Multiplayer })));
 const Variants = lazy(() => loadVariants().then((m) => ({ default: m.Variants })));
 const Space = lazy(() => loadSpace().then((m) => ({ default: m.Space })));
 import type { SpaceTab } from './screens/Space';
 
-type Screen = 'home' | 'legal' | 'feedback' | 'staff' | 'faq' | 'create' | 'join' | 'watch' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | 'multi' | { auth: AuthMode };
+type Screen = 'home' | 'legal' | 'feedback' | 'staff' | 'faq' | 'create' | 'join' | 'watch' | 'solo' | 'train' | 'space' | 'blackjack' | 'tableau' | 'variants' | 'multi' | 'mosaic' | { auth: AuthMode };
 
 function initialCode(): string {
   try {
@@ -257,6 +259,18 @@ function AppContent() {
   else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} onStaff={openStaff} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => { setBjJoin(''); setBjTab(undefined); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialJoin={bjJoin || undefined} initialTab={bjTab} />;
   else if (screen === 'tableau') content = <Tableau onBack={() => { setTableauCode(''); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} initialVariant={tableauVariant} />;
+  else if (screen === 'mosaic' && slots)
+    content = (
+      <Mosaic
+        slots={slots}
+        onClose={() => { setAway(false); setScreen('home'); }}
+        onOpen={(x) => {
+          if (x.game === 'poker') { slots.setActive((x.pane as { slot: number }).slot); setAway(false); setScreen('home'); }
+          else if (x.game === 'blackjack') { setAway(true); setBjJoin(''); setScreen('blackjack'); }
+          else { setAway(true); setTableauCode(''); setScreen('tableau'); }
+        }}
+      />
+    );
   else if (screen === 'multi')
     content = (
       <Multiplayer
@@ -356,9 +370,9 @@ function AppContent() {
     <SettingsProvider>
       <SoundBridge />
       <ConnectionBanner />
-      {!(tableShown && view && view.status !== 'WAITING' && view.status !== 'CANCELLED') && screen !== 'home' && <TopBar />}
+      {!(tableShown && view && view.status !== 'WAITING' && view.status !== 'CANCELLED') && screen !== 'home' && screen !== 'mosaic' && <TopBar />}
       <Suspense fallback={<p className="p-8 text-center text-sm text-ivory-300/70" role="status">{t('common.loading')}</p>}>{content}</Suspense>
-      {slots && (
+      {slots && screen !== 'mosaic' && (
         <TableDock
           slots={slots}
           account={account}
@@ -366,6 +380,7 @@ function AppContent() {
           trigger={`${typeof screen === 'string' ? screen : 'auth'}:${away ? 1 : 0}`}
           compact={tableShown || screen === 'blackjack' || screen === 'tableau'}
           shownSlot={tableShown ? activeSlot : -1}
+          onMosaic={() => { setAway(true); setScreen('mosaic'); }}
           onOpenPoker={(i) => { slots.setActive(i); setAway(false); }}
           onOpenExternal={(game, code) => {
             setAway(true);

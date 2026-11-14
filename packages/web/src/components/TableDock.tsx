@@ -3,6 +3,7 @@ import { useStore } from 'zustand';
 import { useI18n } from '../i18n';
 import type { AccountClient } from '../lib/account';
 import { MAX_TABLES, type TableSlots } from '../lib/slots';
+import { useMediaQuery } from '../lib/media';
 import { Sound } from '../lib/sound';
 
 const BJ_KEY = 'poker.bj.table.v1';
@@ -100,11 +101,13 @@ interface Props {
   /** Emplacement de poker affiché en ce moment, ou -1. */
   shownSlot: number;
   onOpenPoker: (slot: number) => void;
+  /** Ouvre la vue mosaïque (deux tables ou plus, écran assez large). */
+  onMosaic?: () => void;
   onOpenExternal: (game: 'blackjack' | 'tableau', code: string) => void;
 }
 
 /** Bandeau « Mes tables » : jusqu'à quatre tables ouvertes, en poker, Blackjack ou Tableau, une pression pour y revenir. */
-export function TableDock({ slots, account, signedIn, trigger, compact, shownSlot, onOpenPoker, onOpenExternal }: Props) {
+export function TableDock({ slots, account, signedIn, trigger, compact, shownSlot, onOpenPoker, onMosaic, onOpenExternal }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [pulse, setPulse] = useState<Set<string>>(new Set());
@@ -113,8 +116,10 @@ export function TableDock({ slots, account, signedIn, trigger, compact, shownSlo
     Sound.confirm();
     setPulse((p) => new Set(p).add(key));
   };
+  const wide = useMediaQuery('(min-width: 900px)');
   const external = useExternal(account, signedIn, trigger, mark);
   useEffect(() => slots.setExternal(external.length), [slots, external.length]);
+  useEffect(() => slots.setExternalTables(external.map((e) => ({ game: e.game, code: e.code }))), [slots, external]);
 
   // L'état de chaque emplacement de poker : réévalué à chaque message reçu du serveur.
   const [, tick] = useState(0);
@@ -205,6 +210,11 @@ export function TableDock({ slots, account, signedIn, trigger, compact, shownSlo
               );
             })}
           </ul>
+          {onMosaic && rows.length >= 2 && wide && (
+            <button type="button" onClick={() => { setOpen(false); onMosaic(); }} className="shrink-0 rounded-lg border border-gold-500/50 px-3 py-1.5 text-xs font-semibold text-gold-300 hover:bg-gold-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
+              {t('dock.mosaic')}
+            </button>
+          )}
           {compact && (
             <button type="button" onClick={() => setOpen(false)} className="shrink-0 rounded-lg px-2 py-1 text-xs text-ivory-200 hover:bg-ivory-100/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">
               {t('dock.collapse')}

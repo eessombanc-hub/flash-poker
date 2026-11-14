@@ -83,12 +83,12 @@ describe('sécurité : en-têtes HTTP', () => {
     const { inj } = await start();
     for (const url of ['/health', '/introuvable']) {
       const h = (await inj('GET', url)).headers;
-      expect(String(h['content-security-policy'])).toContain("frame-ancestors 'none'");
+      expect(String(h['content-security-policy'])).toContain("frame-ancestors 'self'");
       expect(String(h['content-security-policy'])).toContain("script-src 'self'");
       expect(String(h['content-security-policy'])).toContain("object-src 'none'");
       expect(h['strict-transport-security']).toMatch(/max-age=\d+/);
       expect(h['x-content-type-options']).toBe('nosniff');
-      expect(h['x-frame-options']).toBe('DENY');
+      expect(h['x-frame-options']).toBe('SAMEORIGIN');
       expect(h['referrer-policy']).toBeTruthy();
       expect(h['permissions-policy']).toContain('camera=()');
     }

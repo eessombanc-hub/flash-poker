@@ -10,6 +10,8 @@ import { ApiError } from './lib/api';
 import { LocalSessionStore } from './lib/session';
 import { installErrorReporting } from './lib/errorReport';
 import { setAvatarBase } from './lib/avatarImage';
+import { currentPane } from './lib/embed';
+import { EmbedPane } from './screens/EmbedPane';
 
 // Même origine en production (reverse proxy) ; en développement, Vite relaie /rooms et /socket.io vers le serveur.
 const baseUrl = import.meta.env.VITE_SERVER_URL ?? '';
@@ -20,8 +22,11 @@ const account = new AccountClient({ baseUrl });
 const refuseFifth = () => {
   if (slots.total() >= MAX_TABLES) throw new ApiError('TABLE_LIMIT', 'Quatre tables au maximum.', 'TABLE_LIMIT');
 };
+// Cadre de la vue mosaïque : une seule table, et seul son emplacement est connecté.
+const pane = currentPane();
 const slots: TableSlots = new TableSlots(
   Array.from({ length: MAX_TABLES }, (_, i) => new GameClient({ baseUrl, storage: new LocalSessionStore(i === 0 ? 'poker.session.v1' : `poker.session.v1.${i}`), accountToken: () => account.token, beforeNewTable: refuseFifth })),
+  pane?.kind === 'poker' ? pane.slot : pane ? 0 : null,
 );
 account.beforeNewTable = refuseFifth;
 
@@ -33,7 +38,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <SlotsProvider slots={slots}>
       <AccountProvider account={account}>
-        <App />
+        {pane ? <EmbedPane pane={pane} /> : <App />}
       </AccountProvider>
     </SlotsProvider>
   </StrictMode>,

@@ -12,6 +12,13 @@ interface SlotsState {
   active: number;
   /** Tables hors poker (Blackjack, Tableau) comptées dans le plafond. */
   external: number;
+  /** Tables hors poker tenues par le joueur (pour la vue mosaïque). */
+  externalTables: ExternalTable[];
+}
+
+export interface ExternalTable {
+  game: 'blackjack' | 'tableau';
+  code: string;
 }
 
 /**
@@ -19,11 +26,15 @@ interface SlotsState {
  * session conservée), ce qui permet de tenir plusieurs tables à la fois et de passer de l'une à l'autre.
  */
 export class TableSlots {
-  readonly store: StoreApi<SlotsState> = createStore<SlotsState>(() => ({ active: 0, external: 0 }));
+  readonly store: StoreApi<SlotsState> = createStore<SlotsState>(() => ({ active: 0, external: 0, externalTables: [] }));
 
-  constructor(readonly clients: GameClient[]) {
+  /**
+   * `only` : cadre intégré de la vue mosaïque. Il ne tient que cet emplacement (les autres sont gérés par les autres
+   * cadres ou par la page principale), pour ne pas multiplier les connexions.
+   */
+  constructor(readonly clients: GameClient[], private readonly only: number | null = null) {
     // Au rechargement, l'affichage reprend sur la première table encore ouverte.
-    const first = clients.findIndex((c) => c.state.session);
+    const first = only ?? clients.findIndex((c) => c.state.session);
     if (first > 0) this.store.setState({ active: first });
   }
 
@@ -57,11 +68,29 @@ export class TableSlots {
     this.setActive(this.clients.findIndex((c) => !c.state.session));
     return true;
   }
+  private held(): GameClient[] {
+    return this.only === null ? this.clients : [this.clients[this.only]!];
+  }
   resumeAll(): void {
-    for (const c of this.clients) c.resume();
+    for (const c of this.held()) c.resume();
   }
   disposeAll(): void {
+    for (const c of this.held()) c.dispose();
+  }
+  /** Tables hors poker connues (Blackjack, Tableau), mises à jour par le bandeau « Mes tables ». */
+  setExternalTables(list: ExternalTable[]): void {
+    const cur = this.store.getState().externalTables;
+    if (JSON.stringify(cur) !== JSON.stringify(list)) this.store.setState({ externalTables: list });
+  }
+  /** La vue mosaïque garde les connexions : la page principale les coupe, puis les reprend à la fermeture. */
+  suspendForMosaic(): void {
     for (const c of this.clients) c.dispose();
+  }
+  resumeFromMosaic(): void {
+    for (const c of this.clients) {
+      c.syncFromStorage();
+      c.resume();
+    }
   }
 }
 
