@@ -229,7 +229,7 @@ export function finalBoard(known: readonly (string | null)[], events: readonly R
 export function RoundResultModal({ record, events, board, view, onClose, final }: { record: RoundRecord; events: RoundEvent[]; board: readonly (string | null)[]; view: RoomView; onClose: () => void; final: boolean }) {
   const { t, tp } = useI18n();
   const { fourColor } = useSettings();
-  // Aucune combinaison n'est détaillée dans le résultat, sauf la quinte flush, qui a droit à sa fête.
+  // La combinaison gagnante est montrée à chaque manche (bannière) ; la quinte flush a droit, en plus, à sa fête.
   const flushes = straightFlushes(record);
   const shownBoard = record.variant === 'AVIATION' || record.variant === 'AVIA_6' || record.variant === 'V6_1' ? finalBoard(board, events) : [];
   const lines = events.filter((e) => e.type === 'LINE_RESOLVED').map((e) => e.data as unknown as LineResult);
@@ -493,9 +493,8 @@ export function WinnerBanner({ record, view }: { record: RoundRecord; view: Room
   const a = record.award;
   const winner = a.kind === 'POINTS' || a.kind === 'INSTANT_VICTORY' ? a.winner : null;
   if (!winner) return null;
-  const isFlush = straightFlushes(record).some((f) => f.player === winner);
-  const combo = isFlush ? winningCombination(record) : null;
-  const cards = isFlush ? winningCards(record) : [];
+  const combo = winningCombination(record);
+  const cards = winningCards(record);
   return (
     <div className="relative mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-gold-500/50 bg-gradient-to-r from-gold-500/20 to-transparent px-3 py-1.5" data-testid="vainqueur-manche">
       <Shine />
@@ -544,7 +543,7 @@ export function RoundList({ history, nameOf, star }: { history: readonly RoundRe
     <ol className="mt-3 space-y-2">
       {history.map((r) => {
         const winner = r.award.kind === 'POINTS' || r.award.kind === 'INSTANT_VICTORY' ? r.award.winner : null;
-        const combo = straightFlushes(r).length > 0 ? winningCombination(r) : null;
+        const combo = winningCombination(r);
         const pts = r.award.kind === 'POINTS' ? r.award.points : null;
         const on = star?.isOn(r.roundNo) ?? false;
         return (
