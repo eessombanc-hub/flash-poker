@@ -22,7 +22,7 @@ import type { VariantId } from '../lib/types';
 
 const LIST_POLL_MS = 5000;
 
-export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, onLegal, onFeedback, me, live, langSelect, notice, account }: { onFeedback?: () => void; onLegal?: (p: LegalPage) => void; onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
+export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin, onWatch, onJoinTable, onTrain, onBlackjack, onTableau, onSpace, onLegal, onFeedback, onFaq, me, live, langSelect, notice, account }: { onFaq?: () => void; onFeedback?: () => void; onLegal?: (p: LegalPage) => void; onChallenges?: () => void; onQuickStart?: () => void; onVariants?: () => void; onCreate: (variant?: VariantId) => void; onJoin: (code?: string) => void; onWatch?: (code: string) => void; onJoinTable?: (game: 'blackjack' | 'tableau', code: string, variant?: 'classic' | 'hand5') => void; onTrain: () => void; onBlackjack?: () => void; onTableau?: (variant: 'classic' | 'hand5') => void; onSpace?: (tab: SpaceTab) => void; me?: { nickname: string; avatar?: string | null } | null; live?: LiveStats | null; langSelect?: ReactNode; notice?: string | null; account?: ReactNode }) {
   const { t } = useI18n();
   const [rules, setRules] = useState(false);
   const [settings, setSettings] = useState(false);
@@ -136,8 +136,11 @@ export function Home({ onChallenges, onQuickStart, onVariants, onCreate, onJoin,
           <footer className="space-y-2 pt-4 text-center text-xs text-ivory-100/80">
             <p className="font-semibold text-ivory-100">{t('home.footer')}</p>
             <button type="button" onClick={() => setRules(true)} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('home.rules.title')}</button>
-            {onFeedback && (
-              <button type="button" onClick={onFeedback} className="block w-full text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('fb.link')}</button>
+            {(onFaq || onFeedback) && (
+              <p className="flex flex-wrap justify-center gap-x-5 gap-y-1">
+                {onFaq && <button type="button" onClick={onFaq} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('faq.link')}</button>}
+                {onFeedback && <button type="button" onClick={onFeedback} className="text-gold-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('fb.link')}</button>}
+              </p>
             )}
             {onLegal && (
               <nav aria-label={t('legal.nav')} className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1 text-ivory-300/80">
