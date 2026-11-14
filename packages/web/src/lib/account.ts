@@ -3,7 +3,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
 import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
 import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbQueueDto, TbStatus } from './types';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow, RankGame, RankPeriod, Ranking, ProgressionReply, XpRanking, RewardsReply, RewardKind, Equipped } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow, RankGame, RankPeriod, Ranking, ProgressionReply, XpRanking, ClubRanking, RewardsReply, RewardKind, Equipped } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
 const KEY = 'poker.account.v1';
@@ -169,7 +169,7 @@ export class AccountClient {
     return this.request<{ token: string; account: AccountPrivate }>('POST', '/auth/reset', { token, password }).then((r) => this.signedIn(r));
   }
 
-  async updateProfile(patch: { nickname?: string; avatar?: string | null; notifyEmail?: boolean }): Promise<AccountPrivate> {
+  async updateProfile(patch: { nickname?: string; avatar?: string | null; notifyEmail?: boolean; club?: string | null }): Promise<AccountPrivate> {
     const account = await this.request<AccountPrivate>('PATCH', '/me', patch);
     this.store.setState({ account });
     return account;
@@ -224,6 +224,7 @@ export class AccountClient {
   engagement = () => this.request<Engagement>('GET', '/me/engagement');
   progression = () => this.request<ProgressionReply>('GET', '/me/progression');
   xpRanking = () => this.request<XpRanking>('GET', '/me/xp-ranking');
+  clubRanking = () => this.request<ClubRanking>('GET', '/me/club-ranking');
   rewards = () => this.request<RewardsReply>('GET', '/me/rewards');
   equip = (slot: RewardKind, id: string | null) => this.request<Equipped>('POST', '/me/rewards/equip', { slot, id });
   rankings = (game: RankGame, period: RankPeriod) => this.request<Ranking>('GET', `/me/rankings?game=${encodeURIComponent(game)}&period=${period}`);

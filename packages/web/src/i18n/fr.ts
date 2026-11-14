@@ -1942,6 +1942,22 @@ export const fr = {
   'legal.cookies': 'Cookies',
   'auth.legal.avant': 'En créant un compte, vous reconnaissez avoir pris connaissance de la ',
   'auth.legal.lien': 'politique de confidentialité',
+  'club.label': "Club",
+  'club.hint': "Facultatif. Votre club s’affiche à côté de votre nom dans les classements.",
+  'club.placeholder': "Par exemple, Amical Poker Club",
+  'rk.mode': "Classement",
+  'rk.mode.players': "Joueurs",
+  'rk.mode.clubs': "Clubs",
+  'club.title': "Classement des clubs",
+  'club.how': "Les clubs sont classés sur l’expérience cumulée de leurs membres durant la saison en cours. Un club apparaît dès qu’au moins deux joueurs l’ont indiqué dans leur profil.",
+  'club.none': "Vous n’avez pas indiqué de club. Ajoutez-le dans votre profil pour faire compter vos points.",
+  'club.empty': "Aucun club n’est encore classé. Il en faut un avec au moins deux membres actifs cette saison.",
+  'club.yours': "(votre club)",
+  'club.your_place': "Votre club",
+  'club.members.one': "{n} membre",
+  'club.members.other': "{n} membres",
+  'club.active': "{n} actifs cette saison",
+  'club.average': "{n} en moyenne",
 } as const;
 
 export type Key = keyof typeof fr;

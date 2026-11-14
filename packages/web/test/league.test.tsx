@@ -24,8 +24,8 @@ const prog: ProgressionReply = {
 };
 const board: XpRanking = {
   rows: [
-    { rank: 1, nickname: 'Ana', avatar: null, xp: 900, league: 'silver', title: null, frame: 'frame.gold', emblem: 'emblem.spade', you: false },
-    { rank: 2, nickname: 'Emeric', avatar: null, xp: 520, league: 'silver', title: 'title.regular', frame: null, emblem: null, you: true },
+    { rank: 1, nickname: 'Ana', avatar: null, xp: 900, league: 'silver', title: null, frame: 'frame.gold', emblem: 'emblem.spade', club: 'Amical Poker Club', you: false },
+    { rank: 2, nickname: 'Emeric', avatar: null, xp: 520, league: 'silver', title: 'title.regular', frame: null, emblem: null, club: null, you: true },
   ],
   mine: null,
   players: 5,
@@ -69,6 +69,7 @@ describe('ligues et hauts faits', () => {
     expect(screen.getByTestId('avatar-frame')).toHaveAttribute('data-frame', 'frame.gold');
     expect(screen.getByRole('img', { name: 'Emblème pique' })).toBeInTheDocument();
     expect(screen.getByText('Habitué')).toBeInTheDocument();
+    expect(screen.getByText('[Amical Poker Club]')).toBeInTheDocument();
   });
   it('le bandeau de l’accueil rappelle la ligue et les points', async () => {
     render(wrap(<DailyStrip onOpen={() => undefined} />));

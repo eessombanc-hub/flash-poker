@@ -55,6 +55,8 @@ export type {
   ProgressionReply,
   XpRankRow,
   XpRanking,
+  ClubRanking,
+  ClubRankRow,
   Season,
   SeasonResult,
   Career,

@@ -152,6 +152,7 @@ export function EngagementPanel() {
                 <FramedAvatar nickname={r.nickname} avatar={r.avatar} size={28} frame={r.frame} />
                 <span className="min-w-0 flex-1 truncate font-medium text-ivory-50">
                   {r.nickname}{r.you && <span className="ml-1.5 text-xs text-gold-300">({t('eg.you')})</span>}
+                  {r.club && <span className="ml-1.5 text-xs font-normal text-ivory-300/70">[{r.club}]</span>}
                   {r.emblem && <span className="ml-1.5 inline-flex align-middle"><EmblemBadge id={r.emblem} size={16} /></span>}
                   <span className="ml-2 text-xs font-normal text-ivory-300/70">{r.title ? <TitleTag id={r.title} /> : t(LEAGUE_KEY[r.league])}</span>
                 </span>

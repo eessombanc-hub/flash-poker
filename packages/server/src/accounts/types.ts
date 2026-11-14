@@ -10,6 +10,8 @@ export interface AccountPrivate extends AccountPublic {
   email: string;
   notifyEmail: boolean;
   createdAt: number;
+  /** Club indiqué par le joueur (nom affiché du club), ou null. */
+  club: string | null;
 }
 
 /** Partie terminée, telle qu'archivée : uniquement des informations devenues publiques à la fin. */
@@ -169,8 +171,10 @@ export interface XpRankRow {
   title: string | null;
   frame: string | null;
   emblem: string | null;
+  club: string | null;
   you: boolean;
 }
+export type { ClubRanking, ClubRankRow } from './clubs';
 
 /** Ligne du classement hebdomadaire entre favoris : parties gagnées sur les sept derniers jours. */
 export interface LeaderboardRow extends AccountPublic {

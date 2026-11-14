@@ -79,6 +79,9 @@ function Privacy() {
           <strong>Progression et historique de jeu.</strong> Parties, mains, résultats, niveaux, points d’expérience, hauts faits, classements, récompenses équipées, jetons virtuels. Ils alimentent les classements, les saisons et l’affichage de vos récompenses aux tables. Base légale : exécution du service.
         </Li>
         <Li>
+          <strong>Club (facultatif).</strong> Le nom du club que vous indiquez dans votre profil s’affiche publiquement à côté de votre pseudonyme dans les classements, et sert à classer les clubs entre eux. Laissez le champ vide pour ne rien afficher, ou effacez-le à tout moment. Ne saisissez pas de nom qui permettrait d’identifier un tiers sans son accord.
+        </Li>
+        <Li>
           <strong>Courriels de service.</strong> Lien de réinitialisation du mot de passe et, si vous l’avez activé dans votre profil, notifications de jeu. Les notifications reposent sur votre consentement, que vous pouvez retirer à tout moment dans votre profil.
         </Li>
         <Li>
@@ -107,7 +110,7 @@ function Privacy() {
       </P>
       <H>Vos droits</H>
       <P>
-        Vous disposez des droits d’accès, de rectification, d’effacement, de limitation, d’opposition et de portabilité, ainsi que du droit de retirer votre consentement et de définir des directives sur le sort de vos données après votre décès. Vous pouvez modifier votre pseudonyme, votre avatar, votre adresse et votre mot de passe, ou supprimer votre compte, depuis votre espace. Pour tout autre droit, écrivez à <Contact /> ; une réponse vous est donnée dans un délai d’un mois. Une pièce justifiant de votre identité peut être demandée en cas de doute.
+        Vous disposez des droits d’accès, de rectification, d’effacement, de limitation, d’opposition et de portabilité, ainsi que du droit de retirer votre consentement et de définir des directives sur le sort de vos données après votre décès. Vous pouvez modifier votre pseudonyme, votre avatar, votre club, votre adresse et votre mot de passe, télécharger une copie de vos données ou supprimer votre compte, depuis votre espace. Pour tout autre droit, écrivez à <Contact /> ; une réponse vous est donnée dans un délai d’un mois. Une pièce justifiant de votre identité peut être demandée en cas de doute.
       </P>
       <P>
         Si vous estimez, après nous avoir contactés, que vos droits ne sont pas respectés, vous pouvez saisir la CNIL : <A href="https://www.cnil.fr/fr/plaintes">cnil.fr/fr/plaintes</A>, 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07.

@@ -7,6 +7,7 @@ import { errorText } from '../lib/tbText';
 import type { RankGame, RankPeriod, Ranking, RankRow } from '../lib/types';
 import { VARIANTS } from '../lib/labels';
 import { Avatar, Segmented } from './ui';
+import { ClubBoard } from './Clubs';
 
 const PERIODS: readonly RankPeriod[] = ['week', 'month', 'season', 'all'];
 const POKER_VARIANTS: RankGame[] = VARIANTS.map((v) => v.id);
@@ -43,6 +44,7 @@ function RowView({ r, blackjack }: { r: RankRow; blackjack: boolean }) {
 export function RankingsPanel() {
   const { t } = useI18n();
   const account = useAccountClient();
+  const [mode, setMode] = useState<'players' | 'clubs'>('players');
   const [game, setGame] = useState<RankGame>('poker');
   const [period, setPeriod] = useState<RankPeriod>('season');
   const [data, setData] = useState<Ranking | null>(null);
@@ -69,6 +71,8 @@ export function RankingsPanel() {
   return (
     <section className="space-y-4" aria-label={t('rk.title')}>
       <h2 className="font-display text-2xl text-ivory-50">{t('rk.title')}</h2>
+      <Segmented label={t('rk.mode')} value={mode} options={['players', 'clubs'] as const} format={(m) => t(`rk.mode.${m}` as never)} onChange={setMode} />
+      {mode === 'clubs' ? <ClubBoard /> : <>
       <Segmented label={t('rk.period')} value={period} options={PERIODS} format={(p) => t(`rk.period.${p}` as never)} onChange={setPeriod} />
       <div>
         <label htmlFor="rk-game" className="mb-1 block text-sm font-semibold text-ivory-100">{t('rk.game')}</label>
@@ -113,6 +117,7 @@ export function RankingsPanel() {
           {!data.mine && !data.rows.some((r) => r.you) && <p className="text-xs text-ivory-300/70">{t('rk.not_ranked')}</p>}
         </>
       )}
+      </>}
     </section>
   );
 }

@@ -16,6 +16,7 @@ import { computeProgression, leagueFor, type LeagueId, type Progression, type Xp
 import { evaluateRewards, REWARD_BY_ID, REWARD_KINDS, type RewardKind, type RewardStatus } from './rewards';
 import type { Career, ProgressionReply, RewardsReply, XpRankRow } from './types';
 import { equippedOf, forgetEquipped, type Equipped } from './cosmetics';
+import { canonicalNames, checkClubName, clubOf, rankClubs, setClub, type ClubRanking } from './clubs';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, FinishedGame, GameDetail, GameSummary, InviteOverview, LeaderboardRow, VariantStats } from './types';
 
 // ---------- Validation des entrées ----------
@@ -48,7 +49,7 @@ const normalizeCode = (raw: string): string => raw.toUpperCase().replace(/[^A-Z0
 export const registerSchema = z.object({ nickname, email, password, avatar, invite: z.string().regex(/^[A-Za-z0-9_-]{6,40}$/).optional() });
 export const inviteEmailSchema = z.object({ email });
 export const loginSchema = z.object({ login: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) });
-export const profileSchema = z.object({ nickname: nickname.optional(), avatar, notifyEmail: z.boolean().optional() });
+export const profileSchema = z.object({ nickname: nickname.optional(), avatar, notifyEmail: z.boolean().optional(), club: z.string().max(60).nullable().optional() });
 export const emailChangeSchema = z.object({ email, password: z.string().min(1).max(128) });
 export const passwordChangeSchema = z.object({ current: z.string().min(1).max(128), next: password });
 export const forgotSchema = z.object({ email });
@@ -56,6 +57,7 @@ export const deleteSchema = z.object({ password: z.string().min(1).max(128) });
 export const equipSchema = z.object({ slot: z.enum(REWARD_KINDS as [RewardKind, ...RewardKind[]]), id: z.string().max(40).nullable() });
 interface LadderRow {
   id: string;
+  club: string | null;
   nickname: string;
   avatar: string | null;
   title: string | null;
@@ -173,7 +175,7 @@ export class AccountService {
 
   account(id: string): AccountPrivate | null {
     const r = this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Row | undefined;
-    return r ? { id: r.id as string, nickname: r.nickname as string, avatar: (r.avatar as string | null) ?? null, email: r.email as string, notifyEmail: r.notify_email === 1, createdAt: r.created_at as number } : null;
+    return r ? { id: r.id as string, nickname: r.nickname as string, avatar: (r.avatar as string | null) ?? null, email: r.email as string, notifyEmail: r.notify_email === 1, createdAt: r.created_at as number, club: clubOf(this.db, r.id as string) } : null;
   }
 
   /** Un invité ne peut pas emprunter le pseudo d'un compte (usurpation). */
@@ -199,6 +201,12 @@ export class AccountService {
       this.db.prepare('DELETE FROM avatar_images WHERE user_id = ? AND id IS NOT ?').run(userId, data.avatar);
     }
     if (data.notifyEmail !== undefined) this.db.prepare('UPDATE users SET notify_email = ? WHERE id = ?').run(data.notifyEmail ? 1 : 0, userId);
+    if (data.club !== undefined) {
+      const c = checkClubName(data.club);
+      if (!c.ok) throw new ServerError('BAD_REQUEST', c.message, 'CLUB');
+      setClub(this.db, userId, c.name, this.now());
+      this.ladderCache = null;
+    }
     return this.account(userId)!;
   }
 
@@ -253,7 +261,7 @@ export class AccountService {
   // ---------- Données personnelles : export et suppression ----------
 
   /** Tables du Blackjack et du Tableau dont les lignes portent `user_id` (hors partie en cours, qui n'a pas d'intérêt à l'export). */
-  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log', 'cosmetics'] as const;
+  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log', 'cosmetics', 'club_member'] as const;
 
   /** Copie de toutes les données rattachées au compte, pour son titulaire (droit d'accès et de portabilité). */
   exportData(userId: string): Record<string, unknown> {
@@ -563,7 +571,9 @@ export class AccountService {
     const users = this.db
       .prepare('SELECT DISTINCT u.id, u.nickname, u.avatar, c.title, c.frame, c.emblem FROM users u JOIN rank_log l ON l.user_id = u.id LEFT JOIN cosmetics c ON c.user_id = u.id WHERE l.ended_at >= ? AND l.ended_at < ?')
       .all(season.start, season.end) as { id: string; nickname: string; avatar: string | null; title: string | null; frame: string | null; emblem: string | null }[];
-    const rows = users.map((u) => ({ id: u.id, nickname: u.nickname, avatar: u.avatar ?? null, title: u.title, frame: u.frame, emblem: u.emblem, xp: this.seasonProgress(u.id, season, this.firstSeason(u.id)).xp }));
+    const clubs = canonicalNames(this.db);
+    const keys = new Map((this.db.prepare('SELECT user_id, key FROM club_member').all() as { user_id: string; key: string }[]).map((r) => [r.user_id, r.key]));
+    const rows = users.map((u) => ({ id: u.id, club: clubs.get(keys.get(u.id) ?? '') ?? null, nickname: u.nickname, avatar: u.avatar ?? null, title: u.title, frame: u.frame, emblem: u.emblem, xp: this.seasonProgress(u.id, season, this.firstSeason(u.id)).xp }));
     rows.sort((a, b) => b.xp - a.xp || a.nickname.localeCompare(b.nickname));
     this.ladderCache = { at: now, season: season.id, rows };
     return rows;
@@ -572,10 +582,15 @@ export class AccountService {
   /** Haut du classement de la saison, avec la position du joueur s'il n'en fait pas partie. */
   xpRanking(userId: string): { rows: XpRankRow[]; mine: XpRankRow | null; players: number; season: Season } {
     const ladder = this.xpLadder();
-    const toRow = (r: LadderRow, i: number): XpRankRow => ({ rank: i + 1, nickname: r.nickname, avatar: r.avatar, xp: r.xp, league: leagueFor(r.xp).id, title: r.title, frame: r.frame, emblem: r.emblem, you: r.id === userId });
+    const toRow = (r: LadderRow, i: number): XpRankRow => ({ rank: i + 1, nickname: r.nickname, avatar: r.avatar, xp: r.xp, league: leagueFor(r.xp).id, title: r.title, frame: r.frame, emblem: r.emblem, club: r.club, you: r.id === userId });
     const top = ladder.slice(0, 20).map(toRow);
     const i = ladder.findIndex((r) => r.id === userId);
     return { rows: top, mine: i >= 20 ? toRow(ladder[i]!, i) : null, players: ladder.length, season: seasonAt(this.now()) };
+  }
+
+  /** Classement des clubs sur la saison en cours. */
+  clubRanking(userId: string): ClubRanking {
+    return rankClubs(this.db, this.xpLadder(), userId, seasonAt(this.now()));
   }
 
   /** Classement des sept derniers jours entre le joueur et ses favoris : victoires, puis parties jouées (moins = mieux). */

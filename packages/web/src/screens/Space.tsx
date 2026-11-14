@@ -150,6 +150,7 @@ function ProfileTab() {
   const account = useAccountClient()!;
   const me = useAccount((s) => s.account)!;
   const [nickname, setNick] = useState(me.nickname);
+  const [club, setClub] = useState(me.club ?? '');
   const [avatar, setAvatar] = useState(me.avatar ?? 'or');
   const [avState, setAvState] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   // Un changement d'avatar (modèle ou avatar personnalisé) est enregistré aussitôt : plus besoin du bouton du profil.
@@ -213,7 +214,7 @@ function ProfileTab() {
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
     try {
-      await account.updateProfile({ nickname: nickname.trim(), avatar });
+      await account.updateProfile({ nickname: nickname.trim(), avatar, club: club.trim() || null });
       setState({ tone: 'ok', text: t('space.profil_enregistre_il') });
     } catch (err) {
       setState({ tone: 'error', text: message(err) });
@@ -246,6 +247,9 @@ function ProfileTab() {
         <H2>{t('space.profil')}</H2>
         <Field label={t('space.pseudo')} htmlFor="sp-nick">
           <input id="sp-nick" className={inputClass} value={nickname} maxLength={20} onChange={(e) => setNick(e.target.value)} autoComplete="nickname" />
+        </Field>
+        <Field label={t('club.label')} htmlFor="sp-club" hint={t('club.hint')}>
+          <input id="sp-club" className={inputClass} value={club} maxLength={30} placeholder={t('club.placeholder')} onChange={(e) => setClub(e.target.value)} autoComplete="organization" />
         </Field>
         <section aria-label={t('sp.av.title')} className="space-y-4 rounded-2xl border border-gold-500/25 bg-ink-900/40 p-4 sm:p-5">
           <div className="flex items-center gap-4">

@@ -156,6 +156,7 @@ export function registerAccountRoutes(app: FastifyInstance, accounts: AccountSer
   app.get('/me/engagement', async (req) => accounts.engagement(me(req).id));
   app.get('/me/progression', async (req) => accounts.progression(me(req).id));
   app.get('/me/xp-ranking', async (req) => accounts.xpRanking(me(req).id));
+  app.get('/me/club-ranking', async (req) => accounts.clubRanking(me(req).id));
   app.get('/me/rewards', async (req) => accounts.rewards(me(req).id));
   app.post('/me/rewards/equip', async (req) => accounts.equip(me(req).id, req.body));
   app.get('/me/leaderboard', async (req) => ({ rows: accounts.leaderboard(me(req).id) }));
