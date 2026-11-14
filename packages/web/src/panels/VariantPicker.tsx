@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Badge, Button } from '../components/ui';
 import { useClient } from '../lib/context';
 import { VARIANTS } from '../lib/labels';
@@ -17,6 +17,11 @@ export function VariantPicker() {
   const [opts63, setOpts63] = useState(false);
   const [teats, setTeats] = useState(0);
   const [sideBets, setSideBets] = useState(false);
+  const optsRef = useRef<HTMLDivElement>(null);
+  // Les options remplacent la liste : elles ne peuvent pas rester cachées sous les six cartes, hors de l'écran.
+  useEffect(() => {
+    if (opts63) optsRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [opts63]);
 
   const list = (
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-label={t('picker.variantes')}>
@@ -59,14 +64,14 @@ export function VariantPicker() {
       }
       timerLabel={t('picker.choix_de_la')}
     >
-      {isChooser ? list : (
+      {isChooser && opts63 ? null : isChooser ? list : (
         <details className="rounded-xl border border-ivory-100/12 bg-ink-900/40 px-4 py-3">
           <summary className="cursor-pointer text-sm font-semibold text-gold-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-400">{t('picker.voir')}</summary>
           <div className="mt-3">{list}</div>
         </details>
       )}
       {opts63 && isChooser && (
-        <div role="group" aria-label={t('picker.options_du_6')} className="mt-4 rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
+        <div ref={optsRef} role="group" aria-label={t('picker.options_du_6')} className="rounded-xl border border-gold-500/40 bg-ink-900/70 p-4">
           <p className="font-display text-lg text-ivory-50">{t('picker.options_du_6')}</p>
           <fieldset className="mt-2">
             <legend className="text-sm text-ivory-200/85">{t('picker.tetines_cartes_supplementaires')}</legend>

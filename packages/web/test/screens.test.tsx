@@ -176,6 +176,22 @@ describe('formulaires', () => {
     await user.click(screen.getByRole('button', { name: 'Créer la table' }));
     expect(created).toHaveBeenCalledWith(expect.objectContaining({ assistance: true }));
   });
+  it('création du 6-3 : tétines et paris extérieurs visibles sans ouvrir « Personnaliser », et transmis', async () => {
+    const user = userEvent.setup();
+    const { client } = renderWith(<CreateRoom onBack={() => undefined} initialVariant="V6_3" />, null);
+    const created = vi.fn(async () => undefined);
+    client.createRoom = created;
+    expect(screen.getByRole('button', { name: /Personnaliser la table/ })).toHaveAttribute('aria-expanded', 'false');
+    await user.click(within(screen.getByRole('radiogroup', { name: 'Tétines' })).getByRole('radio', { name: '2' }));
+    await user.click(screen.getByLabelText(/Paris extérieurs/));
+    await user.type(screen.getByLabelText('Votre pseudo'), 'Emeric');
+    await user.click(screen.getByRole('button', { name: 'Créer la table' }));
+    expect(created).toHaveBeenCalledWith(expect.objectContaining({ variant: 'V6_3', teats: 2, sideBets: true }));
+  });
+  it('« Jeu libre » : pas d’options du 6-3 à la création (elles sont proposées au moment du choix)', () => {
+    renderWith(<CreateRoom onBack={() => undefined} />, null);
+    expect(screen.queryByRole('radiogroup', { name: 'Tétines' })).toBeNull();
+  });
   it('création : pseudo invalide refusé', async () => {
     const user = userEvent.setup();
     renderWith(<CreateRoom onBack={() => undefined} />, null);

@@ -112,6 +112,16 @@ export function CreateRoom({ onBack, initialVariant }: { onBack: () => void; ini
               ))}
             </select>
           </Field>
+          {variant === 'V6_3' && (
+            <>
+              <Field label={t('forms.tetines')} hint={t('forms.cartes_supplementaires_qui')}>
+                <Segmented label={t('forms.tetines')} value={teats} options={[0, 1, 2]} onChange={setTeats} />
+              </Field>
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-ivory-100">
+                <input type="checkbox" checked={sideBets} onChange={(e) => setSideBets(e.target.checked)} className="mt-1" />
+                {t('forms.paris_exterieurs_sur')}</label>
+            </>
+          )}
           <Field label={t('forms.nombre_de_joueurs')} hint={t('forms.vous_pouvez_demarrer')}>
             <Segmented label={t('forms.nombre_de_joueurs2')} value={players} options={sizes} onChange={setMax} />
           </Field>
@@ -154,16 +164,6 @@ export function CreateRoom({ onBack, initialVariant }: { onBack: () => void; ini
                 <Field label={t('forms.niveau_de_la')} hint={assistance ? t('forms.chaque_joueur_devra') : t('forms.aucune_indication_chacun')}>
                   <Segmented label={t('forms.niveau_de_la')} value={assistance ? 'avec' : 'sans'} options={['sans', 'avec'] as const} onChange={(v) => setAssistance(v === 'avec')} format={(v) => (v === 'avec' ? t('forms.avec_assistance') : t('forms.sans_assistance'))} />
                 </Field>
-                {variant === 'V6_3' && (
-                  <>
-                    <Field label={t('forms.tetines')} hint={t('forms.cartes_supplementaires_qui')}>
-                      <Segmented label={t('forms.tetines')} value={teats} options={[0, 1, 2]} onChange={setTeats} />
-                    </Field>
-                    <label className="flex cursor-pointer items-start gap-2 text-sm text-ivory-100">
-                      <input type="checkbox" checked={sideBets} onChange={(e) => setSideBets(e.target.checked)} className="mt-1" />
-                      {t('forms.paris_exterieurs_sur')}</label>
-                  </>
-                )}
               </div>
             )}
           </div>
