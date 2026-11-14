@@ -213,6 +213,10 @@ describe('intégration : interface complète dans le DOM, pilotée comme un util
     await screen.findByText(/En attente des autres joueurs \(1 \/ 2\)/);
     // le second joueur valide : la manche se termine et le récapitulatif s'affiche chez l'hôte
     await alice.client.command({ type: 'VALIDATE' });
+    // poker fermé : les mains abattues d'abord, le résultat de la manche ensuite
+    const showdown = await screen.findByRole('dialog', { name: 'Abattage' }, { timeout: 5000 });
+    expect(within(showdown).getByTestId('abattage').querySelectorAll('li')).toHaveLength(2);
+    await user.click(within(showdown).getByRole('button', { name: 'Voir le résultat de la manche' }));
     const dialog = await screen.findByRole('dialog', { name: 'Résultat de la manche 1' }, { timeout: 5000 });
     expect(within(dialog).queryByRole('list', { name: 'Mains dévoilées' })).toBeNull();
     expect(within(dialog).getByRole('heading', { level: 2 }).textContent).toMatch(/remporte la manche|Hold’em de départage|Aucun point/);

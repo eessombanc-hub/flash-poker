@@ -10,6 +10,7 @@ import { Avatar, Badge, Button, Eyebrow, Modal, ScorePips } from '../components/
 import type { FeedItem } from '../lib/client';
 import { deNom, formatChips, formatSignedChips, pointsLabel, STARTING_CHIPS } from '../lib/format';
 import { categoryLabel, describeRank, INSURANCE_LABELS, variantName, VICTORY_LABELS, winningCards, winningCombination } from '../lib/labels';
+import { sortHand } from '../lib/cards';
 import { nick } from '../lib/selectors';
 import { straightFlushes } from '../lib/roundInfo';
 import { StraightFlushFeast } from '../components/Feast';
@@ -226,6 +227,9 @@ export function finalBoard(known: readonly (string | null)[], events: readonly R
   return b;
 }
 
+/** Secondes d'affichage des mains abattues (poker fermé) avant le résultat de la manche. */
+export const SHOWDOWN_SECONDS = 8;
+
 export function RoundResultModal({ record, events, board, view, onClose, final }: { record: RoundRecord; events: RoundEvent[]; board: readonly (string | null)[]; view: RoomView; onClose: () => void; final: boolean }) {
   const { t, tp } = useI18n();
   const { fourColor } = useSettings();
@@ -235,14 +239,57 @@ export function RoundResultModal({ record, events, board, view, onClose, final }
   const lines = events.filter((e) => e.type === 'LINE_RESOLVED').map((e) => e.data as unknown as LineResult);
   const winner = record.award.kind === 'POINTS' || record.award.kind === 'INSTANT_VICTORY' ? record.award.winner : null;
   const players = view.game!.players;
+  // Poker fermé : les mains, telles qu'elles sont après le dernier change, s'affichent seules avant le résultat de la manche.
+  const closedHands = record.variant === 'CLOSED_1' || record.variant === 'CLOSED_2' ? record.summary?.hands : undefined;
+  const [stage, setStage] = useState<'hands' | 'result'>(closedHands && Object.keys(closedHands).length > 0 ? 'hands' : 'result');
+  const [handsLeft, setHandsLeft] = useState(SHOWDOWN_SECONDS);
   const [left, setLeft] = useState(final ? null : 14);
   const [interacted, setInteracted] = useState(false);
   useEffect(() => {
-    if (left === null || interacted) return;
+    if (stage !== 'hands' || interacted) return;
+    if (handsLeft <= 0) return setStage('result');
+    const id = setTimeout(() => setHandsLeft((x) => x - 1), 1000);
+    return () => clearTimeout(id);
+  }, [stage, handsLeft, interacted]);
+  useEffect(() => {
+    if (stage !== 'result' || left === null || interacted) return;
     if (left <= 0) return onClose();
     const id = setTimeout(() => setLeft((x) => (x === null ? x : x - 1)), 1000);
     return () => clearTimeout(id);
-  }, [left, onClose, interacted]);
+  }, [left, onClose, interacted, stage]);
+
+  if (stage === 'hands' && closedHands) {
+    return (
+      <Modal title={t('overlays.abattage.title')} onClose={() => setStage('result')} wide compact>
+        <div onPointerDown={() => setInteracted(true)} onWheel={() => setInteracted(true)}>
+          <Eyebrow>{t('overlays.manche', { roundNo: record.roundNo, variantName: variantName(record.variant) })}</Eyebrow>
+          <h2 className="font-display text-xl leading-tight text-ivory-50 sm:text-2xl">{t('overlays.abattage.title')}</h2>
+          <p className="mt-1 text-sm text-ivory-200/85">{t('overlays.abattage.text')}</p>
+          <ul className="mt-3 space-y-2" data-testid="abattage">
+            {players.filter((p) => closedHands[p.player]).map((p, row) => {
+              const h = closedHands[p.player]!;
+              const name = (h.rank !== undefined ? describeRank(h.rank) : null) ?? categoryLabel(h.category);
+              return (
+                <li key={p.player} className="rounded-xl bg-ink-900/60 px-3 py-2.5">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <span className="font-semibold text-ivory-50">{nick(view, p.player)}</span>
+                    <span className="text-sm font-semibold text-gold-300">{name}</span>
+                  </div>
+                  <span className="mt-2 flex justify-center -space-x-1.5" role="group" aria-label={t('overlays.abattage.main', { nick: nick(view, p.player) })}>
+                    {sortHand(h.cards).map((c, i) => <RevealCard key={c} code={c} size="xs" index={row * 2 + i} />)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-3 flex items-center justify-end gap-3">
+            {!interacted && <span className="text-xs text-ivory-300/60">{t('overlays.abattage.auto', { left: handsLeft })}</span>}
+            <Button onClick={() => setStage('result')}>{t('overlays.abattage.cta')}</Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 
   return (
     <Modal title={t('overlays.resultat_de_la', { roundNo: record.roundNo })} onClose={onClose} wide compact>
