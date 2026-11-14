@@ -239,6 +239,41 @@ function LogTab({ call }: { call: Call }) {
   );
 }
 
+/** Rubrique « Administration » de Mon espace : nombre de comptes créés et indicateurs clés, avec accès au panneau complet. */
+export function AdminOverview({ onOpenPanel }: { onOpenPanel: () => void }) {
+  const client = useAccountClient();
+  const [stats, setStats] = useState<StaffStats | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let live = true;
+    client?.staff<StaffStats>('GET', '/staff/stats').then((r) => live && setStats(r)).catch((e) => live && setError(errText(e)));
+    return () => { live = false; };
+  }, [client]);
+  const more: Array<[string, number | undefined]> = [['Nouveaux comptes (7 jours)', stats?.newThisWeek], ['Équipe de modération', stats?.staff], ['Silences en cours', stats?.mutes], ['Comptes suspendus', stats?.bans], ['Messages « Un bug ? » à traiter', stats?.feedbackOpen]];
+  return (
+    <section aria-label="Administration" className="space-y-5">
+      <div>
+        <h2 className="font-display text-2xl text-ivory-50">Administration</h2>
+        <p className="mt-1 text-sm text-ivory-200/85">Vue d’ensemble du site, réservée aux administrateurs.</p>
+      </div>
+      {error && <p role="alert" className="text-sm text-ruby-300">{error}</p>}
+      <div className="rounded-2xl border border-gold-500/40 bg-gold-500/10 p-5" data-testid="comptes-crees">
+        <p className="text-sm text-ivory-200">Joueurs ayant créé un compte</p>
+        <p className="mt-1 font-display text-5xl text-gold-200">{stats ? stats.accounts.toLocaleString('fr-FR') : '…'}</p>
+      </div>
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {more.map(([label, v]) => (
+          <div key={label} className="rounded-xl border border-ivory-100/10 bg-ink-900/70 p-3">
+            <dt className="text-xs text-ivory-300/80">{label}</dt>
+            <dd className="mt-1 font-display text-2xl text-ivory-50">{v === undefined ? '…' : v.toLocaleString('fr-FR')}</dd>
+          </div>
+        ))}
+      </dl>
+      <Button onClick={onOpenPanel}>Ouvrir le panneau de gestion</Button>
+    </section>
+  );
+}
+
 function StatsTab({ call }: { call: Call }) {
   const { data, error } = useLoad<StaffStats>(call, '/stats', (r: StaffStats) => r);
   const cells: Array<[string, number | undefined]> = [['Comptes', data?.accounts], ['Nouveaux (7 jours)', data?.newThisWeek], ['Équipe', data?.staff], ['Silences en cours', data?.mutes], ['Comptes suspendus', data?.bans], ['Messages « Un bug ? » à traiter', data?.feedbackOpen]];

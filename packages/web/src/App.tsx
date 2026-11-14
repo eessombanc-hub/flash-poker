@@ -251,7 +251,7 @@ function AppContent() {
   else if (screen === 'faq') content = <FaqScreen onBack={leaveHash} onFeedback={openFeedback} />;
   else if (screen === 'staff') content = <StaffScreen onBack={leaveHash} initialTab={window.location.hash === ADMIN_HASH ? 'messages' : 'chat'} />;
   else if (screen === 'legal') content = <LegalScreen page={legalPage} onPage={setLegalPage} onBack={() => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setScreen('home'); }} />;
-  else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} />;
+  else if (screen === 'space' && me) content = <Space onBack={() => setScreen('home')} initialTab={spaceTab} onStaff={openStaff} />;
   else if (screen === 'blackjack') content = <Blackjack onBack={() => { setBjJoin(''); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialJoin={bjJoin || undefined} />;
   else if (screen === 'tableau') content = <Tableau onBack={() => { setTableauCode(''); setScreen('home'); }} onLogin={() => setScreen({ auth: 'login' })} initialCode={tableauCode || undefined} initialVariant={tableauVariant} />;
   else if (screen === 'variants')

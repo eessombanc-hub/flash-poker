@@ -68,3 +68,31 @@ describe('espace de l’équipe', () => {
     expect(screen.queryByText('Maintenance ce soir à 22 h.')).toBeNull();
   });
 });
+
+describe('rubrique Administration de Mon espace', () => {
+  const account = (role: 'user' | 'admin') => ({ id: 'u1', nickname: 'Emeric', avatar: null, email: 'e@x.fr', role, notifyEmail: false, createdAt: 1, club: null });
+  const open = async (role: 'user' | 'admin', handler: Handler) => {
+    const { Space } = await import('../src/screens/Space');
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => handler(url, init ?? {})) as unknown as typeof fetch;
+    const client = new AccountClient({ baseUrl: '', fetchFn, storage: null });
+    client.store.setState({ token: 't', account: account(role) as never, ready: true });
+    const onStaff = vi.fn();
+    render(<SettingsProvider><AccountProvider account={client}><Space onBack={() => undefined} initialTab={role === 'admin' ? 'admin' : 'defis'} onStaff={onStaff} /></AccountProvider></SettingsProvider>);
+    return onStaff;
+  };
+
+  it('un administrateur voit le nombre de comptes créés et peut ouvrir le panneau', async () => {
+    const onStaff = await open('admin', (url) => (url === '/staff/stats' ? json({ accounts: 1234, newThisWeek: 56, staff: 3, mutes: 1, bans: 0, feedbackOpen: 2 }) : json({})));
+    const card = await screen.findByTestId('comptes-crees');
+    await waitFor(() => expect(card.textContent).toMatch(/1\s?234/));
+    expect(card).toHaveTextContent('Joueurs ayant créé un compte');
+    await userEvent.click(screen.getByRole('button', { name: 'Ouvrir le panneau de gestion' }));
+    expect(onStaff).toHaveBeenCalled();
+  });
+
+  it('un joueur ordinaire n’a pas cette rubrique', async () => {
+    await open('user', () => json({}));
+    expect(screen.getByRole('tab', { name: /Profil/ })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Administration' })).toBeNull();
+  });
+});

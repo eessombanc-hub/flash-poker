@@ -1,3 +1,4 @@
+import { AdminOverview } from './Staff';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { BellIcon, ChipsIcon, JoinIcon, ProfileIcon, StarIcon, StatsIcon, TrophyIcon } from '../components/Icons3D';
 import { RecoveryCodeBox } from '../components/RecoveryCode';
@@ -16,7 +17,7 @@ import { VariantProgress } from '../components/VariantProgress';
 import { currentI18n, locale, tr, useI18n } from '../i18n';
 import { errorText } from '../lib/tbText';
 
-export type SpaceTab = 'classement' | 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter' | 'defis' | 'recompenses';
+export type SpaceTab = 'classement' | 'profil' | 'historique' | 'statistiques' | 'manches' | 'bankroll' | 'favoris' | 'inviter' | 'defis' | 'recompenses' | 'admin';
 const TABS: { id: SpaceTab; label: string; icon: (size: number) => ReactNode }[] = [
   { id: 'defis', get label() { return tr('eg.tab'); }, icon: (s) => <TrophyIcon size={s} /> },
   { id: 'recompenses', get label() { return tr('rw.tab'); }, icon: (s) => <TrophyIcon size={s} /> },
@@ -29,6 +30,9 @@ const TABS: { id: SpaceTab; label: string; icon: (size: number) => ReactNode }[]
   { id: 'favoris', get label() { return tr('space.tab.favoris'); }, icon: (s) => <BellIcon size={s} /> },
   { id: 'inviter', get label() { return tr('space.tab.inviter'); }, icon: (s) => <JoinIcon size={s} /> },
 ];
+
+/** Rubrique réservée aux administrateurs (ajoutée à la liste pour eux seuls). */
+const ADMIN_TAB: (typeof TABS)[number] = { id: 'admin', label: 'Administration', icon: (s) => <StatsIcon size={s} /> };
 
 const dateFmt = (): Intl.DateTimeFormat => new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const dayFmt = (): Intl.DateTimeFormat => new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'short' });
@@ -68,20 +72,21 @@ const Notice = ({ tone, children }: { tone: 'ok' | 'error'; children: ReactNode 
 );
 
 /** Espace personnel du joueur inscrit. */
-export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; initialTab?: SpaceTab }) {
+export function Space({ onBack, initialTab = 'profil', onStaff }: { onBack: () => void; initialTab?: SpaceTab; onStaff?: () => void }) {
   const { t, tp } = useI18n();
   const me = useAccount((s) => s.account);
   const [tab, setTab] = useState<SpaceTab>(initialTab);
   const id = useId();
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   if (!me) return null;
+  const tabs = me.role === 'admin' ? [...TABS, ADMIN_TAB] : TABS;
 
   const onKey = (e: KeyboardEvent) => {
-    const i = TABS.findIndex((t) => t.id === tab);
-    const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : null;
+    const i = tabs.findIndex((t) => t.id === tab);
+    const next = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : null;
     if (next === null) return;
     e.preventDefault();
-    const t = TABS[(next + TABS.length) % TABS.length]!;
+    const t = tabs[(next + tabs.length) % tabs.length]!;
     setTab(t.id);
     refs.current[t.id]?.focus();
   };
@@ -101,7 +106,7 @@ export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; i
         <h1 className="mt-1 font-display text-3xl text-ivory-50 sm:text-4xl">{t('space.bonjour', { nickname: me.nickname })}</h1>
         <div className="mt-6 grid gap-5 lg:grid-cols-[15rem_1fr]">
           <div role="tablist" aria-label={t('space.rubriques_de_mon')} aria-orientation="vertical" onKeyDown={onKey} className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-col">
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <button
                 key={t.id}
                 ref={(el) => {
@@ -134,6 +139,7 @@ export function Space({ onBack, initialTab = 'profil' }: { onBack: () => void; i
             {tab === 'bankroll' && <BankrollTab />}
             {tab === 'favoris' && <FavoritesTab />}
             {tab === 'inviter' && <InviteTab />}
+            {tab === 'admin' && me.role === 'admin' && <AdminOverview onOpenPanel={() => onStaff?.()} />}
           </Panel>
         </div>
       </main>
