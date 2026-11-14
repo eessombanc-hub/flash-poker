@@ -3,6 +3,7 @@ import { createStore, type StoreApi } from 'zustand/vanilla';
 import { ApiError } from './api';
 import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryItem, BjLeaderboardEntry, BjLeaderboardKind, BjOverview, BjResult, Advice, Odds, TableRules } from './types';
 import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbQueueDto, TbStatus } from './types';
+import type { FeedbackItem, FeedbackKind } from './types';
 import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow, RankGame, RankPeriod, Ranking, ProgressionReply, XpRanking, ClubRanking, RewardsReply, RewardKind, Equipped } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
@@ -65,7 +66,7 @@ export class AccountClient {
   private async request<T>(method: string, path: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
     const headers: Record<string, string> = { ...extra };
     if (body !== undefined) headers['content-type'] = 'application/json';
-    if (this.token) headers.authorization = `Bearer ${this.token}`;
+    if (this.token && !headers.authorization) headers.authorization = `Bearer ${this.token}`;
     let res: Response;
     try {
       res = await (this.opts.fetchFn ?? fetch)(`${this.opts.baseUrl ?? ''}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -206,6 +207,15 @@ export class AccountClient {
   changePassword(current: string, next: string): Promise<unknown> {
     return this.request('POST', '/me/password', { current, next });
   }
+
+  /** « Un bug ? » : envoi d'un commentaire, d'une idée ou d'un signalement (compte facultatif). */
+  sendFeedback(input: { kind: FeedbackKind; message: string; contact?: string; where?: string }): Promise<{ id: string }> {
+    return this.request('POST', '/feedback', input);
+  }
+  /** Lecture réservée au propriétaire : le jeton d'administration est saisi dans le navigateur et jamais enregistré. */
+  adminFeedback = (adminToken: string) => this.request<{ items: FeedbackItem[] }>('GET', '/admin/feedback', undefined, { authorization: `Bearer ${adminToken}` }).then((r) => r.items);
+  adminFeedbackStatus = (adminToken: string, id: string, status: 'open' | 'done') => this.request<void>('POST', `/admin/feedback/${encodeURIComponent(id)}`, { status }, { authorization: `Bearer ${adminToken}` });
+  adminFeedbackDelete = (adminToken: string, id: string) => this.request<void>('DELETE', `/admin/feedback/${encodeURIComponent(id)}`, undefined, { authorization: `Bearer ${adminToken}` });
 
   /** Copie de toutes les données du compte (droit d'accès et de portabilité). */
   exportData(): Promise<unknown> {

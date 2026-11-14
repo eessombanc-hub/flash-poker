@@ -79,3 +79,15 @@ export type { TableRoundView } from '@poker/engine';
 export type { TbGameDto, TbHistoryEntry, TbMode, TbQueueDto, TbStatus, TbPlayerDto } from '@poker/server/src/tableau/service';
 export type { TbProfileDto, TbLeaderboardRow, TbRatingChange } from '@poker/server/src/tableau/stats';
 export type { TableauView, TableauResult, ColumnHand, ColumnVerdict, AiLevel, TableauVariant, Placement as TableauPlacement, Seat as TableauSeat } from '@poker/engine';
+
+export type FeedbackKind = 'bug' | 'idea' | 'comment';
+export interface FeedbackItem {
+  id: string;
+  createdAt: number;
+  kind: FeedbackKind;
+  message: string;
+  contact: string | null;
+  nickname: string | null;
+  context: string;
+  status: 'open' | 'done';
+}

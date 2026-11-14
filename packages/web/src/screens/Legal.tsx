@@ -88,6 +88,9 @@ function Privacy() {
           <strong>Invitations.</strong> Si vous invitez un proche, son adresse électronique est utilisée pour lui envoyer l’invitation et en limiter la fréquence. Ne saisissez que l’adresse de personnes qui acceptent d’être invitées.
         </Li>
         <Li>
+          <strong>Messages « Un bug ? ».</strong> Le texte que vous envoyez, votre adresse électronique si vous choisissez de l’indiquer, l’écran affiché et le type d’appareil. Si vous êtes connecté, le message est rattaché à votre pseudonyme. Ces informations servent à corriger le défaut ou à vous répondre. Elles sont conservées le temps du traitement, puis supprimées, et disparaissent avec votre compte. Évitez d’y mentionner des informations sensibles. Base légale : intérêt légitime d’amélioration du service.
+        </Li>
+        <Li>
           <strong>Discussions.</strong> Les messages du salon d’accueil et des tables ne sont pas archivés dans la base des comptes. Ils sont tenus en mémoire pour la durée de la partie ou du salon, et un message contraire aux règles peut être masqué par la modération automatique.
         </Li>
         <Li>

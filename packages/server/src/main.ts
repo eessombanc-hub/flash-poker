@@ -8,6 +8,7 @@ import { AccountService } from './accounts/service';
 import { BlackjackService } from './blackjack/service';
 import { BlackjackTables } from './blackjack/tables';
 import { TableauService } from './tableau/service';
+import { FeedbackService } from './accounts/feedback';
 import { buildServer } from './http';
 import { resolveTrustProxy } from './netSecurity';
 import { RoomManager } from './roomManager';
@@ -87,9 +88,14 @@ await manager.restoreFromStore();
 // HTTP_RATE_LIMIT : nombre de créations / arrivées par minute et par adresse (30 par défaut). Réglage réservé aux
 // tests automatisés, où tous les joueurs simulés partagent la même adresse.
 const httpMax = Number(process.env.HTTP_RATE_LIMIT ?? 30);
+// « Un bug ? » : FEEDBACK_TO (facultatif) reçoit chaque message par e-mail ; ADMIN_TOKEN (16 caractères minimum) ouvre la lecture.
+const feedback = new FeedbackService(accountsDb, mailer, { to: process.env.FEEDBACK_TO });
+if (process.env.ADMIN_TOKEN && process.env.ADMIN_TOKEN.length < 16) console.log('ADMIN_TOKEN trop court (16 caractères minimum) : consultation des messages « Un bug ? » désactivée');
 const server = await buildServer({
   manager,
   accounts,
+  feedback,
+  adminToken: process.env.ADMIN_TOKEN,
   blackjack,
   blackjackTables,
   tableau,

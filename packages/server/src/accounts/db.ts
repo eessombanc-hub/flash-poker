@@ -151,6 +151,17 @@ export class AccountDb {
         since INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS club_member_key ON club_member(key);
+      CREATE TABLE IF NOT EXISTS feedback (
+        id TEXT PRIMARY KEY,
+        created_at INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        message TEXT NOT NULL,
+        contact TEXT,
+        user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+        context TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'open'
+      );
+      CREATE INDEX IF NOT EXISTS feedback_user ON feedback(user_id);
       CREATE TABLE IF NOT EXISTS avatar_images (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

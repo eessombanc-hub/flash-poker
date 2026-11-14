@@ -16,6 +16,7 @@ import type { BlackjackTables } from './blackjack/tables';
 import { registerTableauRoutes } from './tableau/routes';
 import type { TableauService } from './tableau/service';
 import type { AccountService } from './accounts/service';
+import { registerFeedbackRoutes, type FeedbackService } from './accounts/feedback';
 import type { RoomManager } from './roomManager';
 import { renderIndex } from './sharePreview';
 
@@ -52,6 +53,10 @@ export interface ServerOptions {
   blackjack?: BlackjackService;
   /** Tables de Blackjack à plusieurs (nécessite `blackjack`). */
   blackjackTables?: BlackjackTables;
+  /** Commentaires et signalements « Un bug ? » (nécessite `accounts`). */
+  feedback?: FeedbackService;
+  /** Jeton d'administration pour consulter les messages (16 caractères au moins) ; sans lui, aucune route d'administration. */
+  adminToken?: string;
   /** Parties du Tableau (nécessite `accounts`). */
   tableau?: TableauService;
   /** Adresse publique du jeu (APP_URL ou celle fournie par Render), pour l'aperçu des liens partagés. */
@@ -295,6 +300,7 @@ export async function buildServer(opts: ServerOptions): Promise<BuiltServer> {
     return reply.status(201).send(opts.manager.spectate(req.params.code, req.body, account));
   });
   if (opts.accounts) registerAccountRoutes(app, opts.accounts, { now, authRateLimit: opts.authRateLimit });
+  if (opts.accounts && opts.feedback) registerFeedbackRoutes(app, opts.accounts, opts.feedback, { now, adminToken: opts.adminToken });
   if (opts.accounts && opts.tableau) registerTableauRoutes(app, opts.tableau, opts.accounts, { now });
   if (opts.accounts && opts.blackjack) registerBlackjackRoutes(app, opts.blackjack, opts.accounts, { now, tables: opts.blackjackTables });
 

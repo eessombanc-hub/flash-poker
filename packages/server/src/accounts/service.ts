@@ -261,7 +261,7 @@ export class AccountService {
   // ---------- Données personnelles : export et suppression ----------
 
   /** Tables du Blackjack et du Tableau dont les lignes portent `user_id` (hors partie en cours, qui n'a pas d'intérêt à l'export). */
-  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log', 'cosmetics', 'club_member'] as const;
+  private static readonly OWNED_TABLES = ['bj_profile', 'bj_history', 'bj_challenges', 'bj_achievements', 'tb_seat', 'tb_profile', 'tb_daily', 'tb_queue', 'rank_log', 'cosmetics', 'club_member', 'feedback'] as const;
 
   /** Copie de toutes les données rattachées au compte, pour son titulaire (droit d'accès et de portabilité). */
   exportData(userId: string): Record<string, unknown> {
