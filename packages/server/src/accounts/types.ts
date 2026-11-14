@@ -189,4 +189,4 @@ export interface LeaderboardRow extends AccountPublic {
   games: number;
   you: boolean;
 }
-export type { RankGame, RankPeriod, RankRow, Ranking } from './rankings';
+export type { RankGame, RankPeriod, RankRow, Ranking, ClubGameRow, ClubGameRanking } from './rankings';

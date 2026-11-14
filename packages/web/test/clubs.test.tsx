@@ -46,3 +46,37 @@ describe('classement des clubs', () => {
     expect(screen.getByText(/Vous n’avez pas indiqué de club/)).toBeInTheDocument();
   });
 });
+
+describe('classement : club à côté du joueur et classement des clubs par jeu', () => {
+  const rows = [
+    { rank: 1, nickname: 'Ana', avatar: null, club: 'Amical Poker Club', wins: 4, played: 6, net: null, you: true },
+    { rank: 2, nickname: 'Bob', avatar: null, club: null, wins: 2, played: 5, net: null, you: false },
+  ];
+  it('affiche le nom du club sous le pseudo du joueur', async () => {
+    const client = { rankings: vi.fn().mockResolvedValue({ game: 'poker', period: 'season', rows, mine: null, since: 0, until: null }), clubRanking: vi.fn() } as unknown as AccountClient;
+    render(wrap(<RankingsPanel />, client));
+    const list = await screen.findByRole('list', { name: /Parties de poker|Poker/ });
+    const items = within(list).getAllByRole('listitem');
+    expect(within(items[0]!).getByText('Amical Poker Club')).toBeInTheDocument();
+    expect(within(items[1]!).queryByText('Amical Poker Club')).toBeNull();
+  });
+
+  it('les clubs se classent par jeu et par période', async () => {
+    const gameRows = [
+      { rank: 1, name: 'Cercle Élysée', members: 2, active: 2, wins: 7, played: 9, net: null, you: false },
+      { rank: 2, name: 'Amical Poker Club', members: 5, active: 3, wins: 4, played: 6, net: null, you: true },
+    ];
+    const clubGameRanking = vi.fn().mockResolvedValue({ game: 'poker', period: 'season', rows: gameRows, mine: null, since: 0, until: null, clubs: 2 });
+    const client = { rankings: vi.fn().mockResolvedValue({ rows: [], mine: null, since: 0, until: null }), clubRanking: vi.fn().mockResolvedValue({ rows: [], mine: null, clubs: 0, season }), clubGameRanking } as unknown as AccountClient;
+    render(wrap(<RankingsPanel />, client));
+    await userEvent.click(screen.getByRole('radio', { name: 'Clubs' }));
+    await userEvent.selectOptions(screen.getByLabelText('Type de jeu'), 'poker');
+    const list = await screen.findByRole('list', { name: /Classement des clubs/ });
+    const items = within(list).getAllByRole('listitem');
+    expect(within(items[0]!).getByText('Cercle Élysée')).toBeInTheDocument();
+    expect(within(items[1]!).getByText('(votre club)')).toBeInTheDocument();
+    expect(clubGameRanking).toHaveBeenCalledWith('poker', 'season');
+    await userEvent.click(screen.getByRole('radio', { name: 'Mois' }));
+    expect(clubGameRanking).toHaveBeenLastCalledWith('poker', 'month');
+  });
+});

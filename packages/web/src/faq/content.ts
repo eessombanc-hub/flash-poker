@@ -232,7 +232,7 @@ export const FAQ: readonly FaqSection[] = [
         q: 'Qu’est-ce qu’un club et comment en rejoindre un ?',
         a: [
           'Dans votre profil, vous pouvez indiquer le nom d’un club (facultatif). Les joueurs qui saisissent le même nom forment un club, classé sur l’expérience cumulée de ses membres durant la saison en cours. Un club apparaît dès qu’au moins deux joueurs actifs l’ont indiqué.',
-          'Le classement des clubs additionne l’expérience, ce qui favorise les grands clubs ; la moyenne par membre est affichée pour nuancer. Le nom du club est public dans les classements : ne saisissez rien qui désigne une personne sans son accord.',
+          'Le nom du club s’affiche sous le pseudo de chaque joueur dans le classement. Les clubs se classent sur l’expérience de la saison, mais aussi, dans l’onglet Clubs, jeu par jeu et par période (semaine, mois, saison, total), sur les victoires cumulées de leurs membres, ou sur leur gain net au blackjack. Le classement des clubs additionne l’expérience, ce qui favorise les grands clubs ; la moyenne par membre est affichée pour nuancer. Le nom du club est public dans les classements : ne saisissez rien qui désigne une personne sans son accord.',
         ],
       },
     ],

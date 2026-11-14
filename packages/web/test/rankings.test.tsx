@@ -6,7 +6,7 @@ import type { AccountClient } from '../src/lib/account';
 import { AccountProvider } from '../src/lib/context';
 import type { Ranking, RankGame, RankPeriod } from '../src/lib/types';
 
-const row = (rank: number, nickname: string, wins: number, played: number, you = false, net: number | null = null) => ({ rank, nickname, avatar: null, wins, played, net, you });
+const row = (rank: number, nickname: string, wins: number, played: number, you = false, net: number | null = null) => ({ rank, nickname, avatar: null, club: null, wins, played, net, you });
 const T0 = Date.UTC(2026, 10, 8, 23);
 
 function renderPanel(answer: (g: RankGame, p: RankPeriod) => Ranking) {

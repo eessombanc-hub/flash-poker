@@ -7,7 +7,7 @@ import { errorText } from '../lib/tbText';
 import type { RankGame, RankPeriod, Ranking, RankRow } from '../lib/types';
 import { VARIANTS } from '../lib/labels';
 import { Avatar, Segmented } from './ui';
-import { ClubBoard } from './Clubs';
+import { ClubBoard, ClubGameBoard } from './Clubs';
 
 const PERIODS: readonly RankPeriod[] = ['week', 'month', 'season', 'all'];
 const POKER_VARIANTS: RankGame[] = VARIANTS.map((v) => v.id);
@@ -22,6 +22,7 @@ function RowView({ r, blackjack }: { r: RankRow; blackjack: boolean }) {
       <span className="min-w-0 flex-1 truncate font-medium text-ivory-50">
         {r.nickname}
         {r.you && <span className="ml-2 text-xs font-semibold text-gold-300">{t('rk.you')}</span>}
+        {r.club && <span className="block truncate text-xs font-normal text-ivory-300/70">{r.club}</span>}
       </span>
       <span className="shrink-0 text-right text-sm">
         {blackjack ? (
@@ -45,13 +46,13 @@ export function RankingsPanel() {
   const { t } = useI18n();
   const account = useAccountClient();
   const [mode, setMode] = useState<'players' | 'clubs'>('players');
-  const [game, setGame] = useState<RankGame>('poker');
+  const [game, setGame] = useState<RankGame | 'xp'>('poker');
   const [period, setPeriod] = useState<RankPeriod>('season');
   const [data, setData] = useState<Ranking | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!account) return;
+    if (!account || mode !== 'players' || game === 'xp') return;
     let alive = true;
     setData(null);
     account.rankings(game, period).then(
@@ -61,22 +62,28 @@ export function RankingsPanel() {
     return () => {
       alive = false;
     };
-  }, [account, game, period]);
+  }, [account, game, period, mode]);
 
-  const label = (g: RankGame): string => (g === 'poker' ? t('rk.game.poker') : g === 'blackjack' ? t('rk.game.blackjack') : g === 'tableau:classic' ? t('tb.variant.classic') : g === 'tableau:hand5' ? t('tb.variant.hand5') : variantName(g as never));
+  const label = (g: RankGame | 'xp'): string => (g === 'xp' ? t('rk.game.xp') : g === 'poker' ? t('rk.game.poker') : g === 'blackjack' ? t('rk.game.blackjack') : g === 'tableau:classic' ? t('tb.variant.classic') : g === 'tableau:hand5' ? t('tb.variant.hand5') : variantName(g as never));
   const fmt = new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'long' });
   const blackjack = game === 'blackjack';
+  const clubs = mode === 'clubs';
+  const pickMode = (m: 'players' | 'clubs') => {
+    setMode(m);
+    if (m === 'players' && game === 'xp') setGame('poker');
+    if (m === 'clubs' && game === 'poker') setGame('xp');
+  };
   const note = period === 'all' ? t('rk.note.all') : data?.until ? t('rk.note.until', { since: fmt.format(data.since), until: fmt.format(data.until - 1) }) : '';
 
   return (
     <section className="space-y-4" aria-label={t('rk.title')}>
       <h2 className="font-display text-2xl text-ivory-50">{t('rk.title')}</h2>
-      <Segmented label={t('rk.mode')} value={mode} options={['players', 'clubs'] as const} format={(m) => t(`rk.mode.${m}` as never)} onChange={setMode} />
-      {mode === 'clubs' ? <ClubBoard /> : <>
-      <Segmented label={t('rk.period')} value={period} options={PERIODS} format={(p) => t(`rk.period.${p}` as never)} onChange={setPeriod} />
+      <Segmented label={t('rk.mode')} value={mode} options={['players', 'clubs'] as const} format={(m) => t(`rk.mode.${m}` as never)} onChange={pickMode} />
+      {!(clubs && game === 'xp') && <Segmented label={t('rk.period')} value={period} options={PERIODS} format={(p) => t(`rk.period.${p}` as never)} onChange={setPeriod} />}
       <div>
         <label htmlFor="rk-game" className="mb-1 block text-sm font-semibold text-ivory-100">{t('rk.game')}</label>
-        <select id="rk-game" value={game} onChange={(e) => setGame(e.target.value as RankGame)} className="w-full rounded-xl border border-ivory-100/20 bg-ink-900 px-3 py-3 text-ivory-50 focus:border-gold-400 focus:outline-none">
+        <select id="rk-game" value={game} onChange={(e) => setGame(e.target.value as RankGame | 'xp')} className="w-full rounded-xl border border-ivory-100/20 bg-ink-900 px-3 py-3 text-ivory-50 focus:border-gold-400 focus:outline-none">
+          {clubs && <option value="xp">{label('xp')}</option>}
           <optgroup label={t('rk.group.poker')}>
             <option value="poker">{label('poker')}</option>
             {POKER_VARIANTS.map((v) => (
@@ -90,6 +97,7 @@ export function RankingsPanel() {
           </optgroup>
         </select>
       </div>
+      {clubs && game === 'xp' ? <ClubBoard /> : clubs && game !== 'xp' ? <ClubGameBoard game={game} period={period} label={label(game)} /> : <>
       <p className="text-sm text-ivory-300/80">
         {t(game === 'poker' ? 'rk.how.poker' : blackjack ? 'rk.how.blackjack' : game.startsWith('tableau') ? 'rk.how.tableau' : 'rk.how.variant')}
         {note && <span className="block pt-1 text-xs text-ivory-300/60">{note}</span>}

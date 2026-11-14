@@ -56,6 +56,8 @@ export type {
   XpRankRow,
   XpRanking,
   ClubRanking,
+  ClubGameRanking,
+  ClubGameRow,
   ClubRankRow,
   Season,
   SeasonResult,

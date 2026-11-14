@@ -9,7 +9,7 @@ import { mail, type Mailer } from './mailer';
 import { DUMMY_HASH, hashPassword, needsRehash, newToken, tokenHash, verifyPassword } from './password';
 import { maskEmail } from '../netSecurity';
 import { RateLimiter } from '../rateLimiter';
-import { computeRanking, logRank, pokerEntries, RANK_GAMES, RANK_PERIODS, seasonAt, seasonsBetween, type Ranking, type Season } from './rankings';
+import { computeClubGameRanking, computeRanking, logRank, pokerEntries, RANK_GAMES, RANK_PERIODS, seasonAt, seasonsBetween, type Ranking, type Season } from './rankings';
 import { variantProgress, type RoundFact } from './progress';
 import { computeEngagement, type Engagement } from './engagement';
 import { computeProgression, leagueFor, type LeagueId, type Progression, type XpFacts } from './xp';
@@ -651,6 +651,12 @@ export class AccountService {
   /** Classement des clubs sur la saison en cours. */
   clubRanking(userId: string): ClubRanking {
     return rankClubs(this.db, this.xpLadder(), userId, seasonAt(this.now()));
+  }
+
+  /** Classement des clubs sur un jeu et une période (victoires cumulées des membres). */
+  clubGameRanking(userId: string, input: unknown) {
+    const q = parse(rankingQuerySchema, input);
+    return computeClubGameRanking(this.db, userId, q.game, q.period, this.now());
   }
 
   /** Classement des sept derniers jours entre le joueur et ses favoris : victoires, puis parties jouées (moins = mieux). */

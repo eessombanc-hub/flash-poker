@@ -5,7 +5,7 @@ import type { BjTableDto, BjTableReply, SeatKind, BjAction, BjActive, BjHistoryI
 import type { AiLevel, ColumnHand, TableauVariant, TbGameDto, TbHistoryEntry, TbLeaderboardRow, TbMode, TbProfileDto, TbQueueDto, TbStatus } from './types';
 import type { FeedbackItem, FeedbackKind } from './types';
 import type { Device } from './types';
-import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow, RankGame, RankPeriod, Ranking, ProgressionReply, XpRanking, ClubRanking, RewardsReply, RewardKind, Equipped } from './types';
+import type { AccountPrivate, AccountPublic, Bankroll, FavoritePlayer, Wallet, FavoriteRound, GameDetail, GameSummary, InviteOverview, VariantStats, Engagement, LeaderboardRow, RankGame, RankPeriod, Ranking, ProgressionReply, XpRanking, ClubRanking, ClubGameRanking, RewardsReply, RewardKind, Equipped } from './types';
 
 /** Jeton de compte conservé dans le navigateur (session de 30 jours côté serveur). */
 const KEY = 'poker.account.v1';
@@ -269,6 +269,7 @@ export class AccountClient {
   progression = () => this.request<ProgressionReply>('GET', '/me/progression');
   xpRanking = () => this.request<XpRanking>('GET', '/me/xp-ranking');
   clubRanking = () => this.request<ClubRanking>('GET', '/me/club-ranking');
+  clubGameRanking = (game: RankGame, period: RankPeriod) => this.request<ClubGameRanking>('GET', `/me/club-ranking?game=${encodeURIComponent(game)}&period=${period}`);
   rewards = () => this.request<RewardsReply>('GET', '/me/rewards');
   equip = (slot: RewardKind, id: string | null) => this.request<Equipped>('POST', '/me/rewards/equip', { slot, id });
   rankings = (game: RankGame, period: RankPeriod) => this.request<Ranking>('GET', `/me/rankings?game=${encodeURIComponent(game)}&period=${period}`);

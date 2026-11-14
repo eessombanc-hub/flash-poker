@@ -1,5 +1,6 @@
 import { VARIANT_IDS } from '@poker/engine';
 import type { DatabaseSync } from 'node:sqlite';
+import { canonicalNames, CLUB_MIN_MEMBERS, declaredMembers } from './clubs';
 import type { FinishedGame } from './types';
 
 /**
@@ -16,11 +17,34 @@ export interface RankRow {
   rank: number;
   nickname: string;
   avatar: string | null;
+  /** Club déclaré par le joueur (nom d'usage), ou null. */
+  club: string | null;
   wins: number;
   played: number;
   /** Gain net en jetons (blackjack uniquement). */
   net: number | null;
   you: boolean;
+}
+/** Une ligne du classement des clubs sur un jeu et une période : total des membres du club. */
+export interface ClubGameRow {
+  rank: number;
+  name: string;
+  members: number;
+  /** Membres ayant joué sur la période. */
+  active: number;
+  wins: number;
+  played: number;
+  net: number | null;
+  you: boolean;
+}
+export interface ClubGameRanking {
+  game: RankGame;
+  period: RankPeriod;
+  since: number;
+  until: number | null;
+  rows: ClubGameRow[];
+  mine: ClubGameRow | null;
+  clubs: number;
 }
 export interface Ranking {
   game: RankGame;
@@ -155,7 +179,36 @@ export function computeRanking(db: DatabaseSync, userId: string, game: RankGame,
   const bj = game === 'blackjack';
   // Victoires (ou gain net au blackjack), puis moins de parties jouées, puis ordre alphabétique : le classement est stable.
   all.sort((a, b) => (bj ? b.net - a.net : 0) || b.wins - a.wins || a.played - b.played || a.nickname.localeCompare(b.nickname));
-  const rows: RankRow[] = all.map((r, i) => ({ rank: i + 1, nickname: r.nickname, avatar: r.avatar ?? null, wins: r.wins, played: r.played, net: bj ? r.net : null, you: r.id === userId }));
+  const names = canonicalNames(db);
+  const keyOf = new Map((db.prepare('SELECT user_id, key FROM club_member').all() as { user_id: string; key: string }[]).map((r) => [r.user_id, r.key]));
+  const rows: RankRow[] = all.map((r, i) => ({ rank: i + 1, nickname: r.nickname, avatar: r.avatar ?? null, club: names.get(keyOf.get(r.id) ?? '') ?? null, wins: r.wins, played: r.played, net: bj ? r.net : null, you: r.id === userId }));
   const top = rows.slice(0, LIMIT);
   return { game, period, since, until, rows: top, mine: top.some((r) => r.you) ? null : (rows.find((r) => r.you) ?? null) };
+}
+
+/**
+ * Classement des clubs sur un jeu : somme des victoires (ou du gain net au blackjack) des membres sur la période.
+ * Seuls les clubs d'au moins deux membres déclarés sont classés ; à égalité, moins de parties jouées l'emporte.
+ */
+export function computeClubGameRanking(db: DatabaseSync, userId: string, game: RankGame, period: RankPeriod, now: number): ClubGameRanking {
+  const { since, until } = periodBounds(now, period);
+  const agg = db
+    .prepare(
+      `SELECT m.key AS key, SUM(l.won) AS wins, SUM(l.played) AS played, SUM(l.score) AS net, COUNT(DISTINCT l.user_id) AS active
+       FROM rank_log l JOIN club_member m ON m.user_id = l.user_id
+       WHERE l.game = ? AND l.ended_at >= ? AND (? IS NULL OR l.ended_at < ?)
+       GROUP BY m.key`,
+    )
+    .all(game, since, until, until) as { key: string; wins: number; played: number; net: number; active: number }[];
+  const names = canonicalNames(db);
+  const declared = declaredMembers(db);
+  const mineKey = (db.prepare('SELECT key FROM club_member WHERE user_id = ?').get(userId) as { key: string } | undefined)?.key ?? null;
+  const bj = game === 'blackjack';
+  const ranked = agg
+    .filter((a) => (declared.get(a.key) ?? 0) >= CLUB_MIN_MEMBERS)
+    .map((a) => ({ ...a, name: names.get(a.key) ?? a.key }))
+    .sort((a, b) => (bj ? b.net - a.net : 0) || b.wins - a.wins || a.played - b.played || a.name.localeCompare(b.name));
+  const all: ClubGameRow[] = ranked.map((a, i) => ({ rank: i + 1, name: a.name, members: declared.get(a.key) ?? 0, active: a.active, wins: a.wins, played: a.played, net: bj ? a.net : null, you: a.key === mineKey }));
+  const top = all.slice(0, LIMIT);
+  return { game, period, since, until, rows: top, mine: top.some((r) => r.you) ? null : (all.find((r) => r.you) ?? null), clubs: all.length };
 }
