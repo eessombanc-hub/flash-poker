@@ -1948,4 +1948,7 @@ export const en: Record<Key, string> = {
   'club.members.other': "{n} members",
   'club.active': "{n} active this season",
   'club.average': "{n} on average",
+  'closed.pause': "Look at your hand… {n}",
+  'closed.recues.one': "You received {n} new card (gold frame).",
+  'closed.recues.other': "You received {n} new cards (gold frame).",
 };

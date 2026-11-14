@@ -98,7 +98,7 @@ function line(m: SocialMessage, players: Person[], t: ReturnType<typeof useI18n>
 }
 
 /** Bouton et panneau de chat de la table : messages, envoi d'objets amusants, préférences de masquage. */
-export function ChatDock({ canThrow }: { canThrow: boolean }) {
+export function ChatDock({ canThrow, raised = false }: { canThrow: boolean; raised?: boolean }) {
   const { t } = useI18n();
   const client = useClient();
   const id = useId();
@@ -164,7 +164,7 @@ export function ChatDock({ canThrow }: { canThrow: boolean }) {
   if (!view) return null;
   if (!open)
     return (
-      <div className="pointer-events-none fixed bottom-3 right-3 z-40 flex max-w-[min(18rem,calc(100vw-1.5rem))] flex-col items-end gap-2">
+      <div className={`pointer-events-none fixed right-3 z-40 flex ${raised ? 'bottom-20' : 'bottom-3'}  max-w-[min(18rem,calc(100vw-1.5rem))] flex-col items-end gap-2`}>
         {bubble && <p className="pointer-events-auto truncate rounded-2xl rounded-br-sm border border-gold-500/50 bg-ink-900/95 px-3 py-1.5 text-xs text-ivory-100 shadow-panel">{bubble.text}</p>}
         <button
           type="button"

@@ -1,10 +1,10 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Board } from '../src/components/Board';
 import { Seat } from '../src/components/Seat';
 import { SettingsProvider } from '../src/lib/settings';
-import { ClosedPanel } from '../src/panels/ClosedPanel';
+import { ClosedPanel, closedPause } from '../src/panels/ClosedPanel';
 import { DiscardPanel } from '../src/panels/DiscardPanel';
 import { InsurancePanel } from '../src/panels/InsurancePanel';
 import { Line63Panel } from '../src/panels/Line63Panel';
@@ -19,9 +19,25 @@ const card = (name: string) => screen.getByRole('button', { name: new RegExp(`^$
 const flat = (s: string | null) => (s ?? '').replace(/[\u202f\u00a0]/g, ' ');
 
 describe('Poker fermé', () => {
+  // Le temps d'arrêt de lecture est neutralisé ici ; un test dédié le rétablit.
+  const saved = { ...closedPause };
+  beforeAll(() => { closedPause.first = 0; closedPause.next = 0; });
+  afterAll(() => Object.assign(closedPause, saved));
   const HAND = ['As', 'Kd', '9c', '5h', '2s'];
   const view = (info: Record<string, unknown> = {}) => roomView({}, game({ round: round('CLOSED_1', HAND, { change: 1, totalChanges: 1, validated: [], yourDraft: [], ...info }, { phase: 'CHANGE_1' }) }));
 
+  it('temps d’arrêt : la main se montre, la validation et le choix des cartes s’ouvrent après quelques secondes', async () => {
+    closedPause.first = 1200;
+    try {
+      renderWith(<ClosedPanel />, view());
+      expect(screen.getByRole('button', { name: /Regardez votre main… \d/ })).toBeDisabled();
+      expect(card('As de pique')).toBeDisabled();
+      expect(await screen.findByRole('button', { name: 'Garder ma main' }, { timeout: 3000 })).toBeEnabled();
+      expect(card('As de pique')).toBeEnabled();
+    } finally {
+      closedPause.first = 0;
+    }
+  });
   it('3 cartes au plus ; la quatrième est refusée', async () => {
     const user = userEvent.setup();
     const { sent } = renderWith(<ClosedPanel />, view());

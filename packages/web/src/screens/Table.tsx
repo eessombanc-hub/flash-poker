@@ -374,7 +374,7 @@ export function Table({ onRegister }: { onRegister?: () => void } = {}) {
   return (
     <NewsContext.Provider value={news}>
     <ThrowLayer />
-    <ChatDock canThrow={!spectator} />
+    <ChatDock canThrow={!spectator} raised={over} />
     <div className="room-stage fixed inset-0 -z-0 pointer-events-none" aria-hidden="true" />
     <main className="relative z-10 mx-auto flex h-[100dvh] w-full max-w-6xl flex-col gap-1.5 overflow-hidden px-2 py-1.5 sm:px-3 sm:py-2 lg:max-w-[100rem]">
       <TopBar onScores={() => setModal('scores')} onRules={() => setModal('rules')} onOptions={() => setModal('options')} onBack={() => (over || spectator ? client.leave() : setModal('quit'))} />

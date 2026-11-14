@@ -10,6 +10,11 @@ import { GameClient } from '../src/lib/client';
 import { ClientProvider } from '../src/lib/context';
 import { MemorySessionStore } from '../src/lib/session';
 import { ownCards } from '../src/lib/selectors';
+import { closedPause } from '../src/panels/ClosedPanel';
+
+// Le temps d'arrêt de lecture du poker fermé est testé dans panels.test.tsx ; ici il est neutralisé.
+closedPause.first = 0;
+closedPause.next = 0;
 
 const cleanup: Array<() => Promise<void> | void> = [];
 afterEach(async () => {

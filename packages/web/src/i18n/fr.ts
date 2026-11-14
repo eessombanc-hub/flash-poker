@@ -1958,6 +1958,9 @@ export const fr = {
   'club.members.other': "{n} membres",
   'club.active': "{n} actifs cette saison",
   'club.average': "{n} en moyenne",
+  'closed.pause': "Regardez votre main… {n}",
+  'closed.recues.one': "Vous avez reçu {n} nouvelle carte (cadre doré).",
+  'closed.recues.other': "Vous avez reçu {n} nouvelles cartes (cadre doré).",
 } as const;
 
 export type Key = keyof typeof fr;

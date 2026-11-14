@@ -53,6 +53,8 @@ interface HandProps {
   dimmed?: boolean;
   /** Assistance : cartes de la main qui forment la combinaison (halo). */
   assist?: readonly string[];
+  /** Cartes nouvellement reçues (cadre doré). */
+  fresh?: readonly string[];
   label: string;
   /**
    * Téléphone : cartes plus grandes, légèrement superposées en éventail (le coin de chaque carte reste visible).
@@ -62,7 +64,7 @@ interface HandProps {
 }
 
 /** Ma main : cartes cliquables, jusqu'à `max` sélectionnées. */
-export function SelectableHand({ cards, selected, max, onToggle, disabled = false, size = 'md', dimmed = false, assist = [], label, fan = false }: HandProps) {
+export function SelectableHand({ cards, selected, max, onToggle, disabled = false, size = 'md', dimmed = false, assist = [], fresh = [], label, fan = false }: HandProps) {
   const { fourColor } = useSettings();
   const spread = fan && cards.length <= 5;
   return (
@@ -77,6 +79,7 @@ export function SelectableHand({ cards, selected, max, onToggle, disabled = fals
             fourColor={fourColor}
             selected={isSel}
             assist={assist.includes(code)}
+            highlight={fresh.includes(code)}
             dimmed={dimmed}
             dealIndex={i}
             disabled={disabled || (!isSel && selected.length >= max && max > 1)}
